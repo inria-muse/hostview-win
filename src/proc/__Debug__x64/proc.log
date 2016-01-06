@@ -1,9 +1,0 @@
-﻿  stdafx.cpp
-  proc.cpp
-c:\users\anna-kaisa\hostview\trunk\src\proc\proc.cpp(181): warning C4996: 'WSAAddressToStringA': Use WSAAddressToStringW() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
-  c:\program files (x86)\windows kits\8.1\include\um\winsock2.h(3556): note: see declaration of 'WSAAddressToStringA'
-  installed.cpp
-  icon.cpp
-  Generating Code...
-     Creating library C:\Users\Anna-Kaisa\hostview\trunk\\lib\x64\proc.lib and object C:\Users\Anna-Kaisa\hostview\trunk\\lib\x64\proc.exp
-  proc.vcxproj -> C:\Users\Anna-Kaisa\hostview\trunk\\bin\x64\Debug\proc.dll

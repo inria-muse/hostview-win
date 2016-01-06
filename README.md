@@ -14,8 +14,6 @@ The repository is organized as follows:
 Native HostView
 ---------------
 
-The client project can be compiled using Visual Studio 2015 by opening HostView.sln, and then from the menu Build -> Batch Build -> Select All -> Rebuild.
-
 HostView application is composed of the following:
 
 * include (common include header files among projects or external projects - winpcap);
@@ -31,12 +29,18 @@ The projects present in this solution are:
 * proc - library which exposes various functionalities such as process information (cpu, ram, sockets), system information, I/O polling, etc.
 * store -library which exposes various storage functionalities such as local storage, upload / download of files, etc.
 
-The build will generate 'bin' folder which will include Win32 / x64 and each of them Debug / Release binaries for each platform.
+### Building
+
+The client project can be compiled using Visual Studio 2015 (free Community edition works fine) by opening HostView.sln, and then, 
+choose from the menu Build -> Batch Build -> Select All -> Rebuild. The build will generate 'bin' folder which will include Win32 / x64 and 
+each of them Debug / Release binaries for each platform.
 
 Browser Plugins
 ---------------
 
-TODO
+* Internet Explorer - src/HostviewBHO (part of the native HostView solution)
+* Firefox - src/HostviewFirefox (see specific README for more info)
+* Chrome - src/HostviewChrom (see specific README for more info)
 
 Hostview Installer
 ------------------
