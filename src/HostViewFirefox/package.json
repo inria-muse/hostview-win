@@ -1,0 +1,15 @@
+{
+  "title": "HostView Addon",
+  "name": "hostview",
+  "version": "0.0.2",
+  "id": "hostview@jetpack",
+  "description": "HostView addon for UCN Study",
+  "main": "index.js",
+  "icon": "data/icon.png",
+  "author": "Anna-Kaisa Pietilainen <anna-kaisa.pietilainen@inria.fr>",
+  "engines": {
+    "firefox": ">=38.0a1",
+    "fennec": ">=38.0a1"
+  },
+  "license": "MIT"
+}

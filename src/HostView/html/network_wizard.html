@@ -1,0 +1,272 @@
+ <!DOCTYPE html>
+  <html>
+    <head>
+      <!--Import materialize.css-->
+      <link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
+
+      <!--Let browser know website is optimized for mobile-->
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+	 
+	 <style>
+		.hidden
+		{
+			display: none;
+		}
+		
+		* 
+		{
+		    margin:0;
+		    padding:0;
+		}
+		
+        html,body
+        {
+            height:100%;
+        }
+        
+        html
+        {
+            background: #424242;
+        }
+        
+        body
+        {
+            background:#ffffff;
+			overflow:hidden;
+        }
+		:-ms-input-placeholder {
+			/* Internet Explorer 10+ */
+			color:    #999;
+		}
+		
+		HTML, BODY
+		{
+		   scrollbar-face-color:#424242;
+		   scrollbar-arrow-color:#ffffff;
+		   scrollbar-track-color:#ffffff;
+		   
+		   scrollbar-shadow-color:rgb(0,0,0);
+		   scrollbar-highlight-color:rgb(0,0,0);
+		   scrollbar-3dlight-color:#f8f8f8;
+		   scrollbar-darkshadow-Color:#f8f8f8;
+		}
+		
+		div.tagsinput
+		{
+			border:none !important;
+		}
+		
+		div.tagsinput span.tag
+		{
+			cursor:pointer;
+			color: #0c0c0c !important;
+			border: 1px solid #e0e0e0 !important;
+			background:#f8f8f8 !important;
+		}
+		
+		div.tagsinput span.tag a
+		{
+			color: #0c0c0c !important;
+			font-size:0px !important;
+		}
+		
+		div.tagsinput span.active
+		{
+			background:#cde69c !important;
+			border: 1px solid #a5d24a !important;
+			color: 638421 !important;
+		}
+		
+		div.tagsinput span.active a
+		{
+			color: #82ad2b !important;
+		}
+	 </style>
+	 <link rel="stylesheet" type="text/css" href="css/jquery.tagsinput.css" />
+    </head>
+
+    <body style="border:1px solid #424242;">
+	
+  <nav style="height:50px;padding:0">
+    <div class="nav-wrapper titlebar grey darken-3" style="height:50px;padding:0">
+		<img src="out\\HostView.exe.ico" style="width:20px;height:20px;margin-left:10px;"/>
+      <span class="brand-logo titlebar" id="WindowTitle" style="margin-left:40px;width:100%;font-size:20px;line-height:50px;">Label Network</span>
+	  
+	  <a href="#" class="waves-effect waves-light right" style="margin-right:5px;margin-top:5px;height:50px;"><i id="ButtonClose" class="small mdi-navigation-close valign-wrapper" style="height:40px;"></i></a>
+    </div>
+  </nav>
+  
+    <!-- Modal Trigger -->
+  <a class="modal-trigger" href="#modal-confirm-close" id="open-modal"></a>
+  <!-- Modal Structure -->
+  <div id="modal-confirm-close" class="modal">
+    <div class="modal-content">
+      <h4>Label network</h4>
+      <p>Please complete the form to continue.</p>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">OK</a>
+    </div>
+  </div>
+  
+  <div class="row fullscreen" style="height:100%;display:block;">
+  <form class="col s12" style="height:100%;display:block;">
+                      <h5>What best describes your current network environment ?</h5>
+                    <b><span id="NetworkName">#network</span></b>
+
+						<br />
+						
+						<div style="overflow-y:auto;position:absolute;bottom:60px;top:120px;right:10px;left:10px;">
+							<div style="padding:2px;">
+								<input type="text" name="othertext" id="othertext" maxlength="32" onkeyup="InsertUserLabel(event)" onblur="InsertUserLabel()" placeholder="please type your label or pick from the ones below"/>
+							</div>
+							
+							<fieldset>
+								<legend>&nbsp;Home&nbsp;</legend>
+								<div id="hometags"></div>
+							</fieldset>
+							
+							<fieldset>
+								<legend>&nbsp;Work&nbsp;</legend>
+								<div id="worktags"></div>
+							</fieldset>
+							
+							<fieldset>
+								<legend>&nbsp;Public&nbsp;</legend>
+								<div id="publictags"></div>
+							</fieldset>
+						
+							<fieldset>
+								<legend>&nbsp;Other&nbsp;</legend>
+								<div id="othertags"></div>
+							</fieldset>
+						</div>
+
+				<a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonOK" style="position:absolute;bottom:0px;right:10px;">Done</a>
+  </form>
+  
+  
+  </div>
+	
+	<!--Import jQuery before materialize.js-->
+	<script type="text/javascript" src="js/jquery-2.1.1.min.js"></script>
+	<script type="text/javascript" src="js/materialize.min.js"></script>
+	<script type="text/javascript" src="js/jquery.tagsinput.js"></script>
+	  
+	<script>
+		var result = "";
+		
+		function SetUserLabels(labelsAsString) {
+			$('#othertags').importTags(labelsAsString);
+		}
+			
+		function GetUserLabels() {
+			var result = "";
+			
+			var spans = document.getElementById("othertags_tagsinput").getElementsByTagName('span');
+			
+			for (var i = 0; i < spans.length; i++) {
+				var span = spans[i];
+				if (span.className.indexOf("tag") == -1)
+					continue;
+
+				result += span.children[0].innerText.trim();
+				result += ",";
+			}
+			return result.substring(0, result.length - 1);
+		}
+		
+		function InsertUserLabel(e) {
+			if (e != undefined) {
+				var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+				if (charCode != 13)
+					return;
+			}
+			
+			var value = document.getElementById('othertext').value;
+			if (value != null && value != undefined && value.length > 0) {
+				$('#othertags').addTag(value, {'unique': true});
+				document.getElementById('othertext').value = "";
+			}
+		}
+		
+		function GetResult() {
+			InsertUserLabel();
+			return result;
+		}
+
+		function ShowModal() {
+			document.getElementById('open-modal').click();
+		}
+		
+		function OnClickSpan(span)
+		{
+			var text = span.children().first().text().trim();
+			
+			if (span.attr('class').indexOf("active") > -1)
+			{
+				span.attr('class', 'tag');
+			}
+			else
+			{
+				span.attr('class', 'tag active');
+				result = text;
+			}
+			
+			RestoreTags();
+		}
+		
+		function RestoreTags() {
+			$(".tag").each(function() {
+				var text = $(this).children().first().text().trim();
+				
+				$(this).attr('class', result == text ? 'tag active' : 'tag');
+			});
+		}
+		
+		function initTagInput(inputId) {
+			$("#" + inputId).tagsInput({
+				width: 'auto',
+				removeWithBackspace:false,
+				defaultText:'enter another activity',
+				height: '0px',
+				interactive:false,
+				unique:true,
+				onChange: function(elem, tag)
+				{
+					$(".tag").unbind().click(function() {
+						OnClickSpan($(this));
+					});
+					
+					if (tag == undefined) {
+						RestoreTags();
+					}
+				},
+
+				onAddTag: function(tag) {
+					//console.log("onAddTag " + tag);
+					result = tag;
+					
+					RestoreTags();
+				}
+			});
+		}
+		
+		$(function() {
+			initTagInput('hometags');
+			initTagInput('worktags');
+			initTagInput('publictags');
+			initTagInput('othertags');
+		 });
+		 
+		$( document ).ready(function() {
+			$('.modal-trigger').leanModal();
+			
+			$('#hometags').importTags("Home, Friend's Home");
+			$('#worktags').importTags("Work, Other workplace (not mine), Conference / Meeting, School / University");
+			$('#publictags').importTags("Public place, Hotel, Airport, Airplane, Train, Bus, Coffee Shop");
+		});
+		
+	</script>
+    </body>
+  </html>

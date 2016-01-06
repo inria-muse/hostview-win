@@ -1,0 +1,23 @@
+﻿  stdafx.cpp
+  comm.cpp
+comm.cpp(99): warning C4477: 'printf' : format string '%X' requires an argument of type 'unsigned int', but variadic argument 1 has type 'HANDLE'
+  KnownNetworks.cpp
+  questionnaire.cpp
+  Settings.cpp
+  Store.cpp
+C:\Users\Anna-Kaisa\hostview\trunk\include\Store.h(18): warning C4091: 'typedef ': ignored on left of 'IoDevice' when no variable is declared
+Store.cpp(80): warning C4477: 'sprintf_s' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'time_t'
+  Store.cpp(80): note: consider using '%lld' in the format string
+  Store.cpp(80): note: consider using '%I64d' in the format string
+Store.cpp(578): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'time_t'
+  Store.cpp(578): note: consider using '%lld' in the format string
+  Store.cpp(578): note: consider using '%I64d' in the format string
+  update.cpp
+  sqlite3.c
+sqlite3.c(29693): warning C4996: 'GetVersionExW': was declared deprecated
+  C:\Program Files (x86)\Windows Kits\8.1\Include\um\sysinfoapi.h(442): note: see declaration of 'GetVersionExW'
+     Creating library C:\Users\Anna-Kaisa\hostview\trunk\\lib\Win32\store.lib and object C:\Users\Anna-Kaisa\hostview\trunk\\lib\Win32\store.exp
+  Generating code
+  All 3159 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  store.vcxproj -> C:\Users\Anna-Kaisa\hostview\trunk\\bin\Win32\Release\store.dll

@@ -1,0 +1,13 @@
+﻿  stdafx.cpp
+  NetWizard.cpp
+c:\users\anna-kaisa\hostview\trunk\src\hostview\netwizard.cpp(9): warning C4838: conversion from 'unsigned int' to 'DISPID' requires a narrowing conversion
+  HtmlDialog.cpp
+c:\users\anna-kaisa\hostview\trunk\src\hostview\htmldialog.cpp(9): warning C4838: conversion from 'unsigned int' to 'DISPID' requires a narrowing conversion
+  HostView.cpp
+c:\users\anna-kaisa\hostview\trunk\include\store.h(18): warning C4091: 'typedef ': ignored on left of 'IoDevice' when no variable is declared
+c:\users\anna-kaisa\hostview\trunk\src\hostview\hostview.cpp(178): warning C4996: 'GetVersionExW': was declared deprecated
+  c:\program files (x86)\windows kits\8.1\include\um\sysinfoapi.h(442): note: see declaration of 'GetVersionExW'
+  EsmWizard.cpp
+c:\users\anna-kaisa\hostview\trunk\src\hostview\esmwizard.cpp(9): warning C4838: conversion from 'unsigned int' to 'DISPID' requires a narrowing conversion
+  Generating Code...
+  HostView.vcxproj -> C:\Users\Anna-Kaisa\hostview\trunk\\bin\Win32\Debug\HostView.exe
