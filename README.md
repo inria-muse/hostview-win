@@ -7,7 +7,7 @@ to complement the data collections
 The repository is organized as follows:
 
 * include   - header files
-* installer - windows installer code
+* installer - windows installer scripts and code
 * lib       - 3rd party libraries
 * src       - source code (HostView application, service, libraries + browser plugins)
 
