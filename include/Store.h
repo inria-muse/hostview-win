@@ -93,6 +93,9 @@ public:
 	void Insert(const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
 		const char *szLat, const char *szLon, __int64 timestamp);
 
+	// insert JSON object
+	void Insert(const char *szJson, __int64 timestamp);
+
 	size_t GetQueueSize();
 	DWORD ExecThread();
 private:
