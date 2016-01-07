@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 Muse / INRIA
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -197,6 +197,9 @@ void CStore::InitTables()
 	exec("CREATE TABLE IF NOT EXISTS location(ip VARCHAR(100), rdns VARCHAR(100), asnumber VARCHAR(100), asname VARCHAR(100),\
 		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), timestamp INT8)");
 
+	// Anna: add a simple json object table for storing and uploading unstructured json logs from browser plugins
+	exec("CREATE TABLE IF NOT EXISTS json(timestamp INT8, obj TEXT");
+
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
 }
@@ -317,6 +320,17 @@ void CStore::Insert(const char *szIp, const char *szRDNS, const char *szAsNumber
 	sprintf_s(szStatement, "INSERT INTO %s(ip, rdns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
 						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
 						   szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
+
+	exec(szStatement);
+}
+
+
+void CStore::Insert(const char *szJson, __int64 timestamp)
+{
+	// FIXME: allocate dynamically based on the actual size of the object ?
+	char szStatement[65536] = { 0 };
+
+	sprintf_s(szStatement, "INSERT INTO %s(obj, timestamp) VALUES(\"%s\", %llu)", "json", szJson, timestamp);
 
 	exec(szStatement);
 }
