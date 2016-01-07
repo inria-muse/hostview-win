@@ -1,8 +1,12 @@
 # Compiling curl in Visual Studio 2015 Community Ed.
 
-## Obtain Prerequisites 
+Hostview uses libcurl for data uploads. The library is statically linked to the project 
+and a prebuild version is included with the source code. However, if you need to re-build 
+the libcurl for some reason (e.g. switching visual studio versions), here's how:
+
+## Obtain Prerequisites
 	
-    $ git clone https://github.com/apietila/curl-for-windows.git
+    $ git clone https://github.com/peters/curl-for-windows.git
     $ git submodule update --init --recursive	
 
 ## Generate Project Files
@@ -11,7 +15,7 @@
 
 If configure fails, see [issue 7](https://github.com/peters/curl-for-windows/issues/7]).
 
-## Fix openssl
+## Fix openssl (for VS2015)
 
 diff --git a/libssh2 b/libssh2
 --- a/libssh2
@@ -35,4 +39,4 @@ index 79c1392..b6f7ca2 100644
 
 ## Build
 
-Open  curl.sln in VC2015 and do Build -> Batch ... -> Select All -> Build/
+Open  curl.sln in visual studio and do Build -> Batch ... -> Select All -> Build

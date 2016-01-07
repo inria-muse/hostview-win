@@ -1,26 +1,27 @@
 /**
- * The MIT License (MIT)
- * 
- * Copyright (c) 2015 Muse / INRIA
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- **/
+* The MIT License (MIT)
+*
+* Copyright (c) 2015-2016 MUSE / Inria
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+* THE SOFTWARE.
+**/
+
 #include "StdAfx.h"
 #include "Store.h"
 #include <map>
@@ -411,130 +412,6 @@ SQLTable CStore::query(const char *statement)
 	return table;
 }
 
-#include "WinHttpClient.h"
-
-STOREAPI bool ZipFile(char *src, char *dest)
-{
-	TCHAR szCmdLine[1024] = {0};
-	_stprintf_s(szCmdLine, _T("7za.exe a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on %S %S"), dest, src);
-
-	PROCESS_INFORMATION proc = {0};
-
-	STARTUPINFO startupInfo = {0};
-	startupInfo.cb = sizeof(startupInfo);
-
-	// create the process
-	if (CreateProcess(NULL, szCmdLine,  NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW,
-			NULL, NULL, &startupInfo, &proc))
-	{
-		// wait for process
-		WaitForSingleObject(proc.hProcess, INFINITE);
-
-		// get exit code
-		DWORD dwExit = 0;
-		BOOL bResult = GetExitCodeProcess(proc.hProcess, &dwExit);
-
-		CloseHandle(proc.hProcess);
-		CloseHandle(proc.hThread);
-
-		return bResult ? true : false;
-	}
-
-	return false;
-}
-
-STOREAPI int SubmitFile(char *server, char *userId, char *deviceId, char *fileName)
-{
-	DWORD dwStart = GetTickCount();
-
-	bool result = true;
-
-	FILE *f = NULL;
-	fopen_s(&f, fileName, "rb");
-
-	const int nBufferSize = 5 * 1024 * 1024;
-	char *szBuffer = new char[nBufferSize];
-	size_t nTotalSize = 0;
-
-	if (f)
-	{
-		fseek(f, 0, SEEK_END);
-		nTotalSize = ftell(f);
-		size_t nCurrOffset = 0;
-		fseek(f, 0, SEEK_SET);
-
-		while (!feof(f))
-		{
-			size_t nRead = fread(szBuffer, 1, nBufferSize, f);
-
-			if (nRead == 0 && feof(f))
-				break;
-
-			TCHAR szURL[MAX_PATH] = {0};
-			_stprintf_s(szURL, _T("%S/%S/%S/%S/%S/%d/%d"), server, ProductVersionStr, userId, deviceId, PathFindFileNameA(fileName), nCurrOffset, nTotalSize);
-			nCurrOffset += nRead;
-
-			WinHttpClient client(szURL);
-			client.SetAdditionalDataToSend((BYTE *) szBuffer, (unsigned int) nRead);
-
-			client.SetRequireValidSslCertificates(false);
-
-			TCHAR szHeaders[MAX_PATH] = {0};
-			_stprintf_s(szHeaders, _T("Content-Length: %d\r\nContent-Type: application/octet-stream\r\n"), nRead);
-			std::wstring headers = szHeaders;
-			client.SetAdditionalRequestHeaders(headers);
-
-			if (!client.SendHttpRequest(_T("POST"))) {
-				result = false;
-				break;
-			}
-
-			wstring httpResponseHeader = client.GetResponseHeader();
-			wstring httpResponseContent = client.GetResponseContent();
-			wstring httpResponseCode = client.GetResponseStatusCode();
-
-			if (httpResponseCode != _T("200"))
-			{
-				result = false;
-				break;
-			}
-		}
-
-		if (!feof(f))
-		{
-			result = false;
-		}
-		fclose(f);
-	}
-	else
-	{
-		result = false;
-	}
-
-	delete [] szBuffer;
-
-	DWORD dwEnd = GetTickCount();
-
-	if (result)
-	{
-		if (nTotalSize > 150000)
-		{
-			// 1.250 bytes per ms threshold
-			// as in the previous implementation
-			const double fThreshold = 1.250;
-			double fSpeed = (double) nTotalSize / (double) (dwEnd - dwStart);
-
-			return fSpeed > fThreshold ? 1 : -1;
-		}
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-
 long GetFileSize(char *szFilename)
 {
 	long nSize = 0;
@@ -552,6 +429,7 @@ long GetFileSize(char *szFilename)
 	return nSize;
 }
 
+// FIXME: refactor to anohter file
 STOREAPI void Trace(char *szFormat, ...)
 {
 	if (!szFormat || GetFileSize("log.log") >= 2 * 1024 * 1024)
