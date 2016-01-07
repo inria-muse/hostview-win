@@ -277,6 +277,8 @@ bool CHostViewService::SubmitData()
 	SysInfo info;
 	QuerySystemInfo(info);
 
+	CUpload upload;
+
 	if (_tcslen(info.hddSerial) > 0)
 	{
 		char szHdd[MAX_PATH] = {0};
@@ -307,7 +309,7 @@ bool CHostViewService::SubmitData()
 				}
 				else
 				{
-					if (ZipFile(szFilename, szZipFilename))
+					if (upload.ZipFile(szFilename, szZipFilename))
 					{
 						// remove original file,
 						// since we have the zip;
@@ -323,8 +325,7 @@ bool CHostViewService::SubmitData()
 
 				if (strlen(szZipFilename))
 				{
-					int nResult = SubmitFile(m_settings.GetString(SubmitServer), m_settings.GetString(EndUser), szHdd, szZipFilename);
-					if (nResult == -1 || nResult == 1)
+					if (upload.SubmitFile(m_settings.GetString(SubmitServer), m_settings.GetString(EndUser), szHdd, szZipFilename))
 					{
 						DeleteFileA(szZipFilename);
 					}
@@ -338,7 +339,7 @@ bool CHostViewService::SubmitData()
 					result = false;
 				}
 			}
-			while (nResult > 0 && FindNextFileA(hFind, &wfd));
+			while (result && FindNextFileA(hFind, &wfd));
 
 			FindClose(hFind);
 		}

@@ -31,6 +31,7 @@
 #include "Store.h"
 #include "Settings.h"
 #include "KnownNetworks.h"
+#include "Upload.h"
 #include "questionnaire.h"
 #include "update.h"
 #include "shellapi.h"

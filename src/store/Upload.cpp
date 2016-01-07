@@ -30,6 +30,8 @@ CUpload::CUpload(void)
 	: curl(NULL)
 {
 	curl = curl_easy_init();
+
+	// TODO: set common options
 }
 
 CUpload::~CUpload(void)
@@ -41,12 +43,16 @@ bool CUpload::SubmitFile(char *server, char *userId, char *deviceId, char *fileN
 {
 	bool result = true;
 
+	// TODO: reset upload URL
+
+	// TODO: send file
+
 	return result;
 }
 
 bool CUpload::ZipFile(char *src, char *dest)
 {
-	// FIXME: there's no library interface to this compresssion tool we could use ?
+	// FIXME: there's no library interface to this compresssion tool we could use ?!?
 	TCHAR szCmdLine[1024] = { 0 };
 	_stprintf_s(szCmdLine, _T("7za.exe a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on %S %S"), dest, src);
 
@@ -74,4 +80,3 @@ bool CUpload::ZipFile(char *src, char *dest)
 
 	return false;
 }
-

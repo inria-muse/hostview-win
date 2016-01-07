@@ -29,6 +29,8 @@
 #include <crtdbg.h>
 #endif
 
+#include <curl/curl.h>
+
 #include "ServiceInstaller.h"
 #include "HostViewService.h"
 #include "ServiceBase.h"
@@ -45,6 +47,8 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	WSADATA ws;
 	WSAStartup(MAKEWORD(2, 2), &ws);
+
+	curl_global_init(CURL_GLOBAL_SSL);
 
 	EnableDebugPrivileges();
 
@@ -109,6 +113,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			printf("Service failed to run w/err %d\n", GetLastError());
 		}
 	}
+
+	curl_global_cleanup();
 
 	WSACleanup();
 #ifdef _DEBUG

@@ -39,10 +39,12 @@ public:
 	CUpload(void);
 	~CUpload(void);
 
+	/** Returns true on success. */
+	bool ZipFile(char *src, char *dest);
+
 	/** Returns true on success, false if should stop uploading other files (upload failed or was too slow). */
 	bool SubmitFile(char *server, char *userId, char *deviceId, char *fileName);
 
 private:
-	bool ZipFile(char *src, char *dest);
 	CURL *curl;
 };
