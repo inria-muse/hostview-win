@@ -1,6 +1,8 @@
+.vs
 bin
 Debug
 *.opendb
 *.sdf
 *__Release__*
 *__Debug__*
+ipch
