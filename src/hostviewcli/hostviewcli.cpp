@@ -82,23 +82,34 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			CHostViewService service(SERVICE_NAME);
 			service.OnStart(NULL, NULL);
+			fprintf(stderr, "hostview service started\n");
 
 			system("pause");
 
+			fprintf(stderr, "hostview service stopping ...\n");
 			service.OnStop();
 		}
 		else if (!_tcsicmp(L"test", argv[1] + 1))
 		{
 			// TODO: some other tests
-			// testDownload();
-			// testComm();
-			// testSubmit();
-			testTcpComm();
-			// testLogs();
-			// testCounter();
-			// printProcs();
-			// printSockets();
-			printSysinfo();
+			if (!_tcsicmp(L"download", argv[2]))
+				testDownload();
+			if (!_tcsicmp(L"comm", argv[2]))
+				testComm();
+			if (!_tcsicmp(L"submit", argv[2]))
+				testSubmit();
+			if (!_tcsicmp(L"tcpcomm", argv[2]))
+				testTcpComm();
+			if (!_tcsicmp(L"logs", argv[2]))
+				testLogs();
+			if (!_tcsicmp(L"counter", argv[2]))
+				testCounter();
+			if (!_tcsicmp(L"procs", argv[2]))
+				printProcs();
+			if (!_tcsicmp(L"socks", argv[2]))
+				printSockets();
+			if (!_tcsicmp(L"sysinfo", argv[2]))
+				printSysinfo();
 		}
 	}
 	else

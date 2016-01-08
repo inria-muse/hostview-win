@@ -63,18 +63,17 @@ CHostViewService::~CHostViewService(void)
 	DeleteCriticalSection(&m_cs);
 }
 
-void CHostViewService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
+void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 {
+	srand((unsigned int)time(0));
+
 	WriteEventLogEntry(L"CHostViewService in OnStart", EVENTLOG_INFORMATION_TYPE);
 	
 	// Queue the main service function for execution in a worker thread.
 	CThreadPool::QueueUserWorkItem(&CHostViewService::ServiceWorkerThread, this);
 
 	StartServiceCommunication(*this);
-
-	StartUp();
-
-	srand((unsigned int) time(0));
+	StartCollect();
 }
 
 void CHostViewService::ServiceWorkerThread(void)
@@ -290,6 +289,8 @@ bool CHostViewService::SubmitData()
 		{
 			do
 			{
+				fprintf(stderr, "[SRV] SubmitData process file %s\n", wfd.cFileName);
+
 				if (wfd.cFileName[0] == '.')
 				{
 					// just ignore . & ..
@@ -309,6 +310,7 @@ bool CHostViewService::SubmitData()
 				}
 				else
 				{
+					fprintf(stderr, "[SRV] SubmitData create zip %s -> %s\n", szFilename, szZipFilename);
 					if (upload.ZipFile(szFilename, szZipFilename))
 					{
 						// remove original file,
@@ -323,6 +325,7 @@ bool CHostViewService::SubmitData()
 					}
 				}
 
+				fprintf(stderr, "[SRV] SubmitData upload zip %s\n", szZipFilename);
 				if (strlen(szZipFilename))
 				{
 					if (upload.SubmitFile(m_settings.GetString(SubmitServer), m_settings.GetString(EndUser), szHdd, szZipFilename))
@@ -364,7 +367,7 @@ void CHostViewService::OnStop()
 		throw GetLastError();
 	}
 
-	CleanUp();
+	StopCollect();
 	StopServiceCommunication();
 }
 
@@ -373,7 +376,7 @@ void CHostViewService::OnShutdown()
 	OnStop();
 }
 
-void CHostViewService::StartUp()
+void CHostViewService::StartCollect()
 {
 	// Start-Up
 	m_store.Open();
@@ -383,7 +386,7 @@ void CHostViewService::StartUp()
 	StartHttpDispatcher(*this);
 }
 
-void CHostViewService::CleanUp()
+void CHostViewService::StopCollect()
 {
 	// Clean-Up
 	StopHttpDispatcher();
@@ -744,7 +747,7 @@ Message CHostViewService::OnMessage(Message &message)
 		if (m_fUserStopped)
 		{
 			m_fUserStopped = FALSE;
-			StartUp();
+			StartCollect();
 
 			Trace("Capture started.");
 		}
@@ -754,7 +757,7 @@ Message CHostViewService::OnMessage(Message &message)
 		{
 			m_fUserStopped = TRUE;
 			m_dwUserStoppedTime = GetTickCount();
-			CleanUp();
+			StopCollect();
 
 			Trace("Capture stopped.");
 		}

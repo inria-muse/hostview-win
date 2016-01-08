@@ -65,9 +65,5 @@ Authors
 George Rosca <george.rosca@inria.fr>
 Anna-Kaisa Petilainen <anna-kaisa.pietilainen@inria.fr>
 
-License
--------
-
 The MIT License (MIT)
-
-Copyright (c) 2015-2016 Muse / INRIA
+Copyright (c) 2015-2016 MUSE / Inria

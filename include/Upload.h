@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "Settings.h"
+
 #include <curl/curl.h>
 
 #if defined(UPLOADLIBRARY_EXPORT) // inside DLL
@@ -31,6 +33,10 @@
 #else // outside DLL
 #   define UPLOADAPI   __declspec(dllimport)
 #endif  // UPLOADLIBRARY_EXPORT
+
+#ifndef UPLOAD_HTTP_DEFAULT_BUFFER_SIZE
+# define UPLOAD_HTTP_DEFAULT_BUFFER_SIZE 4096
+#endif
 
 /** Class for handling an upload session using cURL. */
 class UPLOADAPI CUpload
@@ -46,5 +52,6 @@ public:
 	bool SubmitFile(char *server, char *userId, char *deviceId, char *fileName);
 
 private:
+	CSettings settings;
 	CURL *curl;
 };

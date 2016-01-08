@@ -26,7 +26,6 @@
 #include "Store.h"
 #include <map>
 #include "Settings.h"
-#include "product.h"
 
 static const char *szFilename = "stats.db";
 

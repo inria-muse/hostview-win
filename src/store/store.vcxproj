@@ -100,7 +100,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(SolutionDir)\lib\$(Platform)\$(TargetName).lib</ImportLibrary>
-      <AdditionalDependencies>version.lib;wininet.lib;wsock32.lib;wldap32.lib;ws2_32.lib;libcurl.lib;openssl.lib;libssh2.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>version.lib;wininet.lib;wsock32.lib;wldap32.lib;ws2_32.lib;libcurl.lib;openssl.lib;libssh2.lib;zlib.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)lib\$(Platform)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
