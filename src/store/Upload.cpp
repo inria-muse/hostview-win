@@ -86,17 +86,17 @@ bool CUpload::SubmitFile(char *server, char *userId, char *deviceId, char *fileN
 	nTotalFileSize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	sprintf_s(url, 1024, "%s/%s/%s/%s/%s", server, ProductVersionStr, userId, deviceId, PathFindFileNameA(fileName));
+	sprintf_s(url, 1024, "%s/%s/%s/%s", server, ProductVersionStr, deviceId, PathFindFileNameA(fileName));
+
+	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 
 	fprintf(stderr, "[upload] submit %s to %s\n", fileName, url);
 
-	// FIXME only watch for the limit if we are sending large enough file ..  ?!
+	// FIXME: only watch for the limit if we are sending large enough file ..  ?!
 	if (nTotalFileSize > settings.GetULong(UploadLowSpeedLimit)*settings.GetULong(UploadLowSpeedTime)) {
 		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
 		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, settings.GetULong(UploadLowSpeedTime));
 	}
-
-	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_file);
