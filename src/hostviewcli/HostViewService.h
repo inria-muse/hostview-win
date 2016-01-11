@@ -31,6 +31,7 @@
 #include "Store.h"
 #include "Settings.h"
 #include "KnownNetworks.h"
+#include "Upload.h"
 #include "questionnaire.h"
 #include "update.h"
 #include "shellapi.h"
@@ -53,50 +54,51 @@ public:
 		BOOL fCanStop = TRUE, 
 		BOOL fCanShutdown = TRUE, 
 		BOOL fCanPauseContinue = FALSE);
-	virtual ~CHostViewService(void);
+	~CHostViewService(void);
 
 
 	// main HostView ctl;
-	void StartUp();
-	void CleanUp();
+	void StartCollect();
+	void StopCollect();
 
 	void ReadIpTable();
 	void ReadPerfTable();
 
 	// interfaces monitor
-	virtual void OnInterfaceConnected(const NetworkInterface& networkInterface);
-	virtual void OnInterfaceDisconnected(const NetworkInterface& networkInterface);
-	virtual void OnInterfaceRestarted(const NetworkInterface& networkInterface);
+	void OnInterfaceConnected(const NetworkInterface& networkInterface);
+	void OnInterfaceDisconnected(const NetworkInterface& networkInterface);
+	void OnInterfaceRestarted(const NetworkInterface& networkInterface);
 	void LogNetwork(const NetworkInterface &ni, __int64 timestamp, bool connected);
 
 	// wireless stats monitor
-	virtual void OnWifiStats(const std::tstring &interfaceGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
+	void OnWifiStats(const std::tstring &interfaceGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
 
 	// battery stats monitor
-	virtual void OnBatteryStats(byte status, byte percent);
+	void OnBatteryStats(byte status, byte percent);
 
 	// capture callback
-	virtual void OnTCPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
-	virtual void OnUDPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
-	virtual void OnIGMPPacket(char *szSrc, char *szDest, int size) {};
-	virtual void OnICMPPacket(char *szSrc, char *szDest, int size) {};
+	void OnTCPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
+	void OnUDPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
+	void OnIGMPPacket(char *szSrc, char *szDest, int size) {};
+	void OnICMPPacket(char *szSrc, char *szDest, int size) {};
 
 	// TODO: should these be moved?
-	virtual void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
+	void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 		char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength);
-	virtual void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost);
+	void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost);
 
-	virtual void OnProcessPacketStart() { m_nTimestamp = GetTimestamp(); };
-	virtual void OnProcessPacketEnd() {};
+	void OnProcessPacketStart() { m_nTimestamp = GetTimestamp(); };
+	void OnProcessPacketEnd() {};
 
 	// COMM callback
-	virtual Message OnMessage(Message &message);
+	Message OnMessage(Message &message);
 
 	// SOCKS callback
-	virtual bool OnMessage(ParamsT &params);
+	bool OnMessage(ParamsT &params);
 
-	virtual void OnStart(DWORD dwArgc, PWSTR *pszArgv);
-	virtual void OnStop();
+	// from CServiceBase
+	void OnStart(DWORD dwArgc, PWSTR *pszArgv);
+	void OnStop();
 
 	bool SubmitData();
 	void EnsureOptimalDiskUsage();
@@ -104,7 +106,7 @@ public:
 	ULONGLONG GetSubmitDiskUsage();
 
 protected:
-	virtual void OnShutdown();
+	void OnShutdown();
 	void ServiceWorkerThread(void);
 
 	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
@@ -115,7 +117,6 @@ private:
 	std::vector<std::tstring> m_appList;
 	void QueryIconsThreadFunc();
 	static DWORD WINAPI QueryIconsThreadProc(LPVOID lpParameter);
-	
 
 	BOOL m_fIdle;
 	BOOL m_fFullScreen;

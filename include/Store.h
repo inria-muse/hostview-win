@@ -1,3 +1,27 @@
+/**
+* The MIT License (MIT)
+*
+* Copyright (c) 2015-2016 MUSE / Inria
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+* THE SOFTWARE.
+**/
+
 #pragma once
 
 #include <time.h>
@@ -90,21 +114,9 @@ private:
 	CRITICAL_SECTION cs;
 };
 
-/**
- * Zips a file from source to dest.
- **/
-extern "C" STOREAPI bool ZipFile(char *src, char *dest);
-
-/**
- * Submits a file to the server with the given details.
- * Returns:
- * -1 in case of success but upload was slow
- *  0 in case of error
- *  1 in case of success and upload was fast
- **/
-extern "C" STOREAPI int SubmitFile(char *server, char *userId, char *deviceId, char *fileName);
-
 /*
  * Logs a message (used for meta-information about everything). Trace NULL to force a file submission.
+ *
+ * FIXME: could be refactored somewhere else, not really related to the SQL store code
  */
 extern "C" STOREAPI void Trace(char *szFormat, ...);
