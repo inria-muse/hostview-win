@@ -28,6 +28,7 @@
 #include <vector>
 #include <string>
 #include <Windows.h>
+
 #include "sqlite3.h"
 
 #if defined(STORELIBRARY_EXPORT) // inside DLL
@@ -96,6 +97,9 @@ public:
 	// insert JSON object
 	void Insert(const char *szJson, __int64 timestamp);
 
+	// insert browser activity log
+	void Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
+
 	size_t GetQueueSize();
 	DWORD ExecThread();
 private:
@@ -116,10 +120,3 @@ private:
 	bool closing;
 	CRITICAL_SECTION cs;
 };
-
-/*
- * Logs a message (used for meta-information about everything). Trace NULL to force a file submission.
- *
- * FIXME: could be refactored somewhere else, not really related to the SQL store code
- */
-extern "C" STOREAPI void Trace(char *szFormat, ...);

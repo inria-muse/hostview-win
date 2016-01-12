@@ -9,6 +9,7 @@
 #include "Store.h"
 #include "Upload.h";
 #include "Settings.h"
+#include "trace.h"
 
 CSettings settings;
 CStore store;

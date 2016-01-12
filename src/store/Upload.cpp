@@ -67,9 +67,10 @@ bool CUpload::SubmitFile(char *server, char *userId, char *deviceId, char *fileN
 	struct curl_slist *headers = NULL;
 	FILE *f = NULL;
 	size_t nTotalFileSize = 0;
-	bool result = false;
 	char url[1024] = { 0 };
 	CURLcode res;
+
+	bool result = false;
 
 	if (!curl) {
 		fprintf(stderr, "[upload] curl not initialized\n");
@@ -109,6 +110,7 @@ bool CUpload::SubmitFile(char *server, char *userId, char *deviceId, char *fileN
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
 		fprintf(stderr, "[upload] curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		result = false;
 	}
 	else {
 		fprintf(stderr, "[upload] curl_easy_perform success\n");

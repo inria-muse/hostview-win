@@ -280,9 +280,10 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					}
 					else {
 						// recv error
-						fprintf(stderr, "[SRV] recv failed with error: %d[%d]\n", nRecv, WSAGetLastError());
-						send_http_err(cliSocket);
-						break;
+						if (!data.complete) {
+							fprintf(stderr, "[SRV] recv failed with error: %d[%d]\n", nRecv, WSAGetLastError());
+							send_http_err(cliSocket);
+						}
 					}
 				} while (nRecv > 0 && !data.complete);
 

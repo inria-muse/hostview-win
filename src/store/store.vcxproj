@@ -171,6 +171,7 @@
     <ClInclude Include="..\..\include\Settings.h" />
     <ClInclude Include="..\..\include\http_server.h" />
     <ClInclude Include="..\..\include\Store.h" />
+    <ClInclude Include="..\..\include\trace.h" />
     <ClInclude Include="..\..\include\update.h" />
     <ClInclude Include="..\..\include\Upload.h" />
     <ClInclude Include="atlrx.h" />
@@ -200,6 +201,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Store.cpp" />
+    <ClCompile Include="trace.cpp" />
     <ClCompile Include="update.cpp" />
     <ClCompile Include="Upload.cpp" />
   </ItemGroup>

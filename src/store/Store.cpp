@@ -198,7 +198,10 @@ void CStore::InitTables()
 		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), timestamp INT8)");
 
 	// Anna: add a simple json object table for storing and uploading unstructured json logs from browser plugins
-	exec("CREATE TABLE IF NOT EXISTS json(timestamp INT8, obj TEXT");
+	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT");
+
+	// Anna: browser location updates
+	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser TEXT, location TEXT");
 
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
@@ -330,7 +333,17 @@ void CStore::Insert(const char *szJson, __int64 timestamp)
 	// FIXME: allocate dynamically based on the actual size of the object ?
 	char szStatement[65536] = { 0 };
 
-	sprintf_s(szStatement, "INSERT INTO %s(obj, timestamp) VALUES(\"%s\", %llu)", "json", szJson, timestamp);
+	sprintf_s(szStatement, "INSERT INTO %s(obj, timestamp) VALUES(\"%s\", %llu)", "jsonobj", szJson, timestamp);
+
+	exec(szStatement);
+}
+
+void CStore::Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp)
+{
+	char szStatement[4096] = { 0 };
+
+	sprintf_s(szStatement, "INSERT INTO %s(browser, location, timestamp) VALUES(\"%S\", \"%S\", %llu)", 
+		"browseractivity", szBrowser, szLocation, timestamp);
 
 	exec(szStatement);
 }
@@ -424,53 +437,3 @@ SQLTable CStore::query(const char *statement)
 		
 	return table;
 }
-
-long GetFileSize(char *szFilename)
-{
-	long nSize = 0;
-
-	FILE * f = NULL;
-	fopen_s(&f, szFilename, "r");
-
-	if (f)
-	{
-		fseek(f, 0, SEEK_END);
-		nSize = ftell(f);
-		fclose(f);
-	}
-
-	return nSize;
-}
-
-// FIXME: refactor to anohter file
-STOREAPI void Trace(char *szFormat, ...)
-{
-	if (!szFormat || GetFileSize("log.log") >= 2 * 1024 * 1024)
-	{
-		char szFile[MAX_PATH] ={0};
-		sprintf_s(szFile, "submit\\log_%d.log", GetTickCount());
-		MoveFileA("log.log", szFile);
-	}
-
-	if (szFormat)
-	{
-		va_list vArgs;
-		va_start(vArgs, szFormat);
-
-		FILE * f = NULL;
-
-		fopen_s(&f, "log.log", "a+");
-
-		if (f)
-		{
-			char szMessage[1024] = {0};
-			vsprintf_s(szMessage, szFormat, vArgs);
-
-			fprintf(f, "%d, %s\n", time(NULL), szMessage);
-			fclose(f);
-		}
-
-		va_end(vArgs);
-	}
-}
-

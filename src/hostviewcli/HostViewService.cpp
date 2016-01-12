@@ -227,7 +227,7 @@ void CHostViewService::RemoveOldestSubmitFile()
 	if (strlen(szOldestFilename))
 	{
 		DeleteFileA(szOldestFilename);
-		Trace("Removed %s.", szOldestFilename);
+		Trace("Remove old file %s.", szOldestFilename);
 	}
 }
 
@@ -288,8 +288,6 @@ bool CHostViewService::SubmitData()
 		{
 			do
 			{
-				fprintf(stderr, "[SRV] SubmitData process file %s\n", wfd.cFileName);
-
 				if (wfd.cFileName[0] == '.')
 				{
 					// just ignore . & ..
@@ -309,7 +307,7 @@ bool CHostViewService::SubmitData()
 				}
 				else
 				{
-					fprintf(stderr, "[SRV] SubmitData create zip %s -> %s\n", szFilename, szZipFilename);
+					Debug("[SRV] SubmitData create zip %s -> %s\n", szFilename, szZipFilename);
 					if (upload.ZipFile(szFilename, szZipFilename))
 					{
 						// remove original file,
@@ -324,12 +322,13 @@ bool CHostViewService::SubmitData()
 					}
 				}
 
-				fprintf(stderr, "[SRV] SubmitData upload zip %s\n", szZipFilename);
 				if (strlen(szZipFilename))
 				{
+					Debug("[SRV] SubmitData upload zip %s\n", szZipFilename);
 					if (upload.SubmitFile(m_settings.GetString(SubmitServer), m_settings.GetString(EndUser), szHdd, szZipFilename))
 					{
 						DeleteFileA(szZipFilename);
+						Trace("Remove submitted file %s.", szZipFilename);
 					}
 					else
 					{
@@ -727,6 +726,7 @@ bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 	if (location && browser)
 	{
 		UpdateQuestionnaireSiteUsageInfo(location, browser);
+		m_store.Insert(browser, location, GetTimestamp());
 		return true;
 	}
 	return false;
