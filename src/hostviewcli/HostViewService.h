@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 MUSE / Inria
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,18 @@
 #pragma once
 
 #include "comm.h"
+#include "shellapi.h"
 
 #include "ServiceBase.h"
+#include "Settings.h"
 #include "proc.h"
 #include "capture.h"
 #include "Store.h"
-#include "Settings.h"
 #include "KnownNetworks.h"
 #include "Upload.h"
 #include "questionnaire.h"
 #include "update.h"
-#include "shellapi.h"
-
-#define __LIGHT_SOCKS__
-#include "socks.h"
-#undef __LIGHT_SOCKS__
+#include "http_server.h"
 
 class CHostViewService :
 	public CServiceBase,
@@ -93,8 +90,9 @@ public:
 	// COMM callback
 	Message OnMessage(Message &message);
 
-	// SOCKS callback
-	bool OnMessage(ParamsT &params);
+	// http_server callback
+	bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser);
+	bool OnJsonUpload(char *jsonbuf);
 
 	// from CServiceBase
 	void OnStart(DWORD dwArgc, PWSTR *pszArgv);

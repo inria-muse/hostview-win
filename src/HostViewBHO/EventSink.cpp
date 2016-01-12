@@ -1,6 +1,11 @@
 #include "common.h"
 #include "EventSink.h"
-#include "socks.h"
+#include "http_server.h"
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <stdlib.h>
+#include <wininet.h>
 
 // The single global object of CEventSink
 CEventSink eventSink;

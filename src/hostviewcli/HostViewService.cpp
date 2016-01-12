@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 MUSE / Inria
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@
 #include "stdafx.h"
 #include "HostViewService.h"
 #include "ThreadPool.h"
-#include "socks.h"
 #pragma endregion
 
 
@@ -723,19 +722,21 @@ void CHostViewService::QueryIconsThreadFunc()
 	}
 }
 
-bool CHostViewService::OnMessage(ParamsT &params)
+bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 {
-	TCHAR tszLocation[1024] = {0}, tszBrowser[1024] = {0};
-
-	if (params.find("location") != params.end() && params.find("browser") != params.end())
+	if (location && browser)
 	{
-		_tcscpy_s(tszLocation, params["location"].c_str());
-		_tcscpy_s(tszBrowser, params["browser"].c_str());
-
-		UpdateQuestionnaireSiteUsageInfo(tszLocation, tszBrowser);
+		UpdateQuestionnaireSiteUsageInfo(location, browser);
 		return true;
 	}
+	return false;
+}
 
+bool CHostViewService::OnJsonUpload(char *jsonbuf) {
+	if (jsonbuf) {
+		m_store.Insert(jsonbuf, GetTimestamp());
+		return true;
+	}
 	return false;
 }
 

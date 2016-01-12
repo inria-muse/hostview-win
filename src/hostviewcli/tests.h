@@ -5,6 +5,7 @@
 #include "comm.h"
 #include "proc.h"
 #include "capture.h"
+#include "http_server.h"
 #include "Store.h"
 #include "Upload.h";
 #include "Settings.h"
@@ -355,36 +356,41 @@ int testComm()
 class CMsgCallback : public CHttpCallback
 {
 public:
-	virtual bool OnMessage(ParamsT &params)
-	{
+	bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser) {
 		DWORD dwTick = GetTickCount();
 
 		printf("%d\r\n", dwTick);
-		for (ParamsT::iterator it = params.begin(); it != params.end(); it ++)
-		{
-			printf("\t%s => %S\r\n", it->first.c_str(), it->second.c_str());
-		}
-
+		printf("\t%S => %S\r\n", location, browser);
 		printf("\r\n");
 
 		return true;
+	}
+
+	bool OnJsonUpload(char *jsonbuf) {
+		DWORD dwTick = GetTickCount();
+
+		printf("%d\r\n", dwTick);
+		printf("\t%S", jsonbuf);
+		printf("\r\n");
+
+		return true;
+
 	}
 } srvCallback;
 
 void testTcpComm()
 {
 	StartHttpDispatcher(srvCallback);
-//	for (int i = 0; i < 10; i ++)
-//	{
-//		SendServerMessage("Hello, world!");
-//	}
 
-	while (true)
-	{
-		Sleep(10000);
-	}
+	Sleep(100);
 
-	// TODO: might need to wait until messages are truly sent
+	ParamsT params;
+	params.insert(std::make_pair("browser", L"iexplore"));
+	params.insert(std::make_pair("location", L"http:\/\/test.com"));
+	SendHttpMessage(params);
+
+	Sleep(1000);
+
 	StopHttpDispatcher();
 }
 

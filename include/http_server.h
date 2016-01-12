@@ -23,26 +23,39 @@
 **/
 #pragma once
 
-#include <vector>
+#include <map>
+#include <tchar.h>
+#include <string>
 
-#define ConnectionTimeout 500
-
-#if defined(UPDATELIBRARY_EXPORT) // inside DLL
-#   define UPDATEAPI   __declspec(dllexport)
+#if defined(HTTPSERVERLIBRARY_EXPORT) // inside DLL
+#   define HTTPSERVERAPI   __declspec(dllexport)
 #else // outside DLL
-#   define UPDATEAPI   __declspec(dllimport)
-#endif  // UPDATELIBRARY_EXPORT
+#   define HTTPSERVERAPI   __declspec(dllimport)
+#endif  // HTTPSERVERLIBRARY_EXPORT
 
-UPDATEAPI BOOL CheckForUpdate();
-UPDATEAPI BOOL DownloadUpdate(TCHAR *szUpdatePath, DWORD dwSize);
-UPDATEAPI BOOL GetProductVersion(char *szProductVersion, DWORD dwSize);
+#define HTTPSERVER_DEFAULT_BUFLEN 80*1024
+#define HTTPSERVER_DEFAULT_PORT 40123
 
-UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile);
+#ifndef tstring
+#ifdef _UNICODE
+#define tstring wstring
+#else
+#define tstring string
+#endif
+#endif
 
-/**
- * Given a relative file path it pulls it from UpdateLocation
- **/
-UPDATEAPI VOID PullFile(TCHAR *szFilePath);
+typedef std::map<std::string, std::tstring> ParamsT;
 
-extern "C" UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info);
-extern "C" UPDATEAPI void FreePublicInfo(std::vector<std::string> * &info);
+/** Data callbacks interface. */
+class CHttpCallback
+{
+public:
+	virtual bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser) = 0;
+	virtual bool OnJsonUpload(char *jsonbuf) = 0;
+};
+
+extern "C" bool HTTPSERVERAPI StartHttpDispatcher(CHttpCallback &callback);
+
+extern "C" bool HTTPSERVERAPI StopHttpDispatcher();
+
+extern "C" void HTTPSERVERAPI SendHttpMessage(ParamsT &params);
