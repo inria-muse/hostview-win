@@ -1,7 +1,7 @@
 /*
    HostView AddOn
 
-   Copyright (C) 2015 Inria Paris-Roquencourt 
+   Copyright (C) 2015-2016 MUSE / Inria Paris-Roquencourt 
 
    The MIT License (MIT)
 
@@ -26,14 +26,14 @@
 
 const { Unknown } = require('sdk/platform/xpcom');
 const {Cc, Ci, Cu} = require("chrome");
-var dnsservice = Cc["@mozilla.org/network/dns-service;1"].createInstance(Ci.nsIDNSService);
+const dnsservice = Cc["@mozilla.org/network/dns-service;1"].createInstance(Ci.nsIDNSService);
 
-var self = require('sdk/self');
-var tabs = require("sdk/tabs");
+const self = require('sdk/self');
+const tabs = require("sdk/tabs");
 const pageMod = require("sdk/page-mod");
-var URL = require("sdk/url").URL;
+const URL = require("sdk/url").URL;
 
-var upload = require("./lib/upload.js");
+const upload = require("./lib/upload.js");
 
 // Caches for pages and tabs
 var pages = {};
@@ -64,18 +64,15 @@ var stripUrl = function(url) {
 
 // tab is active (current url goes foreground)
 function onActivate(tab) {
-	console.log('active ' + tab.url);
 	var p = pages[tab.id+'_'+tab.url];
 	if (p) {
 		p.events.push({ e : 'foreground', ts : new Date().getTime() });
-		// notify hostview
-		upload.sendtohostview(p.url.hostname, tab.title);
+		upload.sendlocation(p.url.hostname);
 	}
 }
 
 // tab is deactive (current url goes background)
 function onDeactivate(tab) {
-	console.log('deactive ' + tab.url);
 	var p = pages[tab.id+'_'+tab.url];
 	if (p) {
 		p.events.push({ e : 'background', ts : new Date().getTime() });	
@@ -84,16 +81,13 @@ function onDeactivate(tab) {
 
 // page loaded
 function onReady(tab) {
-	console.log('ready ' + tab.url);
-
 	if (tabcache[tab.id] !== tab.url) {
 		// navigated to a new page -- store and remove the previous page
 		var p = pages[tab.id+'_'+tabcache[tab.id]];
 		if (p) {
 			// deactivate
 			p.events.push({ e : 'background', ts : new Date().getTime() });	
-			upload.add(p);
-			// close
+			upload.sendjson(p);
 			delete pages[tab.id+'_'+tabcache[tab.id]];
 		}
 	}
@@ -118,21 +112,18 @@ function onReady(tab) {
 		}
 
 		pages[tab.id+'_'+tab.url] = p;	
-
-		// notify hostview
-		upload.sendtohostview(p.url.hostname, tab.title);		
+		upload.sendlocation(p.url.hostname);		
 	}
 }
 
 // tab is closed (upload current url data)
 function onClose(tab) {
-	console.log('close ' + tab.url);
 	if (tabcache[tab.id]) {
 		var p = pages[tab.id+'_'+tab.url];
 		if (p) {
 			// may be a duplicate background event
 			p.events.push({ e : 'background', ts : new Date().getTime() });	
-			upload.add(p);
+			upload.sendjson(p);
 			delete pages[tab.id+'_'+tab.url];
 		}
 		delete tabcache[tab.id];
@@ -140,7 +131,6 @@ function onClose(tab) {
 }
 
 function onOpen(tab) {
-	console.log('open ' + tab.url);
 	if (!tabcache[tab.id]) {
 		tabcache[tab.id] = tab.url;
 		tab.on("ready", onReady);
@@ -170,8 +160,6 @@ pageMod.PageMod({
 
 /** Extension is loaded. */
 exports.main = function (options, callbacks) {
-	console.log('loading... ');
-
 	// mark all existing tabs open and loaded
 	for (let tab of tabs) {		
 		onOpen(tab);
@@ -183,8 +171,6 @@ exports.main = function (options, callbacks) {
 
 /** Extension is unloaded. */
 exports.onUnload = function (reason) {
-	console.log('unloading... ');
-
 	tabs.removeListener('open', onOpen);
 
 	for (let tab of tabs) {
@@ -194,7 +180,4 @@ exports.onUnload = function (reason) {
 		tab.removeListener("close", onClose);		
 		onClose(tab);
   	}
-
-  	// flush the upload queue
-  	upload.flush();
 };

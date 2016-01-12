@@ -1,7 +1,7 @@
 {
   "title": "HostView Addon",
   "name": "hostview",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "id": "hostview@jetpack",
   "description": "HostView addon for UCN Study",
   "main": "index.js",
