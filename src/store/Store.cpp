@@ -91,10 +91,13 @@ DWORD CStore::ExecThread()
 
 	do
 	{
-		Sleep(1);
+		Sleep(5);
 
-		if (GetQueueSize() < 10000 && !closing)
+		// in Release mode, write the db in batches
+#ifndef _DEBUG
+		if (GetQueueSize() < 1000 && !closing)
 			continue;
+#endif
 
 		exec("BEGIN TRANSACTION");
 
@@ -197,11 +200,9 @@ void CStore::InitTables()
 	exec("CREATE TABLE IF NOT EXISTS location(ip VARCHAR(100), rdns VARCHAR(100), asnumber VARCHAR(100), asname VARCHAR(100),\
 		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), timestamp INT8)");
 
-	// Anna: add a simple json object table for storing and uploading unstructured json logs from browser plugins
-	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT");
+	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser VARCHAR(1024), location VARCHAR(1024))");
 
-	// Anna: browser location updates
-	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser TEXT, location TEXT");
+	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT)");
 
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
