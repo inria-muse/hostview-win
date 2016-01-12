@@ -32,7 +32,7 @@ const MAX_RETRY = 2;
 var send = function(req, retry) {
 	console.log("send retry " + retry, req);
 	Request({
-		url : HOSTVIEW_URL,
+		url : req.url,
 		content : req.content,
 		contentType : req.contentType,
 		onComplete : function (res) {
@@ -51,6 +51,7 @@ var send = function(req, retry) {
 var loc = exports.sendlocation = function(hostname) {
 	var cstr = "browser=firefox&location=" + encodeURIComponent(hostname);
 	send({
+		url : HOSTVIEW_URL + 'locupdate',
 		content : cstr,
 		contentType : "application/x-www-form-urlencoded"
 	}, 0);
@@ -60,6 +61,7 @@ var loc = exports.sendlocation = function(hostname) {
 /** Send json object to local hostview client. */
 var jobj = exports.sendjson = function(jsonobj) {
 	send({
+		url : HOSTVIEW_URL + 'upload',
   		content : JSON.stringify(jsonobj),
   		contentType : 'application/json',
 	}, 0);
