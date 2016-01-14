@@ -21,13 +21,10 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 **/
-
 #pragma once
 
-#include <time.h>
-#include <vector>
 #include <string>
-#include <Windows.h>
+#include <vector>
 
 #include "sqlite3.h"
 
@@ -40,7 +37,13 @@
 typedef std::vector<std::string> SQLRow;
 typedef std::vector<SQLRow> SQLTable;
 
-typedef enum IoDevice {Camera = 0, Keyboard = 1, Microphone = 2, Mouse = 3, Speaker = 4};
+enum IoDevice {
+	Camera = 0, 
+	Keyboard = 1, 
+	Microphone = 2,
+	Mouse = 3, 
+	Speaker = 4
+};
 
 /**
  * Traffic Store Class
@@ -108,8 +111,9 @@ private:
 	const char* error();
 	void seterror(const char *error);
 
-	bool open(const char *fn);
-	void close();
+	char szDbFile[MAX_PATH];
+	bool openDbFile();
+	void closeDbFile();
 
 	bool exec(const char *statement);
 	SQLTable query(const char *statement);

@@ -44,10 +44,10 @@
     <ClCompile Include="proc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="icon.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="installed.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="icon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

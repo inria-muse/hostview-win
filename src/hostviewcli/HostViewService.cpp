@@ -35,13 +35,22 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 
 	m_fStopping = FALSE;
 	m_fUserStopped = FALSE;
-	m_dwLastSubmit = 0;
+	m_dwLastSubmit = GetTickCount(); // delay next submit to now + interval
 	m_dwRetryCount = 0;
 	m_dwUserStoppedTime = 0;
-	m_dwLastUpdateCheck = 0;
+	m_dwLastUpdateCheck = 0; // check as soon as possible
 
 	m_fIdle = FALSE;
 	m_fFullScreen = FALSE;
+
+	QuerySystemInfo(m_sysInfo);
+	if (_tcslen(m_sysInfo.hddSerial) > 0)
+	{
+		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
+	}
+	else {
+		sprintf_s(szHdd, "unknown");
+	}
 
 	// Create a manual-reset event that is not signaled at first to indicate 
 	// the stopped signal of the service.
@@ -82,13 +91,7 @@ void CHostViewService::ServiceWorkerThread(void)
 		Sleep(500);
 		DWORD dwNow = GetTickCount();
 
-		if (!m_fUserStopped)
-		{
-			// Automatic Ports, CPU, RAM, Queries
-			ReadIpTable();
-			ReadPerfTable();
-		}
-		else
+		if (m_fUserStopped)
 		{
 			// auto-start in 30 minutes TODO: put this in settings;
 			if (dwNow - m_dwUserStoppedTime >= 1800000)
@@ -96,49 +99,36 @@ void CHostViewService::ServiceWorkerThread(void)
 				// send self message;
 				SendServiceMessage(Message(MessageStartCapture));
 			}
+			continue; // we're still stopped - do nothing else
 		}
-
-		// start network labeling wizard
-		if (m_interfacesQueue.size() > 0)
+		else
 		{
-			NetworkInterface ni = m_interfacesQueue[0];
-
-			TCHAR szCmdLine[MAX_PATH] = {0};
-
-			ImpersonateCurrentUser();
-			NetworkInterfaceToCommand(ni, szCmdLine, _countof(szCmdLine));
-			ImpersonateRevert();
-
-			if (RunAsCurrentUser(szCmdLine))
-			{
-				EnterCriticalSection(&m_cs);
-				m_interfacesQueue.erase(m_interfacesQueue.begin());
-				LeaveCriticalSection(&m_cs);
-			}
+			// Automatic Ports, CPU, RAM, Queries
+			ReadIpTable();
+			ReadPerfTable();
 		}
 
-		// start ESM questionnaire
-		if (!m_fUserStopped && m_settings.GetULong(QuestionnaireActive))
-		{
-			RunQuestionnaireIfCase();
-		}
+		RunNetworkLabeling();
+
+		RunQuestionnaireIfCase();
 		
 		// automatic submission
 		if (dwNow - m_dwLastSubmit >= m_settings.GetULong(AutoSubmitInterval))
 		{
-			if (SubmitData() || m_dwRetryCount > 3)
+			if (m_dwRetryCount > 3 || DoSubmit(szHdd))
 			{
+				if (m_dwRetryCount > 3) {
+					CheckDiskUsage();
+				}
 				m_dwLastSubmit = dwNow;
 				m_dwRetryCount = 0;
 			}
 			else
 			{
-				// 5-minutes retries;
+				// try 3 times every five min
 				m_dwRetryCount ++;
 				m_dwLastSubmit = dwNow - m_settings.GetULong(AutoSubmitInterval) + 5 * 60 * 1000;
 				Trace("Data submission failed (retry count: %d)", m_dwRetryCount);
-
-				EnsureOptimalDiskUsage();
 			}
 		}
 
@@ -164,193 +154,6 @@ void CHostViewService::ServiceWorkerThread(void)
 
 	// signal the stopped event;
 	SetEvent(m_hStoppedEvent);
-}
-
-void CHostViewService::EnsureOptimalDiskUsage()
-{
-	ULARGE_INTEGER totalSize;
-	GetDiskFreeSpaceEx(NULL, NULL, &totalSize, NULL);
-
-	bool isOptimal = false;
-
-	while (!isOptimal)
-	{
-		ULONGLONG ullFreeSpace = totalSize.QuadPart;
-		ULONGLONG ullUsedSpace = GetSubmitDiskUsage();
-
-		if (ullUsedSpace > 0 && ullUsedSpace < ullFreeSpace / 2)
-		{
-			RemoveOldestSubmitFile();
-			isOptimal = false;
-		}
-		else
-		{
-			isOptimal = true;
-		}
-	}
-}
-
-void CHostViewService::RemoveOldestSubmitFile()
-{
-	char szOldestFilename[MAX_PATH] = {0};
-
-	SYSTEMTIME stNow;
-	GetSystemTime(&stNow);
-
-	FILETIME ftOldest;
-	SystemTimeToFileTime(&stNow, &ftOldest);
-
-	WIN32_FIND_DATAA wfd;
-	HANDLE hFind = FindFirstFileA("./submit/*.*", &wfd);
-
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			if (wfd.cFileName[0] == '.')
-			{
-				// just ignore . & ..
-				continue;
-			}
-
-			if (CompareFileTime(&wfd.ftCreationTime, &ftOldest) < 0)
-			{
-				ftOldest = wfd.ftCreationTime;
-				sprintf_s(szOldestFilename, "submit\\%s", wfd.cFileName);
-			}
-		}
-		while (FindNextFileA(hFind, &wfd));
-
-		FindClose(hFind);
-	}
-
-	if (strlen(szOldestFilename))
-	{
-		DeleteFileA(szOldestFilename);
-		Trace("Remove old file %s.", szOldestFilename);
-	}
-}
-
-ULONGLONG CHostViewService::GetSubmitDiskUsage()
-{
-	ULONGLONG ulUsedSpace = 0L;
-
-	WIN32_FIND_DATAA wfd;
-	HANDLE hFind = FindFirstFileA("./submit/*.*", &wfd);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			if (wfd.cFileName[0] == '.')
-			{
-				// just ignore . & ..
-				continue;
-			}
-
-			char szFilename[MAX_PATH] = {0};
-			sprintf_s(szFilename, "submit\\%s", wfd.cFileName);
-
-			FILE *f = 0;
-			fopen_s(&f, szFilename, "r");
-			if (f)
-			{
-				fseek(f, 0, SEEK_END);
-				ulUsedSpace += ftell(f);
-				fclose(f);
-			}
-		}
-		while (FindNextFileA(hFind, &wfd));
-
-		FindClose(hFind);
-	}
-
-	return ulUsedSpace;
-}
-
-bool CHostViewService::SubmitData()
-{
-	int nResult = 1;
-	bool result = true;
-
-	SysInfo info;
-	QuerySystemInfo(info);
-
-	CUpload upload;
-
-	if (_tcslen(info.hddSerial) > 0)
-	{
-		char szHdd[MAX_PATH] = {0};
-		sprintf_s(szHdd, "%S", info.hddSerial);
-
-		WIN32_FIND_DATAA wfd;
-		HANDLE hFind = FindFirstFileA("./submit/*.*", &wfd);
-		if (hFind != INVALID_HANDLE_VALUE)
-		{
-			do
-			{
-				if (wfd.cFileName[0] == '.')
-				{
-					// just ignore . & ..
-					continue;
-				}
-
-				char szFilename[MAX_PATH] = {0};
-				char szZipFilename[MAX_PATH] = {0};
-
-				sprintf_s(szFilename, "submit\\%s", wfd.cFileName);
-				sprintf_s(szZipFilename, "submit\\%s.zip", wfd.cFileName);
-
-				if (strcmp(PathFindExtensionA(szFilename), ".zip") == 0)
-				{
-					// it's zip already
-					strcpy_s(szZipFilename, szFilename);
-				}
-				else
-				{
-					Debug("[SRV] SubmitData create zip %s -> %s\n", szFilename, szZipFilename);
-					if (upload.ZipFile(szFilename, szZipFilename))
-					{
-						// remove original file,
-						// since we have the zip;
-						DeleteFileA(szFilename);
-					}
-					else
-					{
-						// remove broken zip
-						DeleteFileA(szZipFilename);
-						szZipFilename[0] = 0;
-					}
-				}
-
-				if (strlen(szZipFilename))
-				{
-					Debug("[SRV] SubmitData upload zip %s\n", szZipFilename);
-					if (upload.SubmitFile(m_settings.GetString(SubmitServer), m_settings.GetString(EndUser), szHdd, szZipFilename))
-					{
-						DeleteFileA(szZipFilename);
-						Trace("Remove submitted file %s.", szZipFilename);
-					}
-					else
-					{
-						result = false;
-					}
-				}
-				else
-				{
-					result = false;
-				}
-			}
-			while (result && FindNextFileA(hFind, &wfd));
-
-			FindClose(hFind);
-		}
-	}
-	else
-	{
-		result = false;
-	}
-
-	return result;
 }
 
 void CHostViewService::OnStop()
@@ -446,6 +249,7 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, __int64 timestamp,
 	{
 		LabelNetwork(ni);
 	}
+
 	TCHAR szGateways[MAX_PATH] = {0};
 	for (size_t i = 0; i < ni.gateways.size(); i ++)
 	{
@@ -517,13 +321,30 @@ void CHostViewService::OnInterfaceRestarted(const NetworkInterface &networkInter
 
 void CHostViewService::LabelNetwork(const NetworkInterface &ni)
 {
-	// Start UI if Net Labelling Active
 	if (m_settings.GetULong(NetLabellingActive))
 	{
 		if (!m_networks.IsKnown(ni) && ni.strBSSID.length() > 0)
 		{
 			EnterCriticalSection(&m_cs);
 			m_interfacesQueue.push_back(ni);
+			LeaveCriticalSection(&m_cs);
+		}
+	}
+}
+
+void CHostViewService::RunNetworkLabeling() {
+	if (m_interfacesQueue.size() > 0) {
+		NetworkInterface ni = m_interfacesQueue[0];
+		TCHAR szCmdLine[MAX_PATH] = { 0 };
+
+		ImpersonateCurrentUser();
+		NetworkInterfaceToCommand(ni, szCmdLine, _countof(szCmdLine));
+		ImpersonateRevert();
+
+		if (RunAsCurrentUser(szCmdLine))
+		{
+			EnterCriticalSection(&m_cs);
+			m_interfacesQueue.erase(m_interfacesQueue.begin());
 			LeaveCriticalSection(&m_cs);
 		}
 	}
@@ -551,23 +372,27 @@ void CHostViewService::OnHttpHeaders(int protocol, char *szSrc, u_short srcport,
 		srcport, destport, m_nTimestamp);
 }
 
+
 void CHostViewService::RunQuestionnaireIfCase()
 {
 	static DWORD sdwLastCheck = 0;
-	DWORD dwNow = GetTickCount();
+	DWORD dwNow;
 
-	// TODO: per user count?! no specs;
-	// 15 minutes to allow guy to complete;
-	if (dwNow - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && !m_fIdle && !m_fFullScreen)
-	{
-		sdwLastCheck = dwNow;
-
-		if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows))
+	if (m_settings.GetULong(QuestionnaireActive)) {
+		dwNow = GetTickCount();
+		// TODO: per user count?! no specs;
+		// 15 minutes to allow guy to complete;
+		if (dwNow - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && !m_fIdle && !m_fFullScreen)
 		{
-			// TODO: move "algo" somewhere else
-			if (rand() % m_settings.GetULong(EsmCoinFlipMaximum) <= m_settings.GetULong(EsmCoinFlipRange))
+			sdwLastCheck = dwNow;
+
+			if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows))
 			{
-				ShowQuestionnaireUI(FALSE);
+				// TODO: move "algo" somewhere else
+				if (rand() % m_settings.GetULong(EsmCoinFlipMaximum) <= m_settings.GetULong(EsmCoinFlipRange))
+				{
+					ShowQuestionnaireUI(FALSE);
+				}
 			}
 		}
 	}

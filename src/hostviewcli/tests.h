@@ -7,9 +7,12 @@
 #include "capture.h"
 #include "http_server.h"
 #include "Store.h"
-#include "Upload.h";
+#include "Upload.h"
 #include "Settings.h"
 #include "trace.h"
+#include "update.h"
+#include "HostViewService.h"
+#include "questionnaire.h"
 
 CSettings settings;
 CStore store;
@@ -190,36 +193,11 @@ void submitData()
 {
 	SysInfo info;
 	QuerySystemInfo(info);
-	CUpload upload;
 
 	char szHdd[MAX_PATH] = {0};
 	sprintf_s(szHdd, "%S", info.hddSerial);
 
-	WIN32_FIND_DATAA wfd;
-	HANDLE hFind = FindFirstFileA("./submit/*.*", &wfd);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			char szFilename[MAX_PATH] = {0};
-			char szZipFilename[MAX_PATH] = {0};
-
-			sprintf_s(szFilename, "submit/%s", wfd.cFileName);
-			sprintf_s(szZipFilename, "submit/%s.zip", wfd.cFileName);
-
-			if (upload.ZipFile(szFilename, szZipFilename))
-			{
-				if (upload.SubmitFile(settings.GetString(SubmitServer), settings.GetString(EndUser), szHdd, szZipFilename))
-				{
-					DeleteFileA(szFilename);
-				}
-				DeleteFileA(szZipFilename);
-			}
-		}
-		while (FindNextFileA(hFind, &wfd));
-
-		FindClose(hFind);
-	}
+	DoSubmit(szHdd);
 }
 
 bool exec(TCHAR * szCommand)
@@ -318,8 +296,6 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 	return 0;
 }
 
-#include "questionnaire.h"
-
 // needs admin rights
 void testCounter()
 {
@@ -371,7 +347,7 @@ public:
 		DWORD dwTick = GetTickCount();
 
 		printf("%d\r\n", dwTick);
-		printf("\t%S", jsonbuf);
+		printf("\t%s", jsonbuf);
 		printf("\r\n");
 
 		return true;
@@ -387,7 +363,7 @@ void testTcpComm()
 
 	ParamsT params;
 	params.insert(std::make_pair("browser", L"iexplore"));
-	params.insert(std::make_pair("location", L"http:\/\/test.com"));
+	params.insert(std::make_pair("location", L"http://test.com"));
 	SendHttpMessage(params);
 
 	Sleep(1000);
@@ -402,8 +378,8 @@ int testSubmit()
 	system("fsutil file createnew submit/data3.zip 5242881");
 	system("fsutil file createnew submit/data4.zip 52428800");
 
-	CHostViewService service(0);
-	service.SubmitData();
+	submitData();
+
 	return 0;
 }
 

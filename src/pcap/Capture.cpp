@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 MUSE / Inria
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,11 @@
  **/
 #include "StdAfx.h"
 #include "Capture.h"
+#include "Upload.h"
+
+#include "iphdr.h"
+
+#include <pcap/pcap.h>
 
 const char * inet_ntop2(int af, const void *src, char *dst, int cnt)
 {
@@ -431,7 +436,6 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const c
 		{
 			sources[adapterId] = source;
 
-			// ensures data directory
 			CreateDirectory(_T("data"), NULL);
 
 			char szFilename[MAX_PATH] = {0};
@@ -480,25 +484,13 @@ PCAPAPI bool StopCapture(const char *adapterId)
 		{
 			pcap_dump_close(dumpfile);
 			dumpfile = NULL;
-			files.erase(adapterId);
-			callbacks.erase(adapterId);
 
-			// ensures submit directory
-			CreateDirectory(_T("submit"), NULL);
-
-			std::string file = fnames[adapterId];
-
-			if (file.find("data") != std::string::npos)
-			{
-				file.replace(file.find("data"), 4, "submit");
-				MoveFileA(fnames[adapterId].c_str(), file.c_str());
-			}
-			else
-			{
-				// what TODO: ? - remove file?
-			}
+			// move pcap to upload folder
+			AddFileToSubmit(fnames[adapterId].c_str());
 
 			fnames.erase(adapterId);
+			files.erase(adapterId);
+			callbacks.erase(adapterId);
 			return true;
 		}
 	}

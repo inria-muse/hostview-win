@@ -23,11 +23,6 @@
 **/
 #pragma once
 
-#include <Windows.h>
-#include <stdio.h>
-#include <string>
-#include <time.h>
-
 #define LOGFILE "hostview.log"
 
 #if defined(TRACELIBRARY_EXPORT) // inside DLL

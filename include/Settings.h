@@ -25,7 +25,6 @@
 
 #include <string>
 #include <hash_map>
-#include <Windows.h>
 
 #if defined(SETTINGSLIBRARY_EXPORT) // inside DLL
 #   define SETTINGSAPI   __declspec(dllexport)
@@ -33,30 +32,38 @@
 #   define SETTINGSAPI   __declspec(dllimport)
 #endif  // SETTINGSLIBRARY_EXPORT
 
+typedef std::hash_map<std::string, std::string> SettingsMap;
+
 // settings keys constats
 #define EndUser "enduser"
-#define InterfaceMonitorTimeout "interfaceMonitorTimeout"
-#define WirelessMonitorTimeout	"wirelessMonitorTimeout"
-#define BatteryMonitorTimeout "batteryMonitorTimeout"
-#define AutoSubmitInterval "autoSubmitInterval"
-#define AutoUpdateInterval "autoUpdateInterval"
-#define EsmCoinFlipInterval "esmCoinFlipInterval"
+
+#define InterfaceMonitorTimeout "interfaceMonitorTimeout"  // check network interface status (ms)
+#define WirelessMonitorTimeout	"wirelessMonitorTimeout"   // check wireless status (ms)
+#define BatteryMonitorTimeout "batteryMonitorTimeout"      // check battery status (ms)
+#define UserMonitorTimeout "userMonitorTimeout"            // check user activity (ms)
+#define IoTimeout "ioTimeout"                              // check io activity (ms)
+#define UserIdleTimeout "userIdleTimeout"                  // definition of user idle (ms)
+#define SocketStatsTimeout "socketStatsTimeout"            // check socket table (ms)             
+#define SystemStatsTimeout "systemStatsTimeout"            // check performance stats (ms)
+
+#define EsmCoinFlipInterval "esmCoinFlipInterval"    
 #define EsmCoinFlipMaximum "esmCoinFlipMaximum"
 #define EsmCoinFlipRange "esmCoinFlipRange"
 #define EsmMaxShows "esmMaxShows"
-#define UserMonitorTimeout "userMonitorTimeout"
-#define IoTimeout "ioTimeout"
-#define UserIdleTimeout "userIdleTimeout"
-#define SocketStatsTimeout "socketStatsTimeout"
-#define SystemStatsTimeout "systemStatsTimeout"
-#define PcapSizeLimit "pcapSizeLimit"
-#define DbSizeLimit "dbSizeLimit"
-#define SubmitServer "submitServer"
-#define UpdateLocation "updateLocation"
-#define QuestionnaireActive "questionnaireActive" 
-#define NetLabellingActive "netLabellingActive"
-#define UploadLowSpeedLimit "uploadLowSpeedLimit"
-#define UploadLowSpeedTime "uploadLowSpeedTime"
+
+#define PcapSizeLimit "pcapSizeLimit"             // max pcap filesize (bytes)
+#define DbSizeLimit "dbSizeLimit"                 // max db filesize (bytes)
+
+#define AutoSubmitInterval "autoSubmitInterval"   // submit new data (ms)
+#define SubmitServer "submitServer"               // submit url
+#define UploadLowSpeedLimit "uploadLowSpeedLimit" // curl config (bytes/s)
+#define UploadLowSpeedTime "uploadLowSpeedTime"   // curl config (seconds)
+
+#define AutoUpdateInterval "autoUpdateInterval"   // check for updates (ms)
+#define UpdateLocation "updateLocation"           // update url
+
+#define QuestionnaireActive "questionnaireActive" // boolean
+#define NetLabellingActive "netLabellingActive"   // boolean
 
 class SETTINGSAPI CSettings
 {

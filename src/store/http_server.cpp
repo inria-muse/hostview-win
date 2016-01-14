@@ -23,16 +23,12 @@
 **/
 #include "stdafx.h"
 
+#include <wininet.h>
+#include <curl/curl.h>
+
 #include "http_server.h"
 #include "http_parser.h"
 #include "product.h"
-
-#include <curl/curl.h>
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdlib.h>
-#include <wininet.h>
 
 HANDLE hSrvThread = NULL;
 bool isServerRunning = false;
@@ -230,6 +226,8 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 
 	while (isServerRunning)
 	{
+		// FIXME: should really start a thread per cli and process multiple http requests per connection
+		// now we are just handling a request per connection and we will close the socket after
 		cliSocket = INVALID_SOCKET;
 		do
 		{
@@ -265,12 +263,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					nRecv = recv(cliSocket, szBuffer, nBuffLen, 0);
 					if (nRecv >= 0)
 					{
-						fprintf(stderr, "[SRV] parser_execute recv %d\n", nRecv);
-
 						nParsed = http_parser_execute(parser, &psettings, szBuffer, nRecv);
-
-						fprintf(stderr, "[SRV] parser_execute returns %d\n", nParsed);
-
 						if (nParsed != nRecv) {
 							// parsing error
 							fprintf(stderr, "[SRV] parser error\n");
@@ -298,6 +291,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 			closesocket(cliSocket);
 		}
 	}
+
 	closesocket(srvSocket);
 	return 0;
 }
@@ -347,7 +341,7 @@ bool SendServerMessage(char *szMessage)
 
 	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 
-	// FIXME: this is bad!!
+	// FIXME: should really reuse the connection but the server code does not support that either ...
 	curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L); // connection / request
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -382,7 +376,7 @@ bool AsyncSendMessage(char *szMsg)
 	return true;
 }
 
-// TODO: this is only used by the explorer BHO to send location updates ...
+// TODO: this is only used by the explorer BHO to send loc updates ...
 // refactor somewhere else ??
 void SendHttpMessage(ParamsT &params)
 {

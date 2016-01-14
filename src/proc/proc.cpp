@@ -1,33 +1,47 @@
 /**
- * The MIT License (MIT)
- * 
- * Copyright (c) 2015 Muse / INRIA
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- **/
+* The MIT License (MIT)
+*
+* Copyright (c) 2015-2016 MUSE / Inria
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+* THE SOFTWARE.
+**/
 #include "stdafx.h"
-#include "proc.h"
+
+#include <Windows.h>
+#include <shellapi.h>
+
+#include <winnt.h>
+#include <winhttp.h>
+#include <winsock2.h>
+#include <WS2tcpip.h>
+#include <iphlpapi.h>
+
+#include <tlhelp32.h>
+#include <psapi.h>
+#include <intrin.h>
+
 #define _WIN32_DCOM
 #include <comdef.h>
 #include <Wbemidl.h>
 #include <shlwapi.h>
 
+#include "proc.h"
 #include "comm.h"
 
 #define SAFE_FREE(X) \
@@ -210,7 +224,7 @@ std::vector<IpRow> ListUDPTable(int family)
 		{
 			MIB_UDPROW_OWNER_PID *owner = &pUDPInfo->table[dwLoop];
 
-			int localPort = ntohs((u_short) owner->dwLocalPort);
+			u_short localPort = ntohs((u_short) owner->dwLocalPort);
 
 			char name[MAX_PATH] = {0};
 			GetProcessName(owner->dwOwningPid, name);
@@ -243,7 +257,7 @@ std::vector<IpRow> ListUDPTable(int family)
 		{
 			MIB_UDP6ROW_OWNER_PID *owner = &pUDPInfo->table[dwLoop];
 
-			int localPort = ntohs((u_short) owner->dwLocalPort);
+			u_short localPort = ntohs((u_short) owner->dwLocalPort);
 
 			char name[MAX_PATH] = {0};
 			GetProcessName(owner->dwOwningPid, name);
@@ -280,8 +294,8 @@ std::vector<IpRow> ListTCPTable(int family)
 		{
 			MIB_TCPROW_OWNER_PID *owner = &pTCPInfo->table[dwLoop];
 
-			int localPort = ntohs((u_short) owner->dwLocalPort);
-			int remotePort = ntohs((u_short) owner->dwRemotePort);
+			u_short localPort = ntohs((u_short) owner->dwLocalPort);
+			u_short remotePort = ntohs((u_short) owner->dwRemotePort);
 
 			char remote[MAX_PATH] = {0}, local[MAX_PATH] = {0};
 
@@ -313,8 +327,8 @@ std::vector<IpRow> ListTCPTable(int family)
 		{
 			MIB_TCP6ROW_OWNER_PID *owner = &pTCPInfo->table[dwLoop];
 
-			int localPort = ntohs((u_short) owner->dwLocalPort);
-			int remotePort = ntohs((u_short) owner->dwRemotePort);
+			u_short localPort = ntohs((u_short) owner->dwLocalPort);
+			u_short remotePort = ntohs((u_short) owner->dwRemotePort);
 
 			char remote[MAX_PATH] = {0}, local[MAX_PATH] = {0};
 
@@ -400,7 +414,7 @@ void SetRegString(TCHAR *szKey, TCHAR *szBuffer)
 	RegCreateKey(HKEY_LOCAL_MACHINE, HOSTVIEW_REG, &hKey);
 
 	DWORD dwSize = sizeof(szBuffer[0]) * (DWORD) _tcslen(szBuffer);
-	DWORD dwType = REG_SZ;
+//	DWORD dwType = REG_SZ;
 	RegSetValueEx(hKey, szKey, NULL, REG_SZ, (LPBYTE) szBuffer, dwSize);
 	RegCloseKey(hKey);
 }
@@ -915,7 +929,7 @@ DWORD GetExplorerProcessID()
 	HANDLE hSnapshot;
 	PROCESSENTRY32 pe32;
 	ZeroMemory(&pe32, sizeof(pe32));
-	DWORD temp;
+	DWORD temp = 0;
 
 	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,NULL);
 	pe32.dwSize = sizeof(PROCESSENTRY32);
@@ -960,8 +974,6 @@ DWORD ExecuteCmd(TCHAR *szArgs, HANDLE hToken)
 {
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
-
-	DWORD dwCode = 0;
 
 	ZeroMemory(&si, sizeof(STARTUPINFO));
 
@@ -1335,9 +1347,9 @@ extern "C" PROCAPI int QueryWebcamSessions(DWORD * &pSessions)
 
 	for (size_t i = 0; i < installedCams.size(); i ++)
 	{
-		DWORD dwPid = QueryOpenedHandle((TCHAR *) installedCams[i].c_str());
+		int dwPid = QueryOpenedHandle((TCHAR *) installedCams[i].c_str());
 		if (dwPid != -1)
-			pids.push_back(dwPid);
+			pids.push_back((DWORD)dwPid);
 	}
 
 	pSessions = new DWORD[pids.size()];

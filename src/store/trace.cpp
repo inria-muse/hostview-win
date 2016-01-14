@@ -22,8 +22,9 @@
 * THE SOFTWARE.
 **/
 
-#include "stdafx.h";
-#include "trace.h";
+#include "stdafx.h"
+#include "trace.h"
+#include "Upload.h"
 
 long GetFileSize(char *szFilename)
 {
@@ -31,7 +32,6 @@ long GetFileSize(char *szFilename)
 
 	FILE * f = NULL;
 	fopen_s(&f, szFilename, "r");
-
 	if (f)
 	{
 		fseek(f, 0, SEEK_END);
@@ -48,17 +48,17 @@ void Debug(char *szFormat, ...) {
 	va_start(vArgs, szFormat);
 	char szMessage[1024] = { 0 };
 	vsprintf_s(szMessage, szFormat, vArgs);
-	fprintf(stderr, "[debug] %d, %s\n", time(NULL), szMessage);
+	fprintf(stderr, "[debug] %lld, %s\n", time(NULL), szMessage);
 	va_end(vArgs);
 #endif
 }
 
 void Trace(char *szFormat, ...) {
+	char szMessage[1024] = { 0 };
+
 	if (!szFormat || GetFileSize(LOGFILE) >= 2 * 1024 * 1024)
 	{
-		char szFile[MAX_PATH] = { 0 };
-		sprintf_s(szFile, "submit\\%d.log", GetTickCount());
-		MoveFileA(LOGFILE, szFile);
+		AddFileToSubmit(LOGFILE);
 	}
 
 	if (szFormat)
@@ -66,19 +66,17 @@ void Trace(char *szFormat, ...) {
 		va_list vArgs;
 		va_start(vArgs, szFormat);
 
-		FILE * f = NULL;
-
-		fopen_s(&f, LOGFILE, "a+");
-
-		if (f)
-		{
-			char szMessage[1024] = { 0 };
-			vsprintf_s(szMessage, szFormat, vArgs);
+		vsprintf_s(szMessage, szFormat, vArgs);
 
 #ifdef _DEBUG
-			fprintf(stderr, "[trace] %d, %s\n", time(NULL), szMessage);
+		fprintf(stderr, "[trace] %lld, %s\n", time(NULL), szMessage);
 #endif
-			fprintf(f, "%d, %s\n", time(NULL), szMessage);
+
+		FILE * f = NULL;
+		fopen_s(&f, LOGFILE, "a+");
+		if (f)
+		{
+			fprintf(f, "%lld, %s\n", time(NULL), szMessage);
 			fclose(f);
 		}
 

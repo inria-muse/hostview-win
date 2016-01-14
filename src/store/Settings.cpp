@@ -25,8 +25,6 @@
 #include "Settings.h"
 #include "comm.h"
 
-typedef std::hash_map<std::string, std::string> SettingsMap;
-
 // FIXME: why are these not properties of the class (maybe static if need ?) ?
 SettingsMap mDefSettings;
 SettingsMap mSettings;
@@ -35,7 +33,6 @@ std::hash_map<std::string, unsigned long> mLongSettings;
 
 static volatile long nRefCount = 0;
 CRITICAL_SECTION g_cs;
-
 
 void initLock()
 {

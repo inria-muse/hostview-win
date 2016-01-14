@@ -24,7 +24,6 @@
 #pragma once
 
 #include <map>
-#include <tchar.h>
 #include <string>
 
 #if defined(HTTPSERVERLIBRARY_EXPORT) // inside DLL

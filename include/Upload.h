@@ -21,7 +21,6 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 **/
-
 #pragma once
 
 #include "Settings.h"
@@ -38,6 +37,9 @@
 # define UPLOAD_HTTP_DEFAULT_BUFFER_SIZE 4096
 #endif
 
+#define SUBMIT_DIRECTORY "./submit"
+#define SUBMIT_DIRECTORY_GLOB "./submit/*.*"
+
 /** Class for handling an upload session using cURL. */
 class UPLOADAPI CUpload
 {
@@ -45,13 +47,19 @@ public:
 	CUpload(void);
 	~CUpload(void);
 
-	/** Returns true on success. */
-	bool ZipFile(char *src, char *dest);
-
 	/** Returns true on success, false if should stop uploading other files (upload failed or was too slow). */
-	bool SubmitFile(char *server, char *userId, char *deviceId, char *fileName);
+	bool SubmitFile(const char *fileName, const char *deviceId);
 
 private:
 	CSettings settings;
 	CURL *curl;
 };
+
+/** Move a file to the submit folder and zip it. */
+extern "C" UPLOADAPI bool AddFileToSubmit(const char *file);
+
+/** Loop over files in the submit folder and upload to the server. */
+extern "C" UPLOADAPI bool DoSubmit(const char *deviceId);
+
+/** Make sure we are not using too much disk space, and make room if so. */
+extern "C" UPLOADAPI void CheckDiskUsage();

@@ -99,11 +99,6 @@ public:
 	void OnStart(DWORD dwArgc, PWSTR *pszArgv);
 	void OnStop();
 
-	bool SubmitData();
-	void EnsureOptimalDiskUsage();
-	void RemoveOldestSubmitFile();
-	ULONGLONG GetSubmitDiskUsage();
-
 protected:
 	void OnShutdown();
 	void ServiceWorkerThread(void);
@@ -120,6 +115,10 @@ private:
 	BOOL m_fIdle;
 	BOOL m_fFullScreen;
 
+	SysInfo m_sysInfo;
+	char szHdd[MAX_PATH] = { 0 };
+
+	void RunNetworkLabeling();
 	void RunQuestionnaireIfCase();
 	void PullLatestResources(DWORD dwNow);
 

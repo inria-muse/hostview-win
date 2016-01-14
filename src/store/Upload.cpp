@@ -22,36 +22,16 @@
 * THE SOFTWARE.
 **/
 
-#include "StdAfx.h"
-#include <Shlwapi.h>
+#include "stdafx.h"
+
+#include <windows.h>
+#include <shlwapi.h>
+
 #include "Upload.h"
+#include "trace.h"
 #include "product.h"
 
-CUpload::CUpload(void)
-	: curl(NULL)
-{
-	char ua[512] = {0};
-	sprintf_s(ua, 512, "Hostview Windows %s", ProductVersionStr);
-
-	curl = curl_easy_init();
-	if (!curl) {
-		fprintf(stderr, "[upload] curl_easy_init failed\n");
-		return;
-	}
-
-	// common options
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20L);
-//	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-}
-
-CUpload::~CUpload(void)
-{
-	if (curl)
-		curl_easy_cleanup(curl);
-}
-
+// read helper for curl uploads
 size_t read_file(char *bufptr, size_t size, size_t nitems, void *userp) {
 	size_t nRead = 0;
 	FILE *fd = (FILE *)userp;
@@ -62,69 +42,8 @@ size_t read_file(char *bufptr, size_t size, size_t nitems, void *userp) {
 	return nRead;
 }
 
-bool CUpload::SubmitFile(char *server, char *userId, char *deviceId, char *fileName)
-{
-	struct curl_slist *headers = NULL;
-	FILE *f = NULL;
-	size_t nTotalFileSize = 0;
-	char url[1024] = { 0 };
-	CURLcode res;
-
-	bool result = false;
-
-	if (!curl) {
-		fprintf(stderr, "[upload] curl not initialized\n");
-		return result;
-	}
-
-	fopen_s(&f, fileName, "rb");
-	if (!f) {
-		fprintf(stderr, "[upload] failed to open file %s\n", fileName);
-		return result;
-	}
-
-	fseek(f, 0, SEEK_END);
-	nTotalFileSize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	sprintf_s(url, 1024, "%s/%s/%s/%s", server, ProductVersionStr, deviceId, PathFindFileNameA(fileName));
-
-	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
-
-	fprintf(stderr, "[upload] submit %s to %s\n", fileName, url);
-
-	// FIXME: only watch for the limit if we are sending large enough file ..  ?!
-	if (nTotalFileSize > settings.GetULong(UploadLowSpeedLimit)*settings.GetULong(UploadLowSpeedTime)) {
-		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
-		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, settings.GetULong(UploadLowSpeedTime));
-	}
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_file);
-	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-	curl_easy_setopt(curl, CURLOPT_READDATA, f);
-	curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)nTotalFileSize);
-#ifdef _DEBUG
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-#endif
-	res = curl_easy_perform(curl);
-	if (res != CURLE_OK) {
-		fprintf(stderr, "[upload] curl_easy_perform failed: %s\n", curl_easy_strerror(res));
-		result = false;
-	}
-	else {
-		fprintf(stderr, "[upload] curl_easy_perform success\n");
-		result = true;
-	}
-
-	curl_slist_free_all(headers);
-	
-	fclose(f);
-
-	return result;
-}
-
-bool CUpload::ZipFile(char *src, char *dest)
+// zip helper
+bool zipfile(char *src, char *dest)
 {
 	// FIXME: there's no library interface to this compresssion tool we could use ?!?
 	TCHAR szCmdLine[1024] = { 0 };
@@ -153,4 +72,271 @@ bool CUpload::ZipFile(char *src, char *dest)
 	}
 
 	return false;
+}
+
+CUpload::CUpload(void)
+	: curl(NULL)
+{
+	char ua[512] = {0};
+	sprintf_s(ua, 512, "Hostview Windows %s", ProductVersionStr);
+
+	curl = curl_easy_init();
+	if (!curl) {
+		fprintf(stderr, "[upload] curl_easy_init failed\n");
+		return;
+	}
+
+	// common options
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20L);
+//	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+}
+
+CUpload::~CUpload(void)
+{
+	if (curl)
+		curl_easy_cleanup(curl);
+}
+
+bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
+{
+	struct curl_slist *headers = NULL;
+	FILE *f = NULL;
+	size_t nTotalFileSize = 0;
+	char url[1024] = { 0 };
+	CURLcode res;
+
+	bool result = false;
+
+	if (!curl) {
+		fprintf(stderr, "[upload] curl not initialized\n");
+		return result;
+	}
+
+	fopen_s(&f, fileName, "rb");
+	if (!f) {
+		fprintf(stderr, "[upload] failed to open file %s\n", fileName);
+		return result;
+	}
+
+	fseek(f, 0, SEEK_END);
+	nTotalFileSize = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	sprintf_s(url, 1024, "%s/%s/%s/%s", settings.GetString(SubmitServer), ProductVersionStr, deviceId, PathFindFileNameA(fileName));
+
+	fprintf(stderr, "[upload] submit %s to %s %d bytes\n", fileName, url, nTotalFileSize);
+
+	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
+
+	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
+	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, settings.GetULong(UploadLowSpeedTime));
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_file);
+	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+	curl_easy_setopt(curl, CURLOPT_READDATA, f);
+	curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)nTotalFileSize);
+#ifdef _DEBUG
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+#endif
+
+	res = curl_easy_perform(curl);
+	if (res != CURLE_OK) {
+		fprintf(stderr, "[upload] curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		result = false;
+	}
+	else {
+		fprintf(stderr, "[upload] curl_easy_perform success\n");
+		result = true;
+	}
+
+	curl_slist_free_all(headers);
+	
+	fclose(f);
+
+	return result;
+}
+
+bool AddFileToSubmit(const char *file) {
+	if (!PathFileExistsA(file)) {
+		fprintf(stderr, "[upload] no such file %s\n", file);
+		return false;
+	}
+
+	// ensure directory
+	if (!PathFileExistsA(SUBMIT_DIRECTORY)) {
+		CreateDirectoryA(SUBMIT_DIRECTORY, NULL);
+	}
+
+	// new name submit/timestamp_filename.ext
+	char sFile[MAX_PATH] = { 0 };
+	sprintf_s(sFile, "%s\\%s", SUBMIT_DIRECTORY, PathFindFileNameA(file));
+
+	if (!MoveFileA(file, sFile)) {
+		fprintf(stderr, "[upload] failed to add file %s to %s [%d]\n", file, SUBMIT_DIRECTORY, GetLastError());
+		return false;
+	}
+
+	Trace("Add submit file %s.", sFile);
+	return true;
+}
+
+bool DoSubmit(const char *deviceId) {
+	bool result = true;
+	CUpload upload;
+
+	char szFilename[MAX_PATH] = { 0 };
+	char szZipFilename[MAX_PATH] = { 0 };
+
+	WIN32_FIND_DATAA wfd;
+	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.')
+			{
+				// just ignore . & ..
+				continue;
+			}
+
+			sprintf_s(szFilename, "%s\\%s", SUBMIT_DIRECTORY, wfd.cFileName);
+
+			if (strcmp(PathFindExtensionA(szFilename), ".zip") != 0)
+			{
+				sprintf_s(szZipFilename, "%s\\%s.zip", SUBMIT_DIRECTORY, wfd.cFileName);
+				Debug("[upload] create zip %s -> %s\n", szFilename, szZipFilename);
+
+				if (zipfile(szFilename, szZipFilename))
+				{
+					// remove original file,
+					// since we have the zip;
+					DeleteFileA(szFilename);
+					Trace("Create zip file %s.", szZipFilename);
+				}
+				else
+				{
+					// remove broken zip
+					DeleteFileA(szZipFilename);
+					result = false;
+				}
+			}
+			else {
+				// already zipped
+				sprintf_s(szZipFilename, "%s", szFilename);
+			}
+
+			if (PathFileExistsA(szZipFilename))
+			{
+				Debug("[upload] send zip %s\n", szZipFilename);
+				if (upload.SubmitFile(szZipFilename, deviceId))
+				{
+					DeleteFileA(szZipFilename);
+					Trace("Remove submitted file %s.", szZipFilename);
+				}
+				else
+				{
+					result = false;
+				}
+			}
+		} while (result && FindNextFileA(hFind, &wfd));
+
+		FindClose(hFind);
+	}
+
+	return result;
+}
+
+void removeoldest()
+{
+	char szOldestFilename[MAX_PATH] = { 0 };
+
+	SYSTEMTIME stNow;
+	GetSystemTime(&stNow);
+
+	FILETIME ftOldest;
+	SystemTimeToFileTime(&stNow, &ftOldest);
+
+	WIN32_FIND_DATAA wfd;
+	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
+
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.')
+			{
+				// just ignore . & ..
+				continue;
+			}
+
+			if (CompareFileTime(&wfd.ftCreationTime, &ftOldest) < 0)
+			{
+				ftOldest = wfd.ftCreationTime;
+				sprintf_s(szOldestFilename, "%s\\%s", SUBMIT_DIRECTORY, wfd.cFileName);
+			}
+		} while (FindNextFileA(hFind, &wfd));
+
+		FindClose(hFind);
+	}
+
+	if (strlen(szOldestFilename))
+	{
+		DeleteFileA(szOldestFilename);
+		Trace("Remove old file %s.", szOldestFilename);
+	}
+}
+
+ULONGLONG getUsage()
+{
+	ULONGLONG ulUsedSpace = 0L;
+	WIN32_FIND_DATAA wfd;
+	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.')
+			{
+				// just ignore . & ..
+				continue;
+			}
+
+			ULARGE_INTEGER sz;
+			sz.LowPart = wfd.nFileSizeLow;
+			sz.HighPart = wfd.nFileSizeHigh;
+			ulUsedSpace += sz.QuadPart;
+
+		} while (FindNextFileA(hFind, &wfd));
+		FindClose(hFind);
+	}
+
+	return ulUsedSpace;
+}
+
+void CheckDiskUsage() {
+	ULARGE_INTEGER totalSize;
+	GetDiskFreeSpaceEx(NULL, NULL, &totalSize, NULL);
+
+	bool isOptimal = false;
+	while (!isOptimal)
+	{
+		// hostview used space
+		ULONGLONG ullUsedSpace = getUsage();
+		// free space if hostview was not there
+		ULONGLONG ullFreeSpace = totalSize.QuadPart + ullUsedSpace;
+
+		// we can only fill up to 50% of the 'theoretical' free space
+		if (ullUsedSpace > ullFreeSpace / 2.0)
+		{
+			removeoldest();
+			isOptimal = false;
+		}
+		else
+		{
+			isOptimal = true;
+		}
+	}
 }

@@ -23,13 +23,32 @@
 **/
 
 #include "StdAfx.h"
-#include "Store.h"
-#include <map>
-#include "Settings.h"
 
-static const char *szFilename = "stats.db";
+#include "trace.h"
+#include "Store.h"
+#include "Settings.h"
+#include "Upload.h"
+
+DWORD dwLastFileSizeCheck = 0;
 
 std::vector<std::string> inserts;
+
+__int64 GetTimestamp()
+{
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+
+	ULARGE_INTEGER epoch;
+	epoch.LowPart = 0xD53E8000;
+	epoch.HighPart = 0x019DB1DE;
+
+	ULARGE_INTEGER ts;
+	ts.LowPart = ft.dwLowDateTime;
+	ts.HighPart = ft.dwHighDateTime;
+	ts.QuadPart -= epoch.QuadPart;
+
+	return ts.QuadPart / 10000;
+}
 
 void CStore::enqueue(char *statement)
 {
@@ -70,19 +89,6 @@ DWORD WINAPI ExecThreadFunc(LPVOID lpParameter)
 	return 0L;
 }
 
-// moves the db file to be submitted
-void MoveDBFile()
-{
-	// ensure directory
-	CreateDirectory(_T("submit"), NULL);
-
-	char szFile[MAX_PATH] = {0};
-	sprintf_s(szFile, "submit/stats_%d.db", time(NULL));
-	MoveFileA(szFilename, szFile);
-}
-
-DWORD dwLastFileSizeCheck = 0;
-
 // TODO: use prepared statements
 DWORD CStore::ExecThread()
 {
@@ -93,8 +99,8 @@ DWORD CStore::ExecThread()
 	{
 		Sleep(5);
 
-		// in Release mode, write the db in batches
 #ifndef _DEBUG
+		// write the db in batches
 		if (GetQueueSize() < 1000 && !closing)
 			continue;
 #endif
@@ -104,17 +110,18 @@ DWORD CStore::ExecThread()
 		std::vector<std::string> newinserts = dequeue();
 		for (size_t i = 0; i < newinserts.size(); i ++)
 		{
+			Debug("[store] write %s\n", newinserts[i].c_str());
 			exec(newinserts[i].c_str());
 		}
 
 		exec("COMMIT TRANSACTION");
 
-		if (GetTickCount() - dwLastFileSizeCheck > 60 * 1000)
+		if (GetTickCount() - dwLastFileSizeCheck > 60 * 1000 && !closing)
 		{
 			dwLastFileSizeCheck = GetTickCount();
 
 			WIN32_FIND_DATAA data;
-			HANDLE hFind = FindFirstFileA(szFilename, &data);
+			HANDLE hFind = FindFirstFileA(szDbFile, &data);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
 				__int64 fileSize = data.nFileSizeLow | (__int64)data.nFileSizeHigh << 32;
@@ -122,12 +129,9 @@ DWORD CStore::ExecThread()
 
 				if (fileSize >= dbSizeLimit)
 				{
-					close();
-
-					MoveDBFile();
-
-					open(szFilename);
-					InitTables();
+					// reset the db file
+					closeDbFile();
+					openDbFile();
 				}
 			}
 		}
@@ -159,12 +163,55 @@ CStore::~CStore(void)
 
 bool CStore::Open()
 {
-	bool result = open(szFilename);
-	InitTables();
-
-	closing = false;
-	hExecThread = CreateThread(NULL, NULL, ExecThreadFunc, this, NULL, NULL);
+	bool result = openDbFile();
+	if (result) {
+		closing = false;
+		hExecThread = CreateThread(NULL, NULL, ExecThreadFunc, this, NULL, NULL);
+	}
 	return result;
+}
+
+void CStore::Close()
+{
+	if (hExecThread)
+	{
+		closing = true;
+		WaitForSingleObject(hExecThread, INFINITE);
+		CloseHandle(hExecThread);
+		hExecThread = NULL;
+	}
+	closeDbFile();
+}
+
+bool CStore::openDbFile()
+{
+	char * error = NULL;
+	memset(szDbFile, 0, MAX_PATH);
+	sprintf_s(szDbFile, MAX_PATH, "%llu_stats.db", GetTimestamp());
+
+	if (sqlite3_open_v2(szDbFile, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+	{
+		seterror(sqlite3_errmsg(db));
+		sqlite3_free(error);
+		return false;
+	}
+	else
+	{
+		seterror("Success");
+		InitTables();
+		return true;
+	}
+}
+
+void CStore::closeDbFile()
+{
+	if (db)
+	{
+		sqlite3_close(db);
+		db = NULL;
+		AddFileToSubmit(szDbFile);
+		memset(szDbFile, 0, MAX_PATH);
+	}
 }
 
 void CStore::InitTables()
@@ -206,21 +253,6 @@ void CStore::InitTables()
 
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
-}
-
-void CStore::Close()
-{
-	if (hExecThread)
-	{
-		closing = true;
-		WaitForSingleObject(hExecThread, INFINITE);
-		CloseHandle(hExecThread);
-		hExecThread = NULL;
-	}
-	
-	close();
-
-	MoveDBFile();
 }
 
 void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
@@ -357,36 +389,6 @@ const char* CStore::error()
 void CStore::seterror(const char *error)
 {
 	strcpy_s(szError, error);
-}
-
-bool CStore::open(const char *fn)
-{
-	char * error = NULL;
-	if (sqlite3_open_v2(fn, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
-	{
-		seterror(sqlite3_errmsg(db));
-		sqlite3_free(error);
-		return false;
-	}
-	else
-	{
-		seterror("Success");
-		return true;
-	}
-}
-
-const char* CStore::GetFile()
-{
-	return szFilename;
-}
-
-void CStore::close()
-{
-	if (db)
-	{
-		sqlite3_close(db);
-		db = NULL;
-	}
 }
 
 bool CStore::exec(const char *statement)

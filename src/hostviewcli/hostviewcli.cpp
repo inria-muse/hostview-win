@@ -69,13 +69,17 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
-			// one last submit before uninstall;
-			CHostViewService service(SERVICE_NAME);
-
 			Trace("Last submit. Uninstalling.");
 			Trace(0);
 
-			service.SubmitData();
+			SysInfo info;
+			QuerySystemInfo(info);
+
+			char szHdd[MAX_PATH] = { 0 };
+			sprintf_s(szHdd, "%S", info.hddSerial);
+
+			DoSubmit(szHdd);
+
 			UninstallService(SERVICE_NAME);
 		}
 		else if (!_tcsicmp(L"debug", argv[1] + 1))

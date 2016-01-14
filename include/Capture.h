@@ -24,20 +24,13 @@
 #pragma once
 
 #define HAVE_REMOTE
-#include "pcap.h"
-#include "iphdr.h"
-#include <vector>
-#include <Iphlpapi.h>
-#include <wlanapi.h>
-#include <map>
-#include <string>
-#define LINE_LEN 16
 
-#ifdef _UNICODE
-#define tstring wstring
-#else
-#define tstring string
-#endif
+#include <winsock2.h>
+
+#include <vector>
+#include <map>
+#include <set>
+#include <string>
 
 #if defined(PCAPLIBRARY_EXPORT) // inside DLL
 #   define PCAPAPI   __declspec(dllexport)
@@ -45,6 +38,13 @@
 #   define PCAPAPI   __declspec(dllimport)
 #endif  // PCAPLIBRARY_EXPORT
 
+#define LINE_LEN 16
+
+#ifdef _UNICODE
+#define tstring wstring
+#else
+#define tstring string
+#endif
 
 /**
  *	Callback Interface.

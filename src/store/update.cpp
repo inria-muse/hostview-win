@@ -21,11 +21,13 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 **/
-
 #include "StdAfx.h"
+
+#include <windows.h>
+#include <wininet.h>
+#include <shellapi.h>
+
 #include "update.h"
-#include "wininet.h"
-#include "Shellapi.h"
 #include "Settings.h"
 
 BOOL GetLatestProductVersion(char *szLatestProdVer, DWORD dwSize);
