@@ -22,9 +22,11 @@
  * THE SOFTWARE.
  **/
 #include "StdAfx.h"
+#include <windows.h>
+#include <shlwapi.h>
+
 #include "Capture.h"
 #include "Upload.h"
-
 #include "iphdr.h"
 
 #include <pcap/pcap.h>
@@ -428,6 +430,11 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 
 PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const char *adapterId)
 {
+	// ensure directory
+	if (!PathFileExistsA(DATA_DIRECTORY)) {
+		CreateDirectoryA(DATA_DIRECTORY, NULL);
+	}
+
 	HANDLE hCaptureThread = threads[adapterId];
 	if (!hCaptureThread)
 	{
@@ -436,10 +443,8 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const c
 		{
 			sources[adapterId] = source;
 
-			CreateDirectory(_T("data"), NULL);
-
 			char szFilename[MAX_PATH] = {0};
-			sprintf_s(szFilename, "data/%llu_%s.pcap", timestamp, adapterId);
+			sprintf_s(szFilename, "%s\\%llu_%s.pcap", DATA_DIRECTORY, timestamp, adapterId);
 			fnames[adapterId] = szFilename;
 
 			pcap_dumper_t *dumpfile = pcap_dump_open(source, szFilename);
@@ -486,7 +491,7 @@ PCAPAPI bool StopCapture(const char *adapterId)
 			dumpfile = NULL;
 
 			// move pcap to upload folder
-			AddFileToSubmit(fnames[adapterId].c_str());
+			MoveFileToSubmit(fnames[adapterId].c_str(), false);
 
 			fnames.erase(adapterId);
 			files.erase(adapterId);

@@ -43,15 +43,6 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 	m_fIdle = FALSE;
 	m_fFullScreen = FALSE;
 
-	QuerySystemInfo(m_sysInfo);
-	if (_tcslen(m_sysInfo.hddSerial) > 0)
-	{
-		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
-	}
-	else {
-		sprintf_s(szHdd, "unknown");
-	}
-
 	// Create a manual-reset event that is not signaled at first to indicate 
 	// the stopped signal of the service.
 	m_hStoppedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -79,6 +70,35 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 	
 	// Queue the main service function for execution in a worker thread.
 	CThreadPool::QueueUserWorkItem(&CHostViewService::ServiceWorkerThread, this);
+
+	// Get basic system info on startup
+	QuerySystemInfo(m_sysInfo);
+	if (_tcslen(m_sysInfo.hddSerial) > 0)
+	{
+		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
+	}
+	else {
+		fprintf(stderr, "[SRV] we don't know the hddSerial!!!");
+		// FIXME: this is fatal - that's the unique id of the user ...
+		sprintf_s(szHdd, "unknown");
+	}
+
+	// write and upload sysinfo 
+	FILE *f = NULL;
+	fopen_s(&f, "info", "w");
+	if (f)
+	{
+		fprintf(f, "%14s%60S\n", "Manufacturer", m_sysInfo.manufacturer);
+		fprintf(f, "%14s%60S\n", "Product", m_sysInfo.productName);
+		fprintf(f, "%14s%60S\n", "OS", m_sysInfo.windowsName);
+		fprintf(f, "%14s%60S\n", "CPU", m_sysInfo.cpuName);
+		fprintf(f, "%14s%57.2f GB\n", "RAM", (double)(m_sysInfo.totalRAM / 1024 / 1024) / 1024.0);
+		fprintf(f, "%14s%57.2f GB\n", "HDD", (double)(m_sysInfo.totalDisk / 1024 / 1024) / 1024.0);
+		fprintf(f, "%14s%60S\n", "Serial", m_sysInfo.hddSerial);
+		fprintf(f, "%s\n", "Hostview", ProductVersionStr);
+		fclose(f);
+		CopyFileToSubmit("info", true);
+	}
 
 	StartServiceCommunication(*this);
 	StartCollect();

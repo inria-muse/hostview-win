@@ -31,5 +31,6 @@
 #   define HOSTVIEWTRACEAPI   __declspec(dllimport)
 #endif  // TRACELIBRARY_EXPORT
 
+extern "C" HOSTVIEWTRACEAPI __int64 GetHiResTimestamp();
 extern "C" HOSTVIEWTRACEAPI void Debug(char *szFormat, ...);
 extern "C" HOSTVIEWTRACEAPI void Trace(char *szFormat, ...);

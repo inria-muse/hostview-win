@@ -34,6 +34,8 @@
 #   define STOREAPI   __declspec(dllimport)
 #endif  // STORELIBRARY_EXPORT
 
+#define STORE_FILE "stats.db"
+
 typedef std::vector<std::string> SQLRow;
 typedef std::vector<SQLRow> SQLTable;
 
@@ -59,8 +61,6 @@ public:
 	void Close();
 
 	void InitTables();
-
-	const char* GetFile();
 
 	// inserts a process pid mapping
 	void Insert(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp);
@@ -111,7 +111,6 @@ private:
 	const char* error();
 	void seterror(const char *error);
 
-	char szDbFile[MAX_PATH];
 	bool openDbFile();
 	void closeDbFile();
 

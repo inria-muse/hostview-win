@@ -10,6 +10,7 @@
 #ifndef __iphdr_h_
 #define __iphdr_h_
 
+#include <winsock2.h>
 #include "in6addr.h"
 #include <pshpack1.h>
 

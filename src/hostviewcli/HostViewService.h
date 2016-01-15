@@ -37,6 +37,7 @@
 #include "update.h"
 #include "http_server.h"
 #include "trace.h"
+#include "product.h"
 
 class CHostViewService :
 	public CServiceBase,

@@ -138,12 +138,14 @@ bool CKnownNetworks::IsKnown(const NetworkInterface &ni)
 
 void CKnownNetworks::OnNetworkLabel(Message &message)
 {
+	// add label
 	LoadNetworkInterface(message.szUser);
 
+	// flush new data to the file
 	SaveKnownNetworks();
-	LoadKnownNetworks();
 
-	AddFileToSubmit(KNOWN_NETWORKS_FILE);
+	// do a copy of the file for upload
+	CopyFileToSubmit(KNOWN_NETWORKS_FILE, true);
 }
 
 void LabelNetwork(const NetworkInterface &ni, TCHAR * szProfile)

@@ -33,22 +33,6 @@ DWORD dwLastFileSizeCheck = 0;
 
 std::vector<std::string> inserts;
 
-__int64 GetTimestamp()
-{
-	FILETIME ft;
-	GetSystemTimeAsFileTime(&ft);
-
-	ULARGE_INTEGER epoch;
-	epoch.LowPart = 0xD53E8000;
-	epoch.HighPart = 0x019DB1DE;
-
-	ULARGE_INTEGER ts;
-	ts.LowPart = ft.dwLowDateTime;
-	ts.HighPart = ft.dwHighDateTime;
-	ts.QuadPart -= epoch.QuadPart;
-
-	return ts.QuadPart / 10000;
-}
 
 void CStore::enqueue(char *statement)
 {
@@ -121,7 +105,7 @@ DWORD CStore::ExecThread()
 			dwLastFileSizeCheck = GetTickCount();
 
 			WIN32_FIND_DATAA data;
-			HANDLE hFind = FindFirstFileA(szDbFile, &data);
+			HANDLE hFind = FindFirstFileA(STORE_FILE, &data);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
 				__int64 fileSize = data.nFileSizeLow | (__int64)data.nFileSizeHigh << 32;
@@ -185,14 +169,9 @@ void CStore::Close()
 
 bool CStore::openDbFile()
 {
-	char * error = NULL;
-	memset(szDbFile, 0, MAX_PATH);
-	sprintf_s(szDbFile, MAX_PATH, "%llu_stats.db", GetTimestamp());
-
-	if (sqlite3_open_v2(szDbFile, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+	if (sqlite3_open_v2(STORE_FILE, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
 	{
 		seterror(sqlite3_errmsg(db));
-		sqlite3_free(error);
 		return false;
 	}
 	else
@@ -209,8 +188,7 @@ void CStore::closeDbFile()
 	{
 		sqlite3_close(db);
 		db = NULL;
-		AddFileToSubmit(szDbFile);
-		memset(szDbFile, 0, MAX_PATH);
+		MoveFileToSubmit(STORE_FILE, true);
 	}
 }
 

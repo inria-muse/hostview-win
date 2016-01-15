@@ -92,10 +92,10 @@
     <ClCompile Include="http_parser.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="http_server.cpp">
+    <ClCompile Include="trace.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="trace.cpp">
+    <ClCompile Include="http_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -46,6 +46,8 @@
 #define tstring string
 #endif
 
+#define DATA_DIRECTORY ".\\data"
+
 /**
  *	Callback Interface.
  *	Through this we can save date into tables, compute statistics, etc.

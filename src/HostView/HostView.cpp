@@ -137,30 +137,6 @@ void InitNotificationResources(HINSTANCE hInstance)
 
 void OnStartCommand()
 {
-	SysInfo info;
-	QuerySystemInfo(info);
-
-	char szSerialId[MAX_PATH] = {0}, szFilename[MAX_PATH] = {0};
-
-	CreateDirectory(_T("submit"), NULL);
-	sprintf_s(szFilename, "%s", "submit\\info");
-
-	sprintf_s(szSerialId, "%S", info.hddSerial);
-
-	FILE *f = NULL;
-
-	fopen_s(&f, szFilename, "w");
-	if (f)
-	{
-		fprintf(f, "%14s%60S\n", "Manufacturer", info.manufacturer);
-		fprintf(f, "%14s%60S\n", "Product", info.productName);
-		fprintf(f, "%14s%60S\n", "OS", info.windowsName);
-		fprintf(f, "%14s%60S\n", "CPU", info.cpuName);
-		fprintf(f, "%14s%57.2f GB\n", "RAM", (double)(info.totalRAM / 1024 / 1024) / 1024.0);
-		fprintf(f, "%14s%57.2f GB\n", "HDD", (double)(info.totalDisk / 1024 / 1024) / 1024.0);
-		fprintf(f, "%14s%60S\n", "Serial", info.hddSerial);
-		fclose(f);
-	}
 }
 
 void OnStopCommand(CLifetimeCtrl &ltCtrl)

@@ -26,6 +26,23 @@
 #include "trace.h"
 #include "Upload.h"
 
+__int64 GetHiResTimestamp()
+{
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+
+	ULARGE_INTEGER epoch;
+	epoch.LowPart = 0xD53E8000;
+	epoch.HighPart = 0x019DB1DE;
+
+	ULARGE_INTEGER ts;
+	ts.LowPart = ft.dwLowDateTime;
+	ts.HighPart = ft.dwHighDateTime;
+	ts.QuadPart -= epoch.QuadPart;
+
+	return ts.QuadPart / 10000;
+}
+
 long GetFileSize(char *szFilename)
 {
 	long nSize = 0;
@@ -48,35 +65,36 @@ void Debug(char *szFormat, ...) {
 	va_start(vArgs, szFormat);
 	char szMessage[1024] = { 0 };
 	vsprintf_s(szMessage, szFormat, vArgs);
-	fprintf(stderr, "[debug] %lld, %s\n", time(NULL), szMessage);
+	fprintf(stderr, "[%llu] [trace] %s\n", GetHiResTimestamp(), szMessage);
 	va_end(vArgs);
 #endif
 }
 
 void Trace(char *szFormat, ...) {
-	char szMessage[1024] = { 0 };
-
 	if (!szFormat || GetFileSize(LOGFILE) >= 2 * 1024 * 1024)
 	{
-		AddFileToSubmit(LOGFILE);
+		MoveFileToSubmit(LOGFILE, true);
 	}
 
 	if (szFormat)
 	{
+		char szMessage[1024] = { 0 };
+		__int64 ts = GetHiResTimestamp();
+
 		va_list vArgs;
 		va_start(vArgs, szFormat);
 
 		vsprintf_s(szMessage, szFormat, vArgs);
 
 #ifdef _DEBUG
-		fprintf(stderr, "[trace] %lld, %s\n", time(NULL), szMessage);
+		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);
 #endif
 
 		FILE * f = NULL;
 		fopen_s(&f, LOGFILE, "a+");
 		if (f)
 		{
-			fprintf(f, "%lld, %s\n", time(NULL), szMessage);
+			fprintf(f, "[%llu] %s\n", ts, szMessage);
 			fclose(f);
 		}
 
