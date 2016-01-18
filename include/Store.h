@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "proc.h"
 #include "sqlite3.h"
 
 #if defined(STORELIBRARY_EXPORT) // inside DLL
@@ -45,6 +46,13 @@ enum IoDevice {
 	Microphone = 2,
 	Mouse = 3, 
 	Speaker = 4
+};
+
+enum SessionEvent {
+	Start = 0,
+	Pause,
+	Restart,
+	Stop
 };
 
 /**
@@ -102,6 +110,12 @@ public:
 
 	// insert browser activity log
 	void Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
+
+	// insert session event
+	void Insert(__int64 timestamp, SessionEvent e);
+
+	// insert sysinfo
+	void Insert(__int64 timestamp, SysInfo &info);
 
 	size_t GetQueueSize();
 	DWORD ExecThread();

@@ -26,32 +26,30 @@
 const Request = require("sdk/request").Request;
 const { setTimeout, clearTimeout } = require("sdk/timers");
 
-const HOSTVIEW_URL = 'http://localhost:40123/';
+const HOSTVIEW_URL = 'http://localhost:40123';
 const MAX_RETRY = 2;
 
 var send = function(req, retry) {
-	console.log("send retry " + retry, req);
 	Request({
 		url : req.url,
 		content : req.content,
 		contentType : req.contentType,
 		onComplete : function (res) {
-			// hostview had trouble processing the request - try again few times
-			console.log("send onComplete status="+res.status);
 			if (res.status>0 && res.status !== 200 && retry < MAX_RETRY) {
+				// hostview had trouble processing the request - try again few times
 				setTimeout(function() {
 					send(req, retry + 1); // try again
 				}, 5000);
-			} // no connection - hostview not running
+			} // no connection == hostview not running => just forget the data
 		}
 	}).post();	
 }
 
-/** Send location update to local hostview client. */
-var loc = exports.sendlocation = function(hostname) {
+/** Send activte location updates to local hostview client. */
+exports.sendlocation = function(hostname) {
 	var cstr = "browser=firefox&location=" + encodeURIComponent(hostname);
 	send({
-		url : HOSTVIEW_URL + 'locupdate',
+		url : HOSTVIEW_URL + '/locupdate',
 		content : cstr,
 		contentType : "application/x-www-form-urlencoded"
 	}, 0);
@@ -59,9 +57,9 @@ var loc = exports.sendlocation = function(hostname) {
 
 
 /** Send json object to local hostview client. */
-var jobj = exports.sendjson = function(jsonobj) {
+exports.sendjson = function(jsonobj) {
 	send({
-		url : HOSTVIEW_URL + 'upload',
+		url : HOSTVIEW_URL + '/upload',
   		content : JSON.stringify(jsonobj),
   		contentType : 'application/json',
 	}, 0);

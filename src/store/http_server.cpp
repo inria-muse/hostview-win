@@ -249,6 +249,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 				http_parser_init(parser, HTTP_REQUEST);
 
 				// reset custom data
+				data.pCallback = pCallback;
 				data.s = cliSocket;
 				data.url_len = 0;
 				data.body_len = 0;

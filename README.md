@@ -59,6 +59,17 @@ To generate a new update / release a new version:
 
 Afterwards we will have the latest folder populated which we can then move to the server side.
 
+Local Testing
+-------------
+
+There is a simple node.js script that can receive raw data uploads from Hostview. Usage:
+
+	$ node script/userver.js
+
+The script listens to uploads at http://localhost:3000 and stores received files to ./tmp/.
+
+Configure this url to hostview settings 'submitServer' (debug builds do this by default).
+
 Authors
 -------
 

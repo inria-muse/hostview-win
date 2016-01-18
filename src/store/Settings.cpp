@@ -173,7 +173,7 @@ bool CSettings::load()
 #else
 	mDefSettings[AutoSubmitInterval] = "120000"; // ms
 	mDefSettings[SubmitServer] = "http://localhost:3000";
-	mDefSettings[UpdateLocation] = "http://localhost";
+	mDefSettings[UpdateLocation] = "http://foobar";
 	mDefSettings[QuestionnaireActive] = "0";
 	mDefSettings[NetLabellingActive] = "0";
 	mDefSettings[EndUser] = "testuser";

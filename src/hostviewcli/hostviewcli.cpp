@@ -115,13 +115,17 @@ int _tmain(int argc, _TCHAR* argv[])
 			if (!_tcsicmp(L"sysinfo", argv[2]))
 				printSysinfo();
 		}
+		else {
+			printf("./hostviewcli.exe - run the hostview service.\n");
+			printf("Parameters (optional):\n");
+			printf(" /install  - to install the service.\n");
+			printf(" /remove   - to remove the service.\n");
+			printf(" /debug    - to start the service for debugging.\n");
+			printf(" /test <test> - to run a selected test.\n");
+		}
 	}
 	else
 	{
-		printf("Parameters:\n");
-		printf(" /install  to install the service.\n");
-		printf(" /remove   to remove the service.\n");
-
 		CHostViewService service(SERVICE_NAME);
 		if (!CServiceBase::Run(service))
 		{
@@ -130,7 +134,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	curl_global_cleanup();
-
 	WSACleanup();
 #ifdef _DEBUG
 	_CrtDumpMemoryLeaks();

@@ -71,38 +71,27 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 	// Queue the main service function for execution in a worker thread.
 	CThreadPool::QueueUserWorkItem(&CHostViewService::ServiceWorkerThread, this);
 
-	// Get basic system info on startup
+	m_store.Open();
+
+	// Record basic system info on startup (some of this may change between reboots)
 	QuerySystemInfo(m_sysInfo);
 	if (_tcslen(m_sysInfo.hddSerial) > 0)
 	{
-		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
+		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial); // for uploads
 	}
 	else {
 		fprintf(stderr, "[SRV] we don't know the hddSerial!!!");
-		// FIXME: this is fatal - that's the unique id of the user ...
+		// FIXME: this is fatal - that's the unique id of the user ... stop here ?
 		sprintf_s(szHdd, "unknown");
 	}
-
-	// write and upload sysinfo 
-	FILE *f = NULL;
-	fopen_s(&f, "info", "w");
-	if (f)
-	{
-		fprintf(f, "%14s%60S\n", "Manufacturer", m_sysInfo.manufacturer);
-		fprintf(f, "%14s%60S\n", "Product", m_sysInfo.productName);
-		fprintf(f, "%14s%60S\n", "OS", m_sysInfo.windowsName);
-		fprintf(f, "%14s%60S\n", "CPU", m_sysInfo.cpuName);
-		fprintf(f, "%14s%57.2f GB\n", "RAM", (double)(m_sysInfo.totalRAM / 1024 / 1024) / 1024.0);
-		fprintf(f, "%14s%57.2f GB\n", "HDD", (double)(m_sysInfo.totalDisk / 1024 / 1024) / 1024.0);
-		fprintf(f, "%14s%60S\n", "Serial", m_sysInfo.hddSerial);
-		fprintf(f, "%s\n", "Hostview", ProductVersionStr);
-		fclose(f);
-		CopyFileToSubmit("info", true);
-	}
+	m_store.Insert(GetTimestamp(), m_sysInfo);
 
 	StartServiceCommunication(*this);
 	StartCollect();
 }
+
+#define HOSTVIEW_MAX_UPLOAD_RETRIES 3
+#define HOSTVIEW_UPLOAD_RETRY_INTERVAL 10000
 
 void CHostViewService::ServiceWorkerThread(void)
 {
@@ -190,6 +179,8 @@ void CHostViewService::OnStop()
 
 	StopCollect();
 	StopServiceCommunication();
+
+	m_store.Close();
 }
 
 void CHostViewService::OnShutdown()
@@ -200,7 +191,6 @@ void CHostViewService::OnShutdown()
 void CHostViewService::StartCollect()
 {
 	// Start-Up
-	m_store.Open();
 	StartInterfacesMonitor(*this, m_settings.GetULong(PcapSizeLimit), m_settings.GetULong(InterfaceMonitorTimeout));
 	StartWifiMonitor(*this, m_settings.GetULong(WirelessMonitorTimeout));
 	StartBatteryMonitor(*this, m_settings.GetULong(BatteryMonitorTimeout));
@@ -215,7 +205,6 @@ void CHostViewService::StopCollect()
 	StopWifiMonitor();
 	StopInterfacesMonitor();
 	StopAllCaptures();
-	m_store.Close();
 }
 
 void CHostViewService::ReadIpTable()

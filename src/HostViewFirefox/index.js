@@ -29,103 +29,78 @@ const {Cc, Ci, Cu} = require("chrome");
 const dnsservice = Cc["@mozilla.org/network/dns-service;1"].createInstance(Ci.nsIDNSService);
 
 const self = require('sdk/self');
+const system = require('sdk/system');
 const tabs = require("sdk/tabs");
 const pageMod = require("sdk/page-mod");
 const URL = require("sdk/url").URL;
 
+// upload helper routines
 const upload = require("./lib/upload.js");
 
 // Caches for pages and tabs
 var pages = {};
 var tabcache = {};
 
-/* Cleanup req params from the URL. */
+/* Cleanup req path + params from the URL. */
 var stripUrl = function(url) {
 	var u = URL(url);
 	var obj = {
-		baseurl : u.protocol  + (u.hostname ? '//' + u.hostname : '')  + (u.port ? ':' + u.port : ''),
-        extension : (u.pathname.lastIndexOf('.') > 0 ? u.pathname.substr(u.pathname.lastIndexOf('.')+1) : undefined),
+		origin : u.protocol  + (u.hostname ? '//' + u.hostname : '')  + (u.port ? ':' + u.port : ''),
 		hostname : u.hostname,
-		ip : undefined,
-		port : (u.port ? u.port : (u.protocol.indexOf('https')>=0 ? 443 : 80))
+		protocol : u.protocol.replace(":",""),
+		port : (u.port ? u.port : (u.protocol.indexOf('https')>=0 ? 443 : 80)),
+        file_ext : (u.pathname.lastIndexOf('.') > 0 ? u.pathname.substr(u.pathname.lastIndexOf('.')+1) : undefined),
 	};
-
-	try {
-    	// this should be instant as the IP is cached by the browser        
-		var flags = Ci.nsIDNSService.RESOLVE_CANONICAL_NAME;
-        var r = dnsservice.resolve(obj.hostname, flags);
-        if (r.hasMore()) {
-            obj.ip = dnsservice.resolve(obj.hostname, flags).getNextAddrAsString();
-        }
-    } catch (e) {
-    }	
 	return obj;
 };
+
+var resolveIp = function(hostname) {	
+	var flags = Ci.nsIDNSService.RESOLVE_CANONICAL_NAME;	
+	try {
+    	// this should be instant as the IP is cached by the browser        
+        var r = dnsservice.resolve(hostname, flags);
+        if (r.hasMore()) {
+            return dnsservice.resolve(hostname, flags).getNextAddrAsString();
+        }
+    } catch (e) {
+    }		
+    return null;
+}
 
 // tab is active (current url goes foreground)
 function onActivate(tab) {
 	var p = pages[tab.id+'_'+tab.url];
 	if (p) {
-		p.events.push({ e : 'foreground', ts : new Date().getTime() });
-		upload.sendlocation(p.url.hostname);
+		upload.sendlocation(p.hostname);
 	}
 }
 
 // tab is deactive (current url goes background)
 function onDeactivate(tab) {
-	var p = pages[tab.id+'_'+tab.url];
-	if (p) {
-		p.events.push({ e : 'background', ts : new Date().getTime() });	
-	}
+	// TODO: do we need to signal on background events to hostview ?
 }
 
 // page loaded
 function onReady(tab) {
-	if (tabcache[tab.id] !== tab.url) {
-		// navigated to a new page -- store and remove the previous page
-		var p = pages[tab.id+'_'+tabcache[tab.id]];
-		if (p) {
-			// deactivate
-			p.events.push({ e : 'background', ts : new Date().getTime() });	
-			upload.sendjson(p);
-			delete pages[tab.id+'_'+tabcache[tab.id]];
-		}
-	}
-
 	tabcache[tab.id] = tab.url;
 
-	if (tab.url.indexOf('http')>=0) {
-		// track only http(s) url
-		console.log('ready and tracking ' + tab.url);
-		var ts = new Date();
-        var tzinfo = ts.toString().match(/([-\+][0-9]+)\s\(([A-Za-z\s].*)\)/);
-        if (!tzinfo)
-            tzinfo = ts.toString().match(/([-\+][0-9]+)/);
+	// resolve new location
+	var p = stripUrl(tab.url);	
+	if (p.hostname)
+		p.ip = resolveIp(p.hostname);
+	pages[tab.id+'_'+tab.url] = p;	
 
-		var	p = {
-			url : stripUrl(tab.url),
-            ts : ts.getTime(), // UTC timestamp
-            timezoneoffset : ts.getTimezoneOffset(),
-            timezonename : (tzinfo && tzinfo.length > 1 ? tzinfo[2] : null),
-			events : [{ e : 'foreground', ts : ts.getTime() }],
-			objects : []
-		}
-
-		pages[tab.id+'_'+tab.url] = p;	
-		upload.sendlocation(p.url.hostname);		
-	}
+	onActivate(tab);
 }
 
 // tab is closed (upload current url data)
 function onClose(tab) {
+	if (pages[tab.id+'_'+tab.url]) {
+		onDeactivate(tab);
+		delete pages[tab.id+'_'+tab.url];
+	}
+
 	if (tabcache[tab.id]) {
-		var p = pages[tab.id+'_'+tab.url];
-		if (p) {
-			// may be a duplicate background event
-			p.events.push({ e : 'background', ts : new Date().getTime() });	
-			upload.sendjson(p);
-			delete pages[tab.id+'_'+tab.url];
-		}
 		delete tabcache[tab.id];
 	}
 }
@@ -143,18 +118,38 @@ function onOpen(tab) {
 // page-mod to track objects on pages
 pageMod.PageMod({
 	include: ["*"],
-    contentScript: 'self.port.on("hostview", function() { setTimeout(function() { self.port.emit("hostview", window.performance.getEntries()); }, 1000); });',
-	contentScriptWhen: 'end',
+    contentScriptFile: self.data.url('contentscript.js'),
+	contentScriptWhen: 'end', // after the page has loaded
 	onAttach: function(worker) {
-		worker.port.on("hostview", function(entries) {
-			var p = pages[worker.tab.id+'_'+worker.tab.url];
-			if (!p) return;
-			for (var i = 0; i < entries.length; i++) {
-				let e = entries[i];
-				p.objects.push(stripUrl(e.name));
+		// request and handle pageload stats
+		worker.port.on("plt", function(obj) {
+			// cleanup all urls
+			obj.location = stripUrl(obj.location);
+			if (obj.location.hostname)
+				obj.location.ip = resolveIp(obj.location.hostname);
+
+			for (var i = 0; i < obj.restiming.length; i++) {
+				let e = obj.restiming[i];
+				e.name = stripUrl(e.name);
+				if (e.name.hostname)
+					e.ip = resolveIp(e.name.hostname);
 			}
+
+			// add some addon + browser metadata
+			obj.addon_version = self.version;
+			obj.system_platform = system.platform;
+			obj.system_platform_version = system.platform_version;
+			obj.system_architecture = system.architecture;
+			obj.system_name = system.name;
+			obj.system_version = system.version;
+			obj.system_vendor = system.vendor;
+
+			// upload with hostview
+			upload.sendjson(obj);
 		});
-		worker.port.emit("hostview");
+		worker.port.emit("getPageLoadStats");
+
+		// TODO: something similar for video qoe stats
 	}
 });
 

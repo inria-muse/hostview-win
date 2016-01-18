@@ -25,6 +25,7 @@
 #include "StdAfx.h"
 
 #include "trace.h"
+#include "product.h"
 #include "Store.h"
 #include "Settings.h"
 #include "Upload.h"
@@ -229,9 +230,46 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT)");
 
+	exec("CREATE TABLE IF NOT EXISTS session(timestamp INT8, event VARCHAR(32)");
+
+	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32), cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), hostview_version VARCHAR(32)");
+
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
 }
+
+void CStore::Insert(__int64 timestamp, SessionEvent e) {
+	char szStatement[1024] = { 0 };
+	switch (e) {
+	case Start:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"start\")", "session", timestamp);
+		break;
+	case Pause:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"pause\")", "session", timestamp);
+		break;
+	case Restart:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"restart\")", "session", timestamp);
+		break;
+	case Stop:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"stop\")", "session", timestamp);
+		break;
+	default:
+		return;
+	}
+
+	enqueue(szStatement);
+}
+
+void CStore::Insert(__int64 timestamp, SysInfo &info) {
+	char szStatement[8192] = { 0 };
+	sprintf_s(szStatement, "INSERT INTO %s(manufacturer, product, os, cpu, totalRAM, totalHDD, serial, hostview_version) \
+							VALUES(%llu, \"%S\", \"%S\", \"%S\", %llu, %llu, \"%S\", \"%S\")", 
+							"sysinfo", timestamp, info.manufacturer, info.productName, info.windowsName,
+							info.cpuName, info.totalRAM, info.totalDisk, info.hddSerial, ProductVersionStr);
+
+	enqueue(szStatement);
+}
+
 
 void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
 	const TCHAR *szMac, const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
