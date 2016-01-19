@@ -66,7 +66,6 @@ public:
 	// interfaces monitor
 	void OnInterfaceConnected(const NetworkInterface& networkInterface);
 	void OnInterfaceDisconnected(const NetworkInterface& networkInterface);
-	void OnInterfaceRestarted(const NetworkInterface& networkInterface);
 	void LogNetwork(const NetworkInterface &ni, __int64 timestamp, bool connected);
 
 	// wireless stats monitor
@@ -76,25 +75,16 @@ public:
 	void OnBatteryStats(byte status, byte percent);
 
 	// capture callback
-	void OnTCPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
-	void OnUDPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) {};
-	void OnIGMPPacket(char *szSrc, char *szDest, int size) {};
-	void OnICMPPacket(char *szSrc, char *szDest, int size) {};
-
-	// TODO: should these be moved?
 	void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 		char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength);
 	void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost);
-
-	void OnProcessPacketStart() { m_nTimestamp = GetTimestamp(); };
-	void OnProcessPacketEnd() {};
 
 	// COMM callback
 	Message OnMessage(Message &message);
 
 	// http_server callback
 	bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser);
-	bool OnJsonUpload(char *jsonbuf);
+	bool OnJsonUpload(const char *jsonbuf, size_t len);
 
 	// from CServiceBase
 	void OnStart(DWORD dwArgc, PWSTR *pszArgv);
@@ -116,6 +106,7 @@ private:
 	BOOL m_fIdle;
 	BOOL m_fFullScreen;
 
+	ULONGLONG m_startTime;
 	SysInfo m_sysInfo;
 	char szHdd[MAX_PATH] = { 0 };
 
@@ -137,7 +128,6 @@ private:
 	BOOL m_fUserStopped;
 	DWORD m_dwUserStoppedTime;
 
-	__int64 m_nTimestamp;
 	CSettings m_settings;
 	CStore m_store;
 

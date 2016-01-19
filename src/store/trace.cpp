@@ -26,7 +26,7 @@
 #include "trace.h"
 #include "Upload.h"
 
-__int64 GetHiResTimestamp()
+ULONGLONG GetHiResTimestamp()
 {
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
@@ -63,15 +63,15 @@ void Debug(char *szFormat, ...) {
 #ifdef _DEBUG
 	va_list vArgs;
 	va_start(vArgs, szFormat);
-	char szMessage[1024] = { 0 };
-	vsprintf_s(szMessage, szFormat, vArgs);
-	fprintf(stderr, "[%llu] [trace] %s\n", GetHiResTimestamp(), szMessage);
+	char szMessage[4096] = { 0 };
+	if (vsprintf_s(szMessage, 4096, szFormat, vArgs) > 0)
+		fprintf(stderr, "[%llu] [debug] %s\n", GetHiResTimestamp(), szMessage);
 	va_end(vArgs);
 #endif
 }
 
 void Trace(char *szFormat, ...) {
-	if (!szFormat || GetFileSize(LOGFILE) >= 2 * 1024 * 1024)
+	if (!szFormat || GetFileSize(LOGFILE) >= 5 * 1024 * 1024) // 5MB
 	{
 		MoveFileToSubmit(LOGFILE, true);
 	}
@@ -84,7 +84,7 @@ void Trace(char *szFormat, ...) {
 		va_list vArgs;
 		va_start(vArgs, szFormat);
 
-		vsprintf_s(szMessage, szFormat, vArgs);
+		vsprintf_s(szMessage, 1024, szFormat, vArgs);
 
 #ifdef _DEBUG
 		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);

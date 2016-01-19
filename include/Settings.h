@@ -35,7 +35,8 @@
 typedef std::hash_map<std::string, std::string> SettingsMap;
 
 // settings keys constats
-#define EndUser "enduser"
+
+#define AutoRestartTimeout "autoRestartTimeout"            // restart hostview after pause (ms)
 
 #define InterfaceMonitorTimeout "interfaceMonitorTimeout"  // check network interface status (ms)
 #define WirelessMonitorTimeout	"wirelessMonitorTimeout"   // check wireless status (ms)
@@ -46,14 +47,15 @@ typedef std::hash_map<std::string, std::string> SettingsMap;
 #define SocketStatsTimeout "socketStatsTimeout"            // check socket table (ms)             
 #define SystemStatsTimeout "systemStatsTimeout"            // check performance stats (ms)
 
-#define EsmCoinFlipInterval "esmCoinFlipInterval"    
-#define EsmCoinFlipMaximum "esmCoinFlipMaximum"
-#define EsmCoinFlipRange "esmCoinFlipRange"
-#define EsmMaxShows "esmMaxShows"
+#define EsmCoinFlipInterval "esmCoinFlipInterval"    // flip coin every x (ms)
+#define EsmCoinFlipProb "esmCoinFlipProb"            // coin flip success probability [0-100]
+#define EsmMaxShows "esmMaxShows"                    // max num of questionnaires per day
 
 #define PcapSizeLimit "pcapSizeLimit"             // max pcap filesize (bytes)
 #define DbSizeLimit "dbSizeLimit"                 // max db filesize (bytes)
 
+#define AutoSubmitRetryCount "autoSubmitRetryCount"
+#define AutoSubmitRetryInterval "autoSubmitRetryInterval" // (ms)
 #define AutoSubmitInterval "autoSubmitInterval"   // submit new data (ms)
 #define SubmitServer "submitServer"               // submit url
 #define UploadLowSpeedLimit "uploadLowSpeedLimit" // curl config (bytes/s)

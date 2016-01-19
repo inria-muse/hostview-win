@@ -95,7 +95,6 @@ DWORD CStore::ExecThread()
 		std::vector<std::string> newinserts = dequeue();
 		for (size_t i = 0; i < newinserts.size(); i ++)
 		{
-			Debug("[store] write %s\n", newinserts[i].c_str());
 			exec(newinserts[i].c_str());
 		}
 
@@ -109,14 +108,20 @@ DWORD CStore::ExecThread()
 			HANDLE hFind = FindFirstFileA(STORE_FILE, &data);
 			if (hFind != INVALID_HANDLE_VALUE)
 			{
-				__int64 fileSize = data.nFileSizeLow | (__int64)data.nFileSizeHigh << 32;
+				ULARGE_INTEGER sz;
+				sz.LowPart = data.nFileSizeLow;
+				sz.HighPart = data.nFileSizeHigh;
 				FindClose(hFind);
 
-				if (fileSize >= dbSizeLimit)
+				if (sz.QuadPart >= dbSizeLimit)
 				{
-					// reset the db file
+					// rotate
+					ULONGLONG ts = GetHiResTimestamp();
+					Insert(ts, SessionEvent::Rotated);
 					closeDbFile();
+
 					openDbFile();
+					Insert(ts, SessionEvent::Rotated);
 				}
 			}
 		}
@@ -170,17 +175,18 @@ void CStore::Close()
 
 bool CStore::openDbFile()
 {
+	// make sure there's not old stats db file running around
+	MoveFileToSubmit(STORE_FILE, true);
+
 	if (sqlite3_open_v2(STORE_FILE, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
 	{
 		seterror(sqlite3_errmsg(db));
 		return false;
 	}
-	else
-	{
-		seterror("Success");
-		InitTables();
-		return true;
-	}
+
+	seterror("Success");
+	InitTables();
+	return true;
 }
 
 void CStore::closeDbFile()
@@ -189,8 +195,9 @@ void CStore::closeDbFile()
 	{
 		sqlite3_close(db);
 		db = NULL;
-		MoveFileToSubmit(STORE_FILE, true);
 	}
+
+	MoveFileToSubmit(STORE_FILE, true);
 }
 
 void CStore::InitTables()
@@ -230,9 +237,9 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT)");
 
-	exec("CREATE TABLE IF NOT EXISTS session(timestamp INT8, event VARCHAR(32)");
+	exec("CREATE TABLE IF NOT EXISTS session(timestamp INT8, event VARCHAR(32))");
 
-	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32), cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), hostview_version VARCHAR(32)");
+	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32), cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), version VARCHAR(32))");
 
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
@@ -241,16 +248,19 @@ void CStore::InitTables()
 void CStore::Insert(__int64 timestamp, SessionEvent e) {
 	char szStatement[1024] = { 0 };
 	switch (e) {
-	case Start:
+	case SessionEvent::Start:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"start\")", "session", timestamp);
 		break;
-	case Pause:
+	case SessionEvent::Pause:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"pause\")", "session", timestamp);
 		break;
-	case Restart:
+	case SessionEvent::Restart:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"restart\")", "session", timestamp);
 		break;
-	case Stop:
+	case SessionEvent::Rotated:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"rotated\")", "session", timestamp);
+		break;
+	case SessionEvent::Stop:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"stop\")", "session", timestamp);
 		break;
 	default:
@@ -262,14 +272,14 @@ void CStore::Insert(__int64 timestamp, SessionEvent e) {
 
 void CStore::Insert(__int64 timestamp, SysInfo &info) {
 	char szStatement[8192] = { 0 };
-	sprintf_s(szStatement, "INSERT INTO %s(manufacturer, product, os, cpu, totalRAM, totalHDD, serial, hostview_version) \
-							VALUES(%llu, \"%S\", \"%S\", \"%S\", %llu, %llu, \"%S\", \"%S\")", 
+
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, manufacturer, product, os, cpu, totalRAM, totalHDD, serial, version) \
+							VALUES(%llu, \"%S\", \"%S\", \"%S\", \"%S\", %llu, %llu, \"%S\", \"%s\")", 
 							"sysinfo", timestamp, info.manufacturer, info.productName, info.windowsName,
 							info.cpuName, info.totalRAM, info.totalDisk, info.hddSerial, ProductVersionStr);
 
 	enqueue(szStatement);
 }
-
 
 void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
 	const TCHAR *szMac, const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
@@ -279,17 +289,16 @@ void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR
 	char szStatement[8192] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(name, friendlyname, description, dnssuffix, mac, ips, gateways, dnses, tspeed, rspeed, wireless, profile, \
 		 ssid, bssid, bssidtype, phytype, phyindex, channel, rssi, signal, connected, timestamp) VALUES(\"%s\", \"%S\", \"%S\", \"%S\", \"%S\", \
-		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %ld, %lu, %d, %llu)", "connectivity", szName,
-		 szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, wireless ? 1 : 0, szProfile,
-		 szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, rssi, signal, connected ? 1 : 0, timestamp);
+		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %ld, %lu, %d, %llu)", 
+		"connectivity", szName, szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, 
+		 wireless ? 1 : 0, szProfile, szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, rssi, signal, connected ? 1 : 0, timestamp);
 
 	enqueue(szStatement);
 }
 
 void CStore::Insert(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp)
 {
-	char szStatement[8192] = {0};
-
+	char szStatement[4096] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(guid, tspeed, rspeed, signal, rssi, state, timestamp) VALUES(\"%S\", %llu, %llu, %d, %d, %d, %llu)",
 		"wifistats", szGuid, tSpeed, rSpeed, signal, rssi, state, timestamp);
 
@@ -298,7 +307,7 @@ void CStore::Insert(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int
 
 void CStore::Insert(unsigned char status, unsigned char percent, __int64 timestamp)
 {
-	char szStatement[8192] = {0};
+	char szStatement[4096] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(status, percent, timestamp) VALUES(%d, %d, %llu)", "battery", status, percent, timestamp);
 
 	enqueue(szStatement);
@@ -316,7 +325,6 @@ void CStore::Insert(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescripti
 void CStore::Insert(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
-
 	sprintf_s(szStatement, "INSERT INTO %s(device, pid, name, timestamp) VALUES(%d, %d, \"%S\", %llu)",
 		"io", device, dwPid, szApp, timestamp);
 
@@ -345,7 +353,7 @@ void CStore::Insert(DWORD pid, char *name, int memory, double cpu, __int64 times
 void CStore::Insert(char *szVerb, char *szVerbParam, char *szStatusCode, char *szHost, char *szReferer, char *szContentType,
 	char *szContentLength, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp)
 {
-	char szStatement[4096] = {0};
+	char szStatement[65536] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(httpverb, httpverbparam, httpstatuscode, httphost, referer, contenttype, contentlength, \
 						   protocol, srcip, destip, srcport, destport, timestamp) VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \
 						   \"%s\", %d, \"%s\", \"%s\", %d, %d, %llu)", "http", szVerb, szVerbParam, szStatusCode, szHost, szReferer,
@@ -368,33 +376,35 @@ void CStore::Insert(const char *szIp, const char *szRDNS, const char *szAsNumber
 	const char *szLat, const char *szLon, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
-
 	sprintf_s(szStatement, "INSERT INTO %s(ip, rdns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
 						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
 						   szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
 
-	exec(szStatement);
+	enqueue(szStatement);
 }
 
 
-void CStore::Insert(const char *szJson, __int64 timestamp)
+void CStore::Insert(__int64 timestamp, const char *szJson, size_t len)
 {
-	// FIXME: allocate dynamically based on the actual size of the object ?
-	char szStatement[65536] = { 0 };
+	// FIXME: this is ugly ..
+	char szStatement[1048576] = { 0 };
+
+	// make sure we do not overflow the buffer ... 
+	if (len > sizeof(szStatement) - 32)
+		return;
 
 	sprintf_s(szStatement, "INSERT INTO %s(obj, timestamp) VALUES(\"%s\", %llu)", "jsonobj", szJson, timestamp);
 
-	exec(szStatement);
+	enqueue(szStatement);
 }
 
 void CStore::Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp)
 {
 	char szStatement[4096] = { 0 };
-
 	sprintf_s(szStatement, "INSERT INTO %s(browser, location, timestamp) VALUES(\"%S\", \"%S\", %llu)", 
 		"browseractivity", szBrowser, szLocation, timestamp);
 
-	exec(szStatement);
+	enqueue(szStatement);
 }
 
 const char* CStore::error()

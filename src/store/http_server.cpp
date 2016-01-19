@@ -28,6 +28,7 @@
 
 #include "http_server.h"
 #include "http_parser.h"
+#include "trace.h"
 #include "product.h"
 
 HANDLE hSrvThread = NULL;
@@ -115,14 +116,12 @@ void extract_body_params(char *szBuffer, ParamsT &params)
 
 int url_data_cb(http_parser *parser, const char *at, size_t len) {
 	http_data_t *d = (http_data_t*)parser->data;
-	fprintf(stderr, "[SRV] url data=%d offset=%d\n", len, d->url_len);
 	d->url_len = strlncat(d->url, d->url_len, MAX_PATH, at, len);
 	return 0;
 }
 
 int body_data_cb(http_parser *parser, const char *at, size_t len) {
 	http_data_t *d = (http_data_t*)parser->data;
-	fprintf(stderr, "[SRV] body data=%d offset=%d\n", len, d->body_len);
 	d->body_len = strlncat(d->body, d->body_len, HTTPSERVER_DEFAULT_BUFLEN, at, len);
 	return 0;
 }
@@ -132,15 +131,10 @@ int message_complete_cb(http_parser *parser) {
 	char req_path[MAX_PATH] = {0};
 
 	http_data_t *d = (http_data_t*)parser->data;
-
-	fprintf(stderr, "[SRV] message complete %s!\n", d->url);
-
 	if (strcmp("/upload", d->url) == 0) {
 		// browser posting json data to be submitted
-		fprintf(stderr, "[SRV] json upload %s\n", d->body);
-		if (d->body_len > 0) {
-			d->pCallback->OnJsonUpload(d->body);
-		}
+		Debug("[SRV] received json obj of %llu bytes\n", d->body_len);
+		d->pCallback->OnJsonUpload(d->body, d->body_len);
 		send_http_ok(d->s);
 	}
 	else if (strcmp("/locupdate", d->url) == 0) {

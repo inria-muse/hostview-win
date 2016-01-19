@@ -147,7 +147,7 @@ pageMod.PageMod({
 			// upload with hostview
 			upload.sendjson(obj);
 		});
-		worker.port.emit("getPageLoadStats");
+		worker.port.emit("getPlt");
 
 		// TODO: something similar for video qoe stats
 	}

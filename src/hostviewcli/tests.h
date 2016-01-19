@@ -57,7 +57,7 @@ void printSockets(void)
 	printf("%10s%7s%20s%41s%7s%41s%7s%7s\r\n", "protocol", "pid", "name", "srcip", "port", "destip", "port", "state");
 
 	IpTable *table = GetIpTable();
-	__int64 timestamp = GetTimestamp();
+	__int64 timestamp = GetHiResTimestamp();
 
 	const char * udp = "UDP";
 	const char * tcp = "TCP";
@@ -76,7 +76,7 @@ void printSockets(void)
 void printProcs(void)
 {
 	PerfTable *table = GetPerfTable();
-	__int64 timestamp = GetTimestamp();
+	__int64 timestamp = GetHiResTimestamp();
 
 	printf("%7s%30s%10s%10s\r\n", "PID", "Image name", "Memory", "CPU");
 
@@ -148,19 +148,14 @@ class CNetCallback : public CInterfacesCallback
 public:
 	virtual void OnInterfaceConnected(const NetworkInterface &networkInterface)
 	{
-		__int64 timestamp = GetTimestamp();
+		__int64 timestamp = GetHiResTimestamp();
 		LogNetwork(networkInterface, timestamp, true);
 	}
 
 	virtual void OnInterfaceDisconnected(const NetworkInterface &networkInterface)
 	{
-		__int64 timestamp = GetTimestamp();
+		__int64 timestamp = GetHiResTimestamp();
 		LogNetwork(networkInterface, timestamp, false);
-	}
-
-	virtual void OnInterfaceRestarted(const NetworkInterface &networkInterface)
-	{
-		// handles pcap rotation
 	}
 
 } netCallback;
@@ -343,7 +338,7 @@ public:
 		return true;
 	}
 
-	bool OnJsonUpload(char *jsonbuf) {
+	bool OnJsonUpload(const char *jsonbuf, size_t len) {
 		DWORD dwTick = GetTickCount();
 
 		printf("%d\r\n", dwTick);
@@ -351,9 +346,8 @@ public:
 		printf("\r\n");
 
 		return true;
+	}} srvCallback;
 
-	}
-} srvCallback;
 
 void testTcpComm()
 {

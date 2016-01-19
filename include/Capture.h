@@ -25,12 +25,15 @@
 
 #define HAVE_REMOTE
 
+#include <winnt.h>
 #include <winsock2.h>
 
 #include <vector>
 #include <map>
 #include <set>
 #include <string>
+
+#include <pcap/pcap.h>
 
 #if defined(PCAPLIBRARY_EXPORT) // inside DLL
 #   define PCAPAPI   __declspec(dllexport)
@@ -47,6 +50,7 @@
 #endif
 
 #define DATA_DIRECTORY ".\\data"
+#define DATA_DIRECTORY_GLOB ".\\data\\*.*"
 
 /**
  *	Callback Interface.
@@ -56,26 +60,45 @@ class PCAPAPI CCaptureCallback
 {
 public:
 	virtual ~CCaptureCallback() {};
-	virtual void OnTCPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) = 0;
-	virtual void OnUDPPacket(char *szSrc, u_short srcport, char *szDest, u_short destport, int size) = 0;
-	virtual void OnIGMPPacket(char *szSrc, char *szDest, int size) = 0;
-	virtual void OnICMPPacket(char *szSrc, char *szDest, int size) = 0;
 
-	// TODO: should these be moved?
 	virtual void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 		char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength) = 0;
 	virtual void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost) = 0;
-
-	virtual void OnProcessPacketStart() = 0;
-	virtual void OnProcessPacketEnd() = 0;
 };
 
-extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const char *source = "interactive");
-extern "C" PCAPAPI bool StopCapture(const char *source = "interactive");
-extern "C" PCAPAPI bool IsCaptureRunning(const char *source = "interactive");
-extern "C" PCAPAPI const char* GetCaptureFile(const char *source = "interactive");
+extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 session, __int64 timestamp, const char *adapterId = "interactive");
+extern "C" PCAPAPI bool StopCapture(const char *adapterId = "interactive");
+extern "C" PCAPAPI bool IsCaptureRunning(const char *adapterId = "interactive");
+extern "C" PCAPAPI bool RotateCaptureFile(const char *adapterId = "interactive");
+extern "C" PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId = "interactive");
 
 extern "C" PCAPAPI bool StopAllCaptures();
+
+extern "C" PCAPAPI bool CleanAllCaptureFiles();
+
+/** On-going capture meta-data. */
+struct Capture {
+	ULONGLONG session;
+	ULONGLONG connection;
+	UINT number;
+	void *thread;
+	pcap_t *pcap;
+	pcap_dumper_t *dumper;
+	char capture_file[MAX_PATH];
+	CCaptureCallback *cb;
+
+	// dummy default constuctor
+	Capture() :
+		session(0),
+		connection(0),
+		number(0),
+		thread(NULL),
+		pcap(NULL),
+		dumper(NULL),
+		cb(NULL)
+	{
+	}
+};
 
 /**
  * NetInterf with custom details.
@@ -156,7 +179,6 @@ class CInterfacesCallback
 public:
 	virtual void OnInterfaceConnected(const NetworkInterface& networkInterface) = 0;
 	virtual void OnInterfaceDisconnected(const NetworkInterface& networkInterface) = 0;
-	virtual void OnInterfaceRestarted(const NetworkInterface& networkInterface) = 0;
 };
 
 extern "C" PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit, unsigned long interfaceMonitorTimeout);

@@ -416,21 +416,10 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 				// check files sizes;
 				for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin(); it != previousInterfaces.end(); it ++)
 				{
-					const char * szCaptureFile = GetCaptureFile(it->strName.c_str());
-					if (szCaptureFile)
+					const char *adapterId = it->strName.c_str();
+					if (GetCaptureFileSize(adapterId) >= g_pcapSizeLimit)
 					{
-						WIN32_FIND_DATAA data;
-						HANDLE hFind = FindFirstFileA(szCaptureFile, &data);
-						if (hFind != INVALID_HANDLE_VALUE)
-						{
-							__int64 fileSize = data.nFileSizeLow | (__int64)data.nFileSizeHigh << 32;
-							FindClose(hFind);
-
-							if (fileSize >= g_pcapSizeLimit)
-							{
-								pCallback->OnInterfaceRestarted(*it);
-							}
-						}
+						RotateCaptureFile(adapterId);
 					}
 				}
 			}

@@ -29,7 +29,11 @@
 #include "Upload.h"
 #include "iphdr.h"
 
-#include <pcap/pcap.h>
+ // currently tracked adapters
+std::set<std::string> adapterIds;
+
+// adapterId -> capture data
+std::map<std::string, struct Capture> captures;
 
 const char * inet_ntop2(int af, const void *src, char *dst, int cnt)
 {
@@ -291,14 +295,8 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 	return false;
 }
 
+// implemented in http.cpp
 extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback);
-
-std::map<std::string, HANDLE> threads;
-std::map<std::string, pcap_t *> sources;
-std::map<std::string, pcap_dumper_t*> files;
-std::map<std::string, CCaptureCallback *> callbacks;
-std::map<std::string, std::string> fnames;
-std::set<std::string> adapterIds;
 
 void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
@@ -310,9 +308,8 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 		// not worth processing
 		return;
 	}
-	CCaptureCallback &callback = *callbacks[(char *) p];
 
-	callback.OnProcessPacketStart();
+	struct Capture cap = captures[(char *)p];
 
 	char szSrc[MAX_PATH] = {0}, szDest[MAX_PATH] = {0};
 	int nProtocol = 0;
@@ -365,13 +362,12 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 			u_short dp = ntohs(pTCP->dest_port);
 
 			nCapLength += max(pTCP->data_offset * 4, sizeof(TCP_HDR));
-			callback.OnTCPPacket(szSrc, sp, szDest, dp, header->caplen);
 
 			// HTTP parsing
-			parseHTTP(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), header->caplen - nCapLength, callback);
+			parseHTTP(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), header->caplen - nCapLength, *cap.cb);
 
 			// DNS parsing
-			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), callback))
+			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb))
 			{
 				// include whole dns
 				nCapLength = header->caplen;
@@ -385,10 +381,9 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 			u_short dp = ntohs(pUDP->dst_portno);
 
 			nCapLength += sizeof(UDP_HDR);
-			callback.OnUDPPacket(szSrc, sp, szDest, dp, header->caplen);
 
 			// DNS parsing
-			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), callback))
+			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb))
 			{
 				// include whole dns
 				nCapLength = header->caplen;
@@ -398,66 +393,61 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	case IPPROTO_IGMP:
 		{
 			nCapLength = header->caplen;
-			callback.OnIGMPPacket(szSrc, szDest, header->caplen);
 		}
 		break;
 	case IPPROTO_ICMP:
 		{
 			nCapLength = header->caplen;
-			callback.OnICMPPacket(szSrc, szDest, header->caplen);
 		}
 		break;
 	case IPPROTO_ICMPV6:
 		{
 			nCapLength = header->caplen;
-			callback.OnICMPPacket(szSrc, szDest, header->caplen);
 		}
 		break;
 	}
 
+	// reset the capture length
 	((struct pcap_pkthdr *)header)->caplen = nCapLength;
 
-	pcap_dump((u_char *) files[(char *) p], header, pkt_data);
-
-	callback.OnProcessPacketEnd();
+	// dump to the pcap file
+	pcap_dump((u_char *)cap.dumper, header, pkt_data);
 }
 
 DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 {
-	pcap_t *source = sources[(char *) lpParameter];
-	return pcap_loop(source, 0, OnPacketCallback, (unsigned char *) lpParameter);
+	struct Capture cap = captures[(char *)lpParameter];
+	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
 }
 
-PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const char *adapterId)
+PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 session, __int64 timestamp, const char *adapterId)
 {
 	// ensure directory
 	if (!PathFileExistsA(DATA_DIRECTORY)) {
 		CreateDirectoryA(DATA_DIRECTORY, NULL);
 	}
 
-	HANDLE hCaptureThread = threads[adapterId];
-	if (!hCaptureThread)
+	struct Capture cap = captures[adapterId];
+	if (cap.thread == NULL)
 	{
-		pcap_t *source = GetLiveSource(adapterId);
-		if (source)
+		cap.session = session;
+		cap.connection = timestamp;
+		cap.number = 0;
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%s_%d.pcap", DATA_DIRECTORY, cap.session, cap.connection, adapterId, cap.number);
+
+		cap.pcap = GetLiveSource(adapterId);
+		if (cap.pcap)
 		{
-			sources[adapterId] = source;
-
-			char szFilename[MAX_PATH] = {0};
-			sprintf_s(szFilename, "%s\\%llu_%s.pcap", DATA_DIRECTORY, timestamp, adapterId);
-			fnames[adapterId] = szFilename;
-
-			pcap_dumper_t *dumpfile = pcap_dump_open(source, szFilename);
-			if (dumpfile)
+			cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
+			if (cap.dumper)
 			{
-				files[adapterId] = dumpfile;
-				callbacks[adapterId] = &callback;
+				cap.cb = &callback;
 
-				// make sure he'll live
+				captures[adapterId] = cap;
 				adapterIds.insert(adapterId);
-				hCaptureThread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID) adapterIds.find(adapterId)->c_str(), NULL, NULL);
 
-				threads[adapterId] = hCaptureThread;
+				cap.thread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID) adapterIds.find(adapterId)->c_str(), NULL, NULL);
+
 				return true;
 			}
 		}
@@ -467,39 +457,59 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 timestamp, const c
 
 PCAPAPI bool StopCapture(const char *adapterId)
 {
-	pcap_t *source = sources[adapterId];
-	HANDLE hCaptureThread = threads[adapterId];
-	pcap_dumper_t * dumpfile = files[adapterId];
-
-	if (source != NULL)
+	struct Capture cap = captures[adapterId];
+	if (cap.pcap != NULL)
 	{
-		pcap_breakloop(source);
-		if (hCaptureThread != NULL)
+		pcap_breakloop(cap.pcap);
+
+		if (cap.thread != NULL)
 		{
-			WaitForSingleObject(hCaptureThread, INFINITE);
-			CloseHandle(hCaptureThread);
-			hCaptureThread = NULL;
-			threads.erase(adapterId);
+			WaitForSingleObject(cap.thread, INFINITE);
+			CloseHandle(cap.thread);
+			cap.thread = NULL;
 		}
-		pcap_close(source);
-		source = NULL;
-		sources.erase(adapterId);
 
-		if (dumpfile)
+		pcap_close(cap.pcap);
+		cap.pcap = NULL;
+
+		if (cap.dumper)
 		{
-			pcap_dump_close(dumpfile);
-			dumpfile = NULL;
-
-			// move pcap to upload folder
-			MoveFileToSubmit(fnames[adapterId].c_str(), false);
-
-			fnames.erase(adapterId);
-			files.erase(adapterId);
-			callbacks.erase(adapterId);
-			return true;
+			pcap_dump_close(cap.dumper);
+			cap.dumper = NULL;
 		}
+
+		// move pcap to upload folder
+		MoveFileToSubmit(cap.capture_file, false);
+
+		captures.erase(adapterId);
+		return true;
 	}
+
 	return false;
+}
+
+PCAPAPI bool CleanAllCaptureFiles() {
+	char szFilename[MAX_PATH] = { 0 };
+
+	WIN32_FIND_DATAA wfd;
+	HANDLE hFind = FindFirstFileA(DATA_DIRECTORY_GLOB, &wfd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.')
+			{
+				// just ignore . & ..
+				continue;
+			}
+
+			sprintf_s(szFilename, "%s\\%s", DATA_DIRECTORY, wfd.cFileName);
+			MoveFileToSubmit(szFilename, false);
+
+		} while (FindNextFileA(hFind, &wfd));
+		FindClose(hFind);
+	}
+	return true;
 }
 
 PCAPAPI bool StopAllCaptures()
@@ -516,17 +526,66 @@ PCAPAPI bool StopAllCaptures()
 
 PCAPAPI bool IsCaptureRunning(const char *adapterId)
 {
-	pcap_t *source = sources[adapterId];
-	HANDLE hCaptureThread = threads[adapterId];
-	pcap_dumper_t * dumpfile = files[adapterId];
-
-	return hCaptureThread != NULL
-		&& source != NULL
-		&& dumpfile != NULL;
+	struct Capture cap = captures[adapterId];
+	return cap.thread != NULL
+		&& cap.pcap != NULL
+		&& cap.dumper != NULL;
 }
 
-PCAPAPI const char* GetCaptureFile(const char *source)
-{
-	return fnames[source].c_str();
+PCAPAPI bool RotateCaptureFile(const char *adapterId) {
+	struct Capture cap = captures[adapterId];
+	if (cap.pcap != NULL)
+	{
+		pcap_breakloop(cap.pcap);
+		if (cap.thread != NULL)
+		{
+			WaitForSingleObject(cap.thread, INFINITE);
+			CloseHandle(cap.thread);
+			cap.thread = NULL;
+		}
+
+		pcap_close(cap.pcap);
+		cap.pcap = NULL;
+
+		if (cap.dumper)
+		{
+			pcap_dump_close(cap.dumper);
+			cap.dumper = NULL;
+		}
+
+		// move pcap to upload folder
+		MoveFileToSubmit(cap.capture_file, false);
+
+		// restart
+		cap.number++;
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%s_%d.pcap", DATA_DIRECTORY, cap.session, cap.connection, adapterId, cap.number);
+
+		cap.pcap = GetLiveSource(adapterId);
+		if (cap.pcap)
+		{
+			cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
+			if (cap.dumper)
+			{
+				cap.thread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID)adapterIds.find(adapterId)->c_str(), NULL, NULL);
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
+PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId) {
+	ULONGLONG res = 0;
+	WIN32_FIND_DATAA data;
+	struct Capture cap = captures[adapterId];
+	HANDLE hFind = FindFirstFileA(cap.capture_file, &data);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		ULARGE_INTEGER sz;
+		sz.LowPart = data.nFileSizeLow;
+		sz.HighPart = data.nFileSizeHigh;
+		res = sz.QuadPart;
+		FindClose(hFind);
+	}
+	return res;
+}

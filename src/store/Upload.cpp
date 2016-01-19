@@ -163,7 +163,6 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 
 bool MoveFileToSubmit(const char *file, bool renameWithTs) {
 	if (!PathFileExistsA(file)) {
-		fprintf(stderr, "[upload] no such file %s\n", file);
 		return false;
 	}
 

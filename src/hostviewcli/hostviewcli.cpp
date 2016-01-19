@@ -57,7 +57,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	CreatePublicFolder(_T("tags"));
 	CreatePublicFolder(TEMP_PATH);
 
-	Trace("Program started.");
+	Trace("Hostviewcli started.");
 
 	if ((argc > 1) && ((*argv[1] == L'-' || (*argv[1] == L'/'))))
 	{
@@ -69,21 +69,29 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
-			Trace("Last submit. Uninstalling.");
-			Trace(0);
+			// shutdown and uninstall service
+			UninstallService(SERVICE_NAME);
+			Trace("Service uninstalled.");
 
 			SysInfo info;
 			QuerySystemInfo(info);
-
 			char szHdd[MAX_PATH] = { 0 };
 			sprintf_s(szHdd, "%S", info.hddSerial);
 
-			DoSubmit(szHdd);
+			Trace("Last submit.");
+			Trace(0); // moves the logfile to submit
 
-			UninstallService(SERVICE_NAME);
+			// double make sure all data is in the submit folder
+			CleanAllCaptureFiles();
+			MoveFileToSubmit(STORE_FILE, true);
+			MoveFileToSubmit(LOGFILE, true);
+
+			// final submit
+			DoSubmit(szHdd);
 		}
 		else if (!_tcsicmp(L"debug", argv[1] + 1))
 		{
+			// run service on the foreground and stop on key stroke
 			CHostViewService service(SERVICE_NAME);
 			service.OnStart(NULL, NULL);
 			fprintf(stderr, "hostview service started\n");
@@ -95,7 +103,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"test", argv[1] + 1))
 		{
-			// TODO: some other tests
 			if (!_tcsicmp(L"download", argv[2]))
 				testDownload();
 			if (!_tcsicmp(L"comm", argv[2]))
@@ -116,20 +123,22 @@ int _tmain(int argc, _TCHAR* argv[])
 				printSysinfo();
 		}
 		else {
-			printf("./hostviewcli.exe - run the hostview service.\n");
+			printf("./hostviewcli.exe \t- run the hostview service.\n\n");
 			printf("Parameters (optional):\n");
-			printf(" /install  - to install the service.\n");
-			printf(" /remove   - to remove the service.\n");
-			printf(" /debug    - to start the service for debugging.\n");
-			printf(" /test <test> - to run a selected test.\n");
+			printf("\t/install \t- to install the service.\n");
+			printf("\t/remove \t- to remove the service.\n");
+			printf("\t/debug \t- to start the service for debugging.\n");
+			printf("\t/test <test> \t- to run a selected test.\n");
 		}
 	}
 	else
 	{
+		// Default is to run the installed service
+		Trace("Hostviewcli run service.");
 		CHostViewService service(SERVICE_NAME);
 		if (!CServiceBase::Run(service))
 		{
-			printf("Service failed to run w/err %d\n", GetLastError());
+			fprintf(stderr, "Service failed to run w/err %d\n", GetLastError());
 		}
 	}
 
@@ -139,7 +148,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	_CrtDumpMemoryLeaks();
 #endif
 
-	Trace("Program stopped.");
+	Trace("Hostviewcli stopped.");
 	return 0;
 }
 

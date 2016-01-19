@@ -146,37 +146,45 @@ bool CSettings::load()
 	mDefSettings.clear();
 
 	// default hardcoded settings
-	mDefSettings[EndUser] = "notset";
+	mDefSettings[AutoRestartTimeout] = "1800000"; // 30min
+
 	mDefSettings[InterfaceMonitorTimeout] = "250";
-	mDefSettings[WirelessMonitorTimeout] = "60000";
-	mDefSettings[AutoUpdateInterval] = "1800000";
 	mDefSettings[UserMonitorTimeout] = "1000";
 	mDefSettings[IoTimeout] = "1000";
 	mDefSettings[UserIdleTimeout] = "5000";
+	mDefSettings[BatteryMonitorTimeout] = "15000";
+	mDefSettings[WirelessMonitorTimeout] = "60000";
 	mDefSettings[SocketStatsTimeout] = "60000";
 	mDefSettings[SystemStatsTimeout] = "60000";
-	mDefSettings[PcapSizeLimit] = "5242880";
-	mDefSettings[DbSizeLimit] = "5242880";
-	mDefSettings[BatteryMonitorTimeout] = "15000";
-	mDefSettings[EsmCoinFlipInterval] = "60000";
-	mDefSettings[EsmCoinFlipMaximum] = "100";
-	mDefSettings[EsmCoinFlipRange] = "1";
+	mDefSettings[PcapSizeLimit] = "26214400";  // 10MB
+	mDefSettings[DbSizeLimit] = "26214400";    // 10MB
+
+	mDefSettings[NetLabellingActive] = "1";
+	mDefSettings[QuestionnaireActive] = "1";
+
+	mDefSettings[EsmCoinFlipInterval] = "3600000";
+	mDefSettings[EsmCoinFlipProb] = "10";
 	mDefSettings[EsmMaxShows] = "3";
+
 	mDefSettings[UploadLowSpeedLimit] = "32000"; // bytes/s
 	mDefSettings[UploadLowSpeedTime] = "5";  // seconds
-#ifndef _DEBUG
-	mDefSettings[AutoSubmitInterval] = "1800000";
+
+	mDefSettings[AutoSubmitRetryCount] = "3";
+	mDefSettings[AutoSubmitRetryInterval] = "5000"; // 5s
+	mDefSettings[AutoSubmitInterval] = "1800000";   // 30min
 	mDefSettings[SubmitServer] = "https://muse.inria.fr/hostview";
+
+	mDefSettings[AutoUpdateInterval] = "43200000"; // twice a day
 	mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview/latest/";
-	mDefSettings[QuestionnaireActive] = "1";
-	mDefSettings[NetLabellingActive] = "1";
-#else
-	mDefSettings[AutoSubmitInterval] = "120000"; // ms
-	mDefSettings[SubmitServer] = "http://localhost:3000";
-	mDefSettings[UpdateLocation] = "http://foobar";
+
+#ifdef _DEBUG
 	mDefSettings[QuestionnaireActive] = "0";
 	mDefSettings[NetLabellingActive] = "0";
-	mDefSettings[EndUser] = "testuser";
+	mDefSettings[AutoSubmitRetryCount] = "2";
+	mDefSettings[AutoSubmitRetryInterval] = "1000"; // 1s
+	mDefSettings[AutoSubmitInterval] = "120000";    // 2min
+	mDefSettings[SubmitServer] = "http://localhost:3000";
+	mDefSettings[UpdateLocation] = "http://foobar";
 #endif
 
 	FILE *f = NULL;
@@ -212,6 +220,7 @@ bool CSettings::load()
 		}
 		fclose(f);
 
+		/**
 		HKEY hKey = 0;
 		RegCreateKey(HKEY_LOCAL_MACHINE, HOSTVIEW_REG, &hKey);
 
@@ -225,6 +234,7 @@ bool CSettings::load()
 		}
 
 		RegCloseKey(hKey);
+		*/
 		return true;
 	}
 

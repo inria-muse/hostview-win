@@ -52,6 +52,7 @@ enum SessionEvent {
 	Start = 0,
 	Pause,
 	Restart,
+	Rotated,
 	Stop
 };
 
@@ -105,11 +106,11 @@ public:
 	void Insert(const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
 		const char *szLat, const char *szLon, __int64 timestamp);
 
-	// insert JSON object
-	void Insert(const char *szJson, __int64 timestamp);
-
 	// insert browser activity log
 	void Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
+
+	// insert JSON object
+	void Insert(__int64 timestamp, const char *szJson, size_t len);
 
 	// insert session event
 	void Insert(__int64 timestamp, SessionEvent e);
@@ -124,6 +125,9 @@ private:
 	char szError[MAX_PATH];
 	const char* error();
 	void seterror(const char *error);
+
+	ULONGLONG session;
+	unsigned int number;
 
 	bool openDbFile();
 	void closeDbFile();

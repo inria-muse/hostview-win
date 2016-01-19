@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 MUSE / Inria
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,3 @@
  * THE SOFTWARE.
  **/
 #include "stdafx.h"
-
-__int64 GetTimestamp()
-{
-	FILETIME ft;
-	GetSystemTimeAsFileTime(&ft);
-
-	ULARGE_INTEGER epoch;
-	epoch.LowPart  = 0xD53E8000;
-	epoch.HighPart = 0x019DB1DE;
-
-	ULARGE_INTEGER ts;
-	ts.LowPart  = ft.dwLowDateTime;
-	ts.HighPart = ft.dwHighDateTime;
-	ts.QuadPart -= epoch.QuadPart;
-
-	return ts.QuadPart / 10000;
-}

@@ -45,5 +45,3 @@
 #else
 #define tstring string
 #endif
-
-__int64 GetTimestamp();

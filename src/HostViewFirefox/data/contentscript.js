@@ -5,7 +5,7 @@
 /* Get timezone name from a date object. */
 function gettzname(ts) {
 	if (!ts) return null;
-	
+
     var tzinfo = ts.toString().match(/([-\+][0-9]+)\s\(([A-Za-z\s].*)\)/);
     if (!tzinfo)
         tzinfo = ts.toString().match(/([-\+][0-9]+)/);
@@ -13,7 +13,7 @@ function gettzname(ts) {
 }
 
 /** Get pageload stats. */
-self.port.on("getPageloadStats", function() { 
+self.port.on("getPlt", function() { 
 	setTimeout(function() { 
 		var ts = new Date();
 		self.port.emit("plt", {

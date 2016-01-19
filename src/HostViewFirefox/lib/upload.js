@@ -30,6 +30,7 @@ const HOSTVIEW_URL = 'http://localhost:40123';
 const MAX_RETRY = 2;
 
 var send = function(req, retry) {
+	console.log(req,retry);
 	Request({
 		url : req.url,
 		content : req.content,
