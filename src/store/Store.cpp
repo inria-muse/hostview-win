@@ -235,8 +235,6 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser VARCHAR(1024), location VARCHAR(1024))");
 
-	exec("CREATE TABLE IF NOT EXISTS jsonobj(timestamp INT8, obj TEXT)");
-
 	exec("CREATE TABLE IF NOT EXISTS session(timestamp INT8, event VARCHAR(32))");
 
 	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32), cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), version VARCHAR(32))");
@@ -379,21 +377,6 @@ void CStore::Insert(const char *szIp, const char *szRDNS, const char *szAsNumber
 	sprintf_s(szStatement, "INSERT INTO %s(ip, rdns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
 						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
 						   szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
-
-	enqueue(szStatement);
-}
-
-
-void CStore::Insert(__int64 timestamp, const char *szJson, size_t len)
-{
-	// FIXME: this is ugly ..
-	char szStatement[1048576] = { 0 };
-
-	// make sure we do not overflow the buffer ... 
-	if (len > sizeof(szStatement) - 32)
-		return;
-
-	sprintf_s(szStatement, "INSERT INTO %s(obj, timestamp) VALUES(\"%s\", %llu)", "jsonobj", szJson, timestamp);
 
 	enqueue(szStatement);
 }

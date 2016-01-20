@@ -573,9 +573,18 @@ bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 	return false;
 }
 
-bool CHostViewService::OnJsonUpload(const char *jsonbuf, size_t len) {
+bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
 	if (jsonbuf && len > 0) {
-		m_store.Insert(GetHiResTimestamp(), jsonbuf, len);
+		char fn[MAX_PATH];
+		sprintf_s(fn, "%S\\%llu.json", TEMP_PATH, GetHiResTimestamp());
+		FILE * f = NULL;
+		fopen_s(&f, fn, "w");
+		if (f)
+		{
+			fprintf(f, "%s", *jsonbuf);
+			fclose(f);
+		}
+		MoveFileToSubmit(fn, false);
 		return true;
 	}
 	return false;

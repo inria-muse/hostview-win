@@ -84,7 +84,7 @@ public:
 
 	// http_server callback
 	bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser);
-	bool OnJsonUpload(const char *jsonbuf, size_t len);
+	bool OnJsonUpload(char **jsonbuf, size_t len);
 
 	// from CServiceBase
 	void OnStart(DWORD dwArgc, PWSTR *pszArgv);

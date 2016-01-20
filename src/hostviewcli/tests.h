@@ -338,11 +338,11 @@ public:
 		return true;
 	}
 
-	bool OnJsonUpload(const char *jsonbuf, size_t len) {
+	bool OnJsonUpload(char **jsonbuf, size_t len) {
 		DWORD dwTick = GetTickCount();
 
 		printf("%d\r\n", dwTick);
-		printf("\t%s", jsonbuf);
+		printf("\t%s", *jsonbuf);
 		printf("\r\n");
 
 		return true;

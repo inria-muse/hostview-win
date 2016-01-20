@@ -23,6 +23,8 @@
 **/
 #include "stdafx.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <wininet.h>
 #include <curl/curl.h>
 
@@ -45,33 +47,6 @@ void send_http_ok(SOCKET s) {
 // very basic error resp helper
 void send_http_err(SOCKET s) {
 	send(s, szHttpErr, (int)strlen(szHttpErr), 0);
-}
-
-typedef struct {
-	SOCKET s;
-	char body[HTTPSERVER_DEFAULT_BUFLEN];
-	size_t body_len;
-	char url[MAX_PATH];
-	size_t url_len;
-	bool complete;
-	CHttpCallback *pCallback;
-} http_data_t;
-
-size_t strlncat(char *dst, size_t offset, size_t dlen, const char *src, size_t n) {
-	size_t rlen, slen = 0;
-
-	rlen = dlen - offset;
-	if (rlen > 1) {
-		// bytes we want to copy
-		slen = strnlen(src, n);
-		slen = slen < rlen ? slen : (rlen - 1);
-
-		memcpy(dst+offset, src, slen);
-		dst[offset+slen+1] = '\0';
-	}
-
-	// new offset
-	return offset+slen;
 }
 
 void extract_body_params(char *szBuffer, ParamsT &params)
@@ -114,27 +89,49 @@ void extract_body_params(char *szBuffer, ParamsT &params)
 	}
 }
 
+typedef struct {
+	SOCKET s;
+	char *body;
+	size_t body_len;
+	char *url;
+	size_t url_len;
+	bool complete;
+	CHttpCallback *pCallback;
+} http_data_t;
+
+size_t strlncat(char **dst, size_t dlen, const char *src, size_t slen) {
+	if (*dst == NULL) {
+		*dst = (char *)malloc(slen + 1);
+		memset(*dst, 0, slen + 1);
+	}
+	else {
+		*dst = (char *)realloc(*dst, dlen + slen + 1);
+		memset(*dst + dlen, 0, slen + 1);
+	}
+	memcpy(*dst + dlen, src, slen);
+	return dlen + slen;
+}
+
 int url_data_cb(http_parser *parser, const char *at, size_t len) {
 	http_data_t *d = (http_data_t*)parser->data;
-	d->url_len = strlncat(d->url, d->url_len, MAX_PATH, at, len);
+	d->url_len = strlncat(&d->url, d->url_len, at, len);
 	return 0;
 }
 
 int body_data_cb(http_parser *parser, const char *at, size_t len) {
 	http_data_t *d = (http_data_t*)parser->data;
-	d->body_len = strlncat(d->body, d->body_len, HTTPSERVER_DEFAULT_BUFLEN, at, len);
+	d->body_len = strlncat(&d->body, d->body_len, at, len);
 	return 0;
 }
 
 int message_complete_cb(http_parser *parser) {
-	struct http_parser_url u = {0};
-	char req_path[MAX_PATH] = {0};
-
 	http_data_t *d = (http_data_t*)parser->data;
+
+	Debug("[SRV] complete msg %s with %d bytes of data", d->url, d->body_len);
+
 	if (strcmp("/upload", d->url) == 0) {
 		// browser posting json data to be submitted
-		Debug("[SRV] received json obj of %llu bytes\n", d->body_len);
-		d->pCallback->OnJsonUpload(d->body, d->body_len);
+		d->pCallback->OnJsonUpload(&d->body, d->body_len);
 		send_http_ok(d->s);
 	}
 	else if (strcmp("/locupdate", d->url) == 0) {
@@ -245,11 +242,11 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 				// reset custom data
 				data.pCallback = pCallback;
 				data.s = cliSocket;
+				data.url = NULL;
+				data.body = NULL;
 				data.url_len = 0;
 				data.body_len = 0;
 				data.complete = false;
-				memset(data.url, 0, MAX_PATH);
-				memset(data.body, 0, HTTPSERVER_DEFAULT_BUFLEN);
 
 				parser->data = &data;
 
@@ -275,6 +272,11 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					}
 				} while (nRecv > 0 && !data.complete);
 
+
+				if (data.body)
+					free(data.body);
+				if (data.url)
+					free(data.url);
 				free(parser);
 				parser = NULL;
 			}

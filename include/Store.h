@@ -109,9 +109,6 @@ public:
 	// insert browser activity log
 	void Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
 
-	// insert JSON object
-	void Insert(__int64 timestamp, const char *szJson, size_t len);
-
 	// insert session event
 	void Insert(__int64 timestamp, SessionEvent e);
 

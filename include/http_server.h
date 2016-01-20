@@ -50,7 +50,7 @@ class CHttpCallback
 {
 public:
 	virtual bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser) = 0;
-	virtual bool OnJsonUpload(const char *jsonbuf, size_t len) = 0;
+	virtual bool OnJsonUpload(char **jsonbuf, size_t len) = 0;
 };
 
 extern "C" bool HTTPSERVERAPI StartHttpDispatcher(CHttpCallback &callback);
