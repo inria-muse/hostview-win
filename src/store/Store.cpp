@@ -121,6 +121,7 @@ DWORD CStore::ExecThread()
 					closeDbFile();
 
 					openDbFile();
+					Insert(m_session, SessionEvent::Start);
 					Insert(ts, SessionEvent::Rotated);
 				}
 			}
@@ -139,6 +140,7 @@ DWORD CStore::ExecThread()
 CStore::CStore(void)
 	: db(NULL),
 	closing(false),
+	m_session(0),
 	hExecThread(NULL)
 {
 	InitializeCriticalSection(&cs);
@@ -151,8 +153,9 @@ CStore::~CStore(void)
 	DeleteCriticalSection(&cs);
 }
 
-bool CStore::Open()
+bool CStore::Open(ULONGLONG session)
 {
+	m_session = session;
 	bool result = openDbFile();
 	if (result) {
 		closing = false;

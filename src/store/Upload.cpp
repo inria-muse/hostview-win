@@ -38,7 +38,7 @@ size_t read_file(char *bufptr, size_t size, size_t nitems, void *userp) {
 	if (fd && !feof(fd)) {
 		nRead = fread(bufptr, size, nitems, fd);
 	}
-	fprintf(stderr, "[upload] read %d bytes\n", nRead);
+	fprintf(stderr, "[upload] read %zd bytes\n", nRead);
 	return nRead;
 }
 
@@ -128,7 +128,7 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 
 	sprintf_s(url, 1024, "%s/%s/%s/%s", settings.GetString(SubmitServer), ProductVersionStr, deviceId, PathFindFileNameA(fileName));
 
-	fprintf(stderr, "[upload] submit %s to %s %d bytes\n", fileName, url, nTotalFileSize);
+	fprintf(stderr, "[upload] submit %s to %s %zd bytes\n", fileName, url, nTotalFileSize);
 
 	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 

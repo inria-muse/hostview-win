@@ -224,7 +224,7 @@ void InitConsole()
 int consoleMain()
 {
 	InitConsole();
-	store.Open();
+	store.Open(GetHiResTimestamp());
 	StartInterfacesMonitor(netCallback, 5, 250);
 
 //	MAKE_COMMAND("nstart", "start connection monitor", &startNetworkMonitor);

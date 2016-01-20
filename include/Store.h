@@ -66,7 +66,7 @@ public:
 	CStore(void);
 	~CStore(void);
 
-	bool Open();
+	bool Open(ULONGLONG session);
 	void Close();
 
 	void InitTables();
@@ -123,8 +123,7 @@ private:
 	const char* error();
 	void seterror(const char *error);
 
-	ULONGLONG session;
-	unsigned int number;
+	ULONGLONG m_session;
 
 	bool openDbFile();
 	void closeDbFile();

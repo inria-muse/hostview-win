@@ -72,7 +72,7 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 
 	WriteEventLogEntry(L"CHostViewService in OnStart", EVENTLOG_INFORMATION_TYPE);
 
-	if (!m_store.Open()) {
+	if (!m_store.Open(m_startTime)) {
 		fprintf(stderr, "[SRV] fatal : failed to open the data store");
 		exit(1);
 	}
