@@ -3,7 +3,7 @@
   "name": "hostview",
   "version": "0.0.5",
   "id": "hostview@jetpack",
-  "description": "HostView addon for UCN Study",
+  "description": "HostView addon to track browser activity",
   "main": "index.js",
   "icon": "data/icon.png",
   "author": "Anna-Kaisa Pietilainen <anna-kaisa.pietilainen@inria.fr>",

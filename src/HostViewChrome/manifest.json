@@ -1,15 +1,13 @@
 {
   "manifest_version": 2,
-
-  "name": "UCN - HostView",
-  "description": "This extension enables enriched questionnaire UIs containing active sites.",
-  "version": "1.3",
+  "name": "HostView Addon",
+  "description": "HostView addon to track browser activity",
+  "version": "1.4",
   "permissions": [
-	"tabs",
-	"activeTab",
-	"storage",
-    "http://localhost:27015/",
-	"https://ucnproject.uk/"
+  	"tabs",
+	  "activeTab",
+	  "storage",
+     "http://localhost:40123/"
   ],
   "background": {
     "scripts": ["background.js"]
