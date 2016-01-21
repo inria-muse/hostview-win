@@ -4,7 +4,7 @@
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)
 
-#define ProductVersion		1,0,1,74
+#define ProductVersion		1,0,2,0
 #define ProductVersionStr	STRINGIZE(ProductVersion)
 
 #endif

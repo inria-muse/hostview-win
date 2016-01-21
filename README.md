@@ -48,10 +48,10 @@ Hostview Installer
 To generate a new installer one needs to do the following:
 
 * have NSIS installed
-* in installer\winpcap_bundle compile winpcap-nmap.nsi script
-* in installer\ compile hostview.nsi script
+* in installer\winpcap_bundle run 'makensis winpcap-nmap.nsi'
+* in installer\ run 'makensis hostview.nsi'
 
-To generate a new update / release a new version:
+To generate a complete update / release of a new version of HostView:
 
 * increment the product version from include/product.h
 * rebuild the entire solution

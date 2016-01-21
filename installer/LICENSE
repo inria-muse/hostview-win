@@ -1,15 +1,19 @@
-Ethnographic Studies Consent Form
+UCN Study Participation Agreement
 
-The User-Centric Networking (UCN) project is seeking to understand how people consume content over computer networks and to design new ways in which media services might be delivered to users according to their interests and needs.
+The User-Centric Networking (UCN) project is seeking to understand better user’s online activities and perceived Quality of Experience (QoE) in order to design novel user-centric content recommendation systems and content delivery frameworks.
 
-To participate you will be asked to install some lightweight network logging software on a device specifically chosen by yourself and your family that you are all happy to have monitored. This will be discussed with all of you before any software is installed. This software will collate some basic information about your network use over a period of 4 to 6 weeks. The information gathered will include a list of all the webpages you visit, as well as where you are when you visit them (if you choose to tell us that) and what else your device is doing when you visit them (again, if you choose to tell us that). You can opt out of collection on a specific device at any point by using the opt-out mechanism provided with the software. You will also be given the means to delete data captured by mistake. Opting out of the data logging will bring no penalty. However, if you remain opted-out for more than 4 or 5 days we may contact you to determine whether you wish to withdraw from the study permanently. During the period the software is activated you will also be asked to participate in interviews, provide a brief tour of the technology in your home, keep a diary, and be observed from time to time engaging in various relevant activities. As detailed on the attached information sheet, data will be recorded in a variety of ways, subject to your consent, and will remain directly available only to the person who has gathered it. All subsequent use of the data will be anonymised. This sheet is to confirm your consent to participate in the study.
+You have decided to join the UCN study and install HostView, a lightweight system performance and user activity logging software on your personal computing device. Please read carefully the following description before continuing.
 
-I have read and understand the attached information sheet, which includes information about the data to be recorded.
+HostView will run on the background and collect information about your device performance, network use and user activity. We collect the following data: system performance metrics (e.g. WiFi signal and noise level, battery status, CPU load and memory utilization); network environment information such as anonymized ESSID (if on WiFi), the interface configuration (DNS configuration, anonymized MAC and IP addresses), as well as information about the ISP, country, and city based on the visible public IP address of your device; network traffic (TCP/IP packet headers of all traffic and full DNS packets, your IP is always anonymized); and user activity like the running and foreground application process names, web domains visited and presence of IO activity. We remove any personal information from the collected URLs. Finally, HostView will solicit your feedback on your current activities and application performance at most three times a day via a short questionnaire (you can also access the questionnaire directly if you wish to provide more feedback). All the collected data is uploaded on our secure servers at Inria, France.
 
-I understand that I can withdraw at any time by contacting the researcher at the address provided in the information sheet, without any need to explain my reasons and without any penalty, and that in this case my personal data will be erased from the records.
+In accordance with Article 34-38, Law N ° 78-17 "Data processing and Freedoms" of January 6, 1978, as amended by the Act of 6 August 2004, and a right to rectification and removal (Article 36) of personal data, you can request rectify, complete, clarify, update or delete information about them that is inaccurate, incomplete, outdated, or that the use, communication or storage is prohibited. You can at any time exercise this right by contacting us by e-mail at "muse.ucnstudy [at] inria.fr".  
 
-I confirm that I am over the age of 18.
+I have read and understand the description of the UCN study and the HostView tool including information about the data to be recorded and shared with the project. 
 
-This is to confirm that I have agreed to take part in this research.
+I understand that I can withdraw from the study at any time by uninstalling the software.
 
-In addition to the data analysis, I give permission for data that could identify me (e.g. photos, video) to be published.
+I am aware that I can ask all my data to be removed by contacting the study staff by email at muse.ucnstudy@inria.fr. `
+
+I confirm that I am over the age of 18. 
+
+Click on ‘Continue’ to confirm your consent to participate to the study, or ‘Cancel’ if you do not wish to proceed. 

@@ -10,10 +10,10 @@ SetCompressor /SOLID /FINAL lzma
 ;General
 
 ; The name of the installer
-Name "HostView 1.0.1"
+Name "HostView"
 
 ; The file to write
-OutFile "hostview1.1.exe"
+OutFile "hostview_installer.exe"
 
 RequestExecutionLevel admin
 
@@ -77,7 +77,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" ""
 
 !insertmacro MUI_PAGE_LICENSE "LICENSE"
 ; Don't let user choose where to install the files. WinPcap doesn't let people, and it's one less thing for us to worry about.
-Page custom optionsPage doOptions
+;Page custom optionsPage doOptions
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -121,25 +121,25 @@ Function .onInit
   instdir_nochange:
 FunctionEnd
 
-Function optionsPage
-  !insertmacro MUI_HEADER_TEXT "HostView Options" ""
-  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "options.ini"
-FunctionEnd
+;Function optionsPage
+;  !insertmacro MUI_HEADER_TEXT "HostView Options" ""
+;  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "options.ini"
+;FunctionEnd
 
-Function doOptions
-	Call is64bit
-	StrCmp $0 "0" install_32bit install_64bit
-
-install_32bit:
-	SetRegView 32
-	Goto install_continue
-install_64bit:
-	SetRegView 64
-	
-install_continue:
-  ReadINIStr $0 "$PLUGINSDIR\options.ini" "Field 2" "State"
-  WriteRegStr HKLM "Software\HostView" "enduser" "$0"
-FunctionEnd
+;Function doOptions
+;	Call is64bit
+;	StrCmp $0 "0" install_32bit install_64bit
+;
+;install_32bit:
+;	SetRegView 32
+;	Goto install_continue
+;install_64bit:
+;	SetRegView 64
+;	
+;install_continue:
+;  ReadINIStr $0 "$PLUGINSDIR\options.ini" "Field 2" "State"
+;  WriteRegStr HKLM "Software\HostView" "enduser" "$0"
+;FunctionEnd
 
 ;--------------------------------
 ; The stuff to install
@@ -259,7 +259,7 @@ emulationContinue:
 		nsExec::Exec "$PROGRAMFILES\winpcap\uninstall.exe /S"
 	${EndIf}
 
-	DeleteRegValue HKLM "Software\HostView" "enduser"
+;	DeleteRegValue HKLM "Software\HostView" "enduser"
 	DeleteRegValue HKLM "Software\HostView" "InstalledWinpcap"
 	DeleteRegValue HKLM "Software\HostView" "HostView"
 	DeleteRegKey HKLM "Software\HostView"

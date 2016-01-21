@@ -1,7 +1,6 @@
 @ECHO OFF
 
 ECHO HostView Installation
-set /p userId=Input user id: 
 
 if "%PROCESSOR_ARCHITECTURE%"=="AMD64" goto 64BIT
 
@@ -23,19 +22,9 @@ xcopy x64\*.* "%PROGRAMFILES%\HostView"
 :END
 
 :: Common Stuff
+
 :: settings file
-set settingsFile="%PROGRAMFILES%\HostView\settings"
-(
-echo enduser = %userId%
-echo interfaceMonitorTimeout = 250
-echo autoSubmitInterval = 21600000
-echo userMonitorTimeout = 1000
-echo userIdleTimeout = 5000
-echo socketStatsTimeout = 60000
-echo systemStatsTimeout = 60000
-echo pcapSizeLimit = 5242880 
-echo dbSizeLimit = 5242880
-) > %settingsFile%
+xcopy settings "%PROGRAMFILES%\HostView"
 
 :: Install Service
 "%PROGRAMFILES%\HostView\hostviewcli.exe" /install
