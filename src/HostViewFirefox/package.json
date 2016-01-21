@@ -6,7 +6,7 @@
   "description": "HostView addon to track browser activity",
   "main": "index.js",
   "icon": "data/icon.png",
-  "author": "Anna-Kaisa Pietilainen <anna-kaisa.pietilainen@inria.fr>",
+  "author": "MUSE team Inria",
   "engines": {
     "firefox": ">=38.0a1",
     "fennec": ">=38.0a1"

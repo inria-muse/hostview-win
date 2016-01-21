@@ -3,13 +3,19 @@
   "name": "HostView Addon",
   "description": "HostView addon to track browser activity",
   "version": "1.4",
+  "author": "MUSE team Inria",
+  "homepage_url" : "https://muse.inria.fr/ucnstudy",
+  "content_scripts" : [{
+    "matches" : ["http://*/*", "https://*/*"],
+    "js" : ["contentscript.js"],
+    "run_at" : "document_start"
+  }],
   "permissions": [
   	"tabs",
 	  "activeTab",
-	  "storage",
-     "http://localhost:40123/"
+    "http://localhost:40123/"    
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["index.js"]
   }
 }

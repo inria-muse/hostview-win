@@ -1,3 +1,4 @@
+// FIXME
 function StripURL(url) {
 	var res = url.replace("https://", "").replace("http://", "");
 	if (res.indexOf('/') > -1) {

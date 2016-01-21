@@ -17,6 +17,7 @@ self.port.on("getPlt", function() {
 	setTimeout(function() { 
 		var ts = new Date();
 		self.port.emit("plt", {
+			useragent : window.navigator.useragent,     // Browser version info
             ts : ts.getTime(), 							// UTC timestamp
             timezoneoffset : ts.getTimezoneOffset(),    // offset
             timezonename : gettzname(ts),               // timezone
