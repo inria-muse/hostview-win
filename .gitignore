@@ -1,4 +1,4 @@
-.aps
+*.aps
 .vs
 bin
 Debug
