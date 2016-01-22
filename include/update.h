@@ -40,6 +40,8 @@ UPDATEAPI BOOL GetProductVersion(char *szProductVersion, DWORD dwSize);
 
 UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile);
 
+UPDATEAPI BOOL CheckForResourceUpdates();
+
 /**
  * Given a relative file path it pulls it from UpdateLocation
  **/

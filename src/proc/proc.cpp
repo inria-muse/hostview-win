@@ -43,6 +43,7 @@
 
 #include "proc.h"
 #include "comm.h"
+#include "product.h"
 
 #define SAFE_FREE(X) \
 	if (X)\
@@ -651,6 +652,13 @@ PROCAPI void QuerySystemInfo(SysInfo &info)
 	info.totalDisk = totalSize.QuadPart;
 
 	QueryDriveSerial(info.hddSerial, _countof(info.hddSerial));
+
+	// Current local timezone
+	TIME_ZONE_INFORMATION tzInfo;
+	GetTimeZoneInformation(&tzInfo);
+
+	_stprintf_s(info.timezone, _T("%wS"), tzInfo.StandardName);
+	info.timezone_offset = tzInfo.Bias;
 }
 
 
@@ -845,7 +853,13 @@ DWORD WINAPI MonitorThreadFunction(LPVOID lpParameter)
 			pCallback->OnApplication(dwPidPrev, isFullScreenPrev, isIdlePrev);
 		}
 
-		Sleep(g_userMonitorTimeout);
+		// now sleep until next poll time
+		unsigned long dwSlept = 0;
+		while (dwSlept < g_userMonitorTimeout && !closing)
+		{
+			Sleep(100);
+			dwSlept += 100;
+		}
 	}
 	return 0L;
 }

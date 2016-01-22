@@ -112,7 +112,6 @@ private:
 
 	void RunNetworkLabeling();
 	void RunQuestionnaireIfCase();
-	void PullLatestResources(DWORD dwNow);
 
 	void PullInstalledApps(TCHAR *szPath, DWORD dwSize);
 

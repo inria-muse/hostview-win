@@ -252,7 +252,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	InitCurrentDirectory();
 
 	// force re-load
-	settings.LoadSettings();
+	settings.ReloadSettings();
 
 	CLifetimeCtrl ltCtrl;
 	ltCtrl.Start(CloseHostViewUI);
@@ -469,6 +469,8 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			case MessageStartCapture:
 				if (!g_isRunning)
 				{
+					settings.ReloadSettings();
+
 					// has been enabled
 					g_isRunning = true;
 					RefreshSystrayIcon();

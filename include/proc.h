@@ -218,7 +218,9 @@ struct SysInfo
 	unsigned __int64 totalRAM;
 	unsigned __int64 totalDisk;
 	TCHAR windowsName[MAX_PATH];
-	TCHAR hddSerial[MAX_PATH];
+	TCHAR hddSerial[MAX_PATH];	
+	TCHAR timezone[32];
+	unsigned long timezone_offset;
 
 	SysInfo()
 	{
@@ -229,7 +231,9 @@ struct SysInfo
 		cpuName[0] = 0;
 		windowsName[0] = 0;
 		hddSerial[0] = 0;
-	}
+		timezone[0] = 0;
+		timezone_offset = 0;
+ 	}
 };
 
 extern "C" PROCAPI void QuerySystemInfo(SysInfo &info);

@@ -25,7 +25,6 @@
 #include "StdAfx.h"
 
 #include "trace.h"
-#include "product.h"
 #include "Store.h"
 #include "Settings.h"
 #include "Upload.h"
@@ -78,17 +77,14 @@ DWORD WINAPI ExecThreadFunc(LPVOID lpParameter)
 DWORD CStore::ExecThread()
 {
 	CSettings settings;
-	unsigned long dbSizeLimit = settings.GetULong(DbSizeLimit);
 
 	do
 	{
-		Sleep(5);
+		Sleep(10);
 
-#ifndef _DEBUG
 		// write the db in batches
-		if (GetQueueSize() < 1000 && !closing)
+		if (GetQueueSize() < 100 && !closing)
 			continue;
-#endif
 
 		exec("BEGIN TRANSACTION");
 
@@ -100,35 +96,9 @@ DWORD CStore::ExecThread()
 
 		exec("COMMIT TRANSACTION");
 
-		if (GetTickCount() - dwLastFileSizeCheck > 60 * 1000 && !closing)
-		{
-			dwLastFileSizeCheck = GetTickCount();
-
-			WIN32_FIND_DATAA data;
-			HANDLE hFind = FindFirstFileA(STORE_FILE, &data);
-			if (hFind != INVALID_HANDLE_VALUE)
-			{
-				ULARGE_INTEGER sz;
-				sz.LowPart = data.nFileSizeLow;
-				sz.HighPart = data.nFileSizeHigh;
-				FindClose(hFind);
-
-				if (sz.QuadPart >= dbSizeLimit)
-				{
-					// rotate
-					ULONGLONG ts = GetHiResTimestamp();
-					Insert(ts, SessionEvent::Rotated);
-					closeDbFile();
-
-					openDbFile();
-					Insert(m_session, SessionEvent::Start);
-					Insert(ts, SessionEvent::Rotated);
-				}
-			}
-		}
-
 		if (GetQueueSize() == 0 && closing)
 		{
+			// queue is empty and shutting down
 			break;
 		}
 	}
@@ -200,14 +170,18 @@ void CStore::closeDbFile()
 		db = NULL;
 	}
 
-	MoveFileToSubmit(STORE_FILE, true);
+	// rename with session id
+	char uploadfile[MAX_PATH] = { 0 };
+	sprintf_s(uploadfile, "%llu_%s", m_session, STORE_FILE);
+	MoveFileA(STORE_FILE, uploadfile);
+	MoveFileToSubmit(uploadfile, false);
 }
 
 void CStore::InitTables()
 {
 	exec("CREATE TABLE IF NOT EXISTS connectivity(name VARCHAR(260), friendlyname VARCHAR(260), description VARCHAR(260), dnssuffix VARCHAR(260), \
 		 mac VARCHAR(64), ips VARCHAR(300), gateways VARCHAR(300), dnses VARCHAR(300), tspeed INT8, rspeed INT8, wireless TINYINT, profile VARCHAR(64), \
-		 ssid VARCHAR(64), bssid VARCHAR(64), bssidtype VARCHAR(20), phytype VARCHAR(20), phyindex INTEGER, channel INTEGER, rssi INTEGER, signal INTEGER, \
+		 ssid VARCHAR(64), bssid VARCHAR(64), bssidtype VARCHAR(20), phytype VARCHAR(20), phyindex INTEGER, channel INTEGER, \
 		 connected TINYINT, timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS wifistats(guid VARCHAR(260), tspeed INT8, rspeed INT8, signal INTEGER, \
@@ -215,16 +189,16 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS battery(status INTEGER, percent INTEGER, timestamp INT8)");
 
-	exec("CREATE TABLE IF NOT EXISTS activity(user VARCHAR(260), pid INTEGER, name VARCHAR(260), description VARCHAR(260), \
-		 fullscreen TINYINT, idle TINYINT, timestamp INT8)");
-
-	exec("CREATE TABLE IF NOT EXISTS io(device INTEGER, pid INTEGER, name VARCHAR(260), timestamp INT8)");
-
 	exec("CREATE TABLE IF NOT EXISTS procs(pid INTEGER, name VARCHAR(260), memory INTEGER, \
 		cpu DOUBLE, timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS ports(pid INTEGER, name VARCHAR(260), protocol INTEGER, \
 		srcip VARCHAR(42), destip VARCHAR(42), srcport INTEGER, destport INTEGER, state INTEGER, timestamp INT8)");
+
+	exec("CREATE TABLE IF NOT EXISTS activity(user VARCHAR(260), pid INTEGER, name VARCHAR(260), description VARCHAR(260), \
+		 fullscreen TINYINT, idle TINYINT, timestamp INT8)");
+
+	exec("CREATE TABLE IF NOT EXISTS io(device INTEGER, pid INTEGER, name VARCHAR(260), timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS http(httpverb VARCHAR(64), httpverbparam VARCHAR(300), httpstatuscode VARCHAR(64), \
 		 httphost VARCHAR(300), referer VARCHAR(300), contenttype VARCHAR(300), contentlength VARCHAR(300), protocol INTEGER,\
@@ -240,7 +214,9 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS session(timestamp INT8, event VARCHAR(32))");
 
-	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32), cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), version VARCHAR(32))");
+	exec("CREATE TABLE IF NOT EXISTS sysinfo(timestamp INT8, manufacturer VARCHAR(32), product VARCHAR(32), os VARCHAR(32),\
+	     cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), hostview_version VARCHAR(32), settings_version INTEGER,\
+		 timezone VARCHAR(32), timezone_offset INTEGER)");
 
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
@@ -258,9 +234,6 @@ void CStore::Insert(__int64 timestamp, SessionEvent e) {
 	case SessionEvent::Restart:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"restart\")", "session", timestamp);
 		break;
-	case SessionEvent::Rotated:
-		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"rotated\")", "session", timestamp);
-		break;
 	case SessionEvent::Stop:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"stop\")", "session", timestamp);
 		break;
@@ -271,13 +244,16 @@ void CStore::Insert(__int64 timestamp, SessionEvent e) {
 	enqueue(szStatement);
 }
 
-void CStore::Insert(__int64 timestamp, SysInfo &info) {
+void CStore::Insert(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version) {
 	char szStatement[8192] = { 0 };
 
-	sprintf_s(szStatement, "INSERT INTO %s(timestamp, manufacturer, product, os, cpu, totalRAM, totalHDD, serial, version) \
-							VALUES(%llu, \"%S\", \"%S\", \"%S\", \"%S\", %llu, %llu, \"%S\", \"%s\")", 
-							"sysinfo", timestamp, info.manufacturer, info.productName, info.windowsName,
-							info.cpuName, info.totalRAM, info.totalDisk, info.hddSerial, ProductVersionStr);
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, manufacturer, product, os, cpu, totalRAM, totalHDD, serial, \
+							hostview_version, settings_version, timezone, timezone_offset) \
+							VALUES(%llu, \"%S\", \"%S\", \"%S\", \"%S\", %llu, %llu, \"%S\", \"%s\", %lu, \"%S\", %lu)",
+							"sysinfo", 
+							timestamp, info.manufacturer, info.productName, info.windowsName,
+							info.cpuName, info.totalRAM, info.totalDisk, info.hddSerial, 
+							hostview_version, settings_version, info.timezone,info.timezone_offset);
 
 	enqueue(szStatement);
 }
@@ -285,14 +261,14 @@ void CStore::Insert(__int64 timestamp, SysInfo &info) {
 void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
 	const TCHAR *szMac, const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
 	bool wireless, const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType,
-	unsigned long phyIndex, unsigned long channel, unsigned long rssi, unsigned long signal, bool connected, __int64 timestamp)
+	unsigned long phyIndex, unsigned long channel, bool connected, __int64 timestamp)
 {
 	char szStatement[8192] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(name, friendlyname, description, dnssuffix, mac, ips, gateways, dnses, tspeed, rspeed, wireless, profile, \
 		 ssid, bssid, bssidtype, phytype, phyindex, channel, rssi, signal, connected, timestamp) VALUES(\"%s\", \"%S\", \"%S\", \"%S\", \"%S\", \
-		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %ld, %lu, %d, %llu)", 
+		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %d, %llu)", 
 		"connectivity", szName, szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, 
-		 wireless ? 1 : 0, szProfile, szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, rssi, signal, connected ? 1 : 0, timestamp);
+		 wireless ? 1 : 0, szProfile, szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, connected ? 1 : 0, timestamp);
 
 	enqueue(szStatement);
 }

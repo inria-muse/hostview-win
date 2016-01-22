@@ -51,7 +51,7 @@
 #define MessageMouseKeyUsage		10
 #define MessageCameraUsage			11
 #define MessageQueryLastApps		12
-#define MessageQueryInstalledApps	14
+#define MessageQueryInstalledApps	13
 
 struct Message
 {

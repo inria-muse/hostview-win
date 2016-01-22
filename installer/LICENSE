@@ -1,19 +1,19 @@
 UCN Study Participation Agreement
 
-The User-Centric Networking (UCN) project is seeking to understand better user’s online activities and perceived Quality of Experience (QoE) in order to design novel user-centric content recommendation systems and content delivery frameworks.
+The User-Centric Networking (UCN) project is seeking to understand better user's online activities and perceived Quality of Experience (QoE) in order to design novel user-centric content recommendation systems and content delivery frameworks.
 
 You have decided to join the UCN study and install HostView, a lightweight system performance and user activity logging software on your personal computing device. Please read carefully the following description before continuing.
 
-HostView will run on the background and collect information about your device performance, network use and user activity. We collect the following data: system performance metrics (e.g. WiFi signal and noise level, battery status, CPU load and memory utilization); network environment information such as anonymized ESSID (if on WiFi), the interface configuration (DNS configuration, anonymized MAC and IP addresses), as well as information about the ISP, country, and city based on the visible public IP address of your device; network traffic (TCP/IP packet headers of all traffic and full DNS packets, your IP is always anonymized); and user activity like the running and foreground application process names, web domains visited and presence of IO activity. We remove any personal information from the collected URLs. Finally, HostView will solicit your feedback on your current activities and application performance at most three times a day via a short questionnaire (you can also access the questionnaire directly if you wish to provide more feedback). All the collected data is uploaded on our secure servers at Inria, France.
+HostView will run on the background and collect information about your device performance, network use and user activity. We collect the following data: system performance metrics (e.g. WiFi signal and noise level, battery status, CPU load and memory utilization); network environment information such as anonymized ESSID (if on WiFi), the interface configuration (DNS configuration, MAC and IP addresses), as well as information about the ISP, country, and city based on the visible public IP address of your device; network traffic (TCP/IP packet headers of all traffic and full DNS packets, your IP is always anonymized); and user activity like the running and foreground application process names, web domains visited and presence of IO activity. We remove any personal information from the collected URLs. Finally, HostView will solicit your feedback on your current activities and application performance at most three times a day via a short questionnaire (you can also access the questionnaire directly if you wish to provide more feedback). All the collected data is uploaded on our secure servers at Inria, France.
 
-In accordance with Article 34-38, Law N ° 78-17 "Data processing and Freedoms" of January 6, 1978, as amended by the Act of 6 August 2004, and a right to rectification and removal (Article 36) of personal data, you can request rectify, complete, clarify, update or delete information about them that is inaccurate, incomplete, outdated, or that the use, communication or storage is prohibited. You can at any time exercise this right by contacting us by e-mail at "muse.ucnstudy [at] inria.fr".  
+In accordance with Article 34-38, Law N.78-17 "Data processing and Freedoms" of January 6, 1978, as amended by the Act of 6 August 2004, and a right to rectification and removal (Article 36) of personal data, you can request rectify, complete, clarify, update or delete information about them that is inaccurate, incomplete, outdated, or that the use, communication or storage is prohibited. You can at any time exercise this right by contacting us by e-mail at "muse.ucnstudy@inria.fr". 
 
 I have read and understand the description of the UCN study and the HostView tool including information about the data to be recorded and shared with the project. 
 
 I understand that I can withdraw from the study at any time by uninstalling the software.
 
-I am aware that I can ask all my data to be removed by contacting the study staff by email at muse.ucnstudy@inria.fr. `
+I am aware that I can ask all my data to be removed by contacting the study staff by email at muse.ucnstudy@inria.fr.
 
-I confirm that I am over the age of 18. 
+I confirm that I am over the age of 18.
 
-Click on ‘Continue’ to confirm your consent to participate to the study, or ‘Cancel’ if you do not wish to proceed. 
+Click on 'I Agree' to confirm your consent to participate to the study, or 'Cancel' if you do not wish to proceed. 

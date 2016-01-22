@@ -25,173 +25,66 @@
 #include "Settings.h"
 #include "comm.h"
 
-// FIXME: why are these not properties of the class (maybe static if need ?) ?
-SettingsMap mDefSettings;
-SettingsMap mSettings;
+// Hardcoded defaults in case the settings file is not available
+// for what ever reason. Should not really happen in prod.
+std::hash_map<std::string, std::string> mDefSettings;
 
-std::hash_map<std::string, unsigned long> mLongSettings;
+void loadDefaults() {
+	if (!mDefSettings.size()) {
+		mDefSettings[AutoRestartTimeout] = "1800000"; // 30min
+		mDefSettings[PcapSizeLimit] = "100000000";
+		mDefSettings[UserIdleTimeout] = "5000";
+		mDefSettings[WirelessMonitorTimeout] = "10000";
+		mDefSettings[BatteryMonitorTimeout] = "15000";
+		mDefSettings[SocketStatsTimeout] = "60000";
+		mDefSettings[SystemStatsTimeout] = "60000";		
+		mDefSettings[IoTimeout] = "1000";
+		mDefSettings[UserMonitorTimeout] = "1000";
+		mDefSettings[NetLabellingActive] = "1";
+		mDefSettings[NetLocationActive] = "1";
+		mDefSettings[QuestionnaireActive] = "1";
+		mDefSettings[EsmCoinFlipInterval] = "3600000";
+		mDefSettings[EsmCoinFlipProb] = "10";
+		mDefSettings[EsmMaxShows] = "3";
+		mDefSettings[EsmStartHour] = "8";
+		mDefSettings[EsmStopHour] = "23";
+		mDefSettings[SubmitServer] = "https://muse.inria.fr/hostview2016/upload";
+		mDefSettings[UploadVerifyPeer] = "1";
+		mDefSettings[AutoSubmitRetryCount] = "3";
+		mDefSettings[AutoSubmitRetryInterval] = "10000";
+		mDefSettings[AutoSubmitInterval] = "3600000";
+		mDefSettings[AutoUpdateInterval] = "86400000";
+		mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview2016/latest/";
 
-static volatile long nRefCount = 0;
-CRITICAL_SECTION g_cs;
-
-void initLock()
-{
-	if (InterlockedIncrement(&nRefCount) == 1)
-	{
-		InitializeCriticalSection(&g_cs);
+#ifdef _DEBUG
+		mDefSettings[AutoSubmitRetryCount] = "1";
+		mDefSettings[AutoSubmitRetryInterval] = "1000";
+		mDefSettings[AutoSubmitInterval] = "60000";
+		mDefSettings[SubmitServer] = "http://localhost:3000";
+		mDefSettings[UpdateLocation] = "http://localhost:3000/latest";
+#endif
 	}
 }
 
-void uninitLock()
-{
-	if (InterlockedDecrement(&nRefCount) == 0)
-	{
-		DeleteCriticalSection(&g_cs);
-	}
-}
-
-void lock()
-{
-	EnterCriticalSection(&g_cs);
-}
-
-void unlock()
-{
-	LeaveCriticalSection(&g_cs);
-}
-
-CSettings::CSettings()
-{
-	initLock();
-
-	lock();
-	if (!mSettings.size())
-	{
-		load();
-	}
-	unlock();
-}
-
-CSettings::~CSettings()
-{
-	// TODO: should clean the map? it'a a smart object though
-	uninitLock();
-}
-
-unsigned long CSettings::GetULong(char *szKey)
-{
-	unsigned long lRes = 0L;
-
-	lock();
-	if (mLongSettings.find(szKey) == mLongSettings.end())
-	{
-		const char *szValue = GetString(szKey);
-		if (szValue)
-		{
-			mLongSettings[szKey] = (unsigned long) atol(szValue);
-			lRes = mLongSettings[szKey];
-		}
-	}
-	else
-	{
-		lRes = mLongSettings[szKey];
-	}
-	unlock();
-
-	return lRes;
-}
-
-char *CSettings::GetString(char *szKey)
-{
-	char * pszResult = 0;
-
-	lock();
-	if (mSettings.find(szKey) != mSettings.end())
-	{
-		pszResult = (char *) mSettings[szKey].c_str();
-	}
-	else if (mDefSettings.find(szKey) != mDefSettings.end())
-	{
-		pszResult = (char *) mDefSettings[szKey].c_str();
-	}
-	unlock();
-
-	return pszResult;
-}
-
-void CSettings::trim(char * s)
+void trim(char * s)
 {
 	char * p = s;
 	size_t l = strlen(p);
-
-	while(l > 0 && isspace(p[l - 1])) p[--l] = 0;
-	while(* p && isspace(* p)) ++p, --l;
-
+	while (l > 0 && isspace(p[l - 1])) p[--l] = 0;
+	while (*p && isspace(*p)) ++p, --l;
 	memmove(s, p, l + 1);
 }
 
-bool CSettings::LoadSettings()
+bool load(char *src, std::hash_map<std::string, std::string> &map)
 {
-	bool res;
-	lock();
-	res = load();
-	unlock();
-	return res;
-}
+	map.clear();
 
-// should be called with lock !
-bool CSettings::load()
-{
-	mSettings.clear();
-	mDefSettings.clear();
-
-	// default hardcoded settings
-	mDefSettings[AutoRestartTimeout] = "1800000"; // 30min
-
-	mDefSettings[InterfaceMonitorTimeout] = "250";
-	mDefSettings[UserMonitorTimeout] = "1000";
-	mDefSettings[IoTimeout] = "1000";
-	mDefSettings[UserIdleTimeout] = "5000";
-	mDefSettings[BatteryMonitorTimeout] = "15000";
-	mDefSettings[WirelessMonitorTimeout] = "60000";
-	mDefSettings[SocketStatsTimeout] = "60000";
-	mDefSettings[SystemStatsTimeout] = "60000";
-	mDefSettings[PcapSizeLimit] = "26214400";  // 10MB
-	mDefSettings[DbSizeLimit] = "26214400";    // 10MB
-
-	mDefSettings[NetLabellingActive] = "1";
-	mDefSettings[QuestionnaireActive] = "1";
-
-	mDefSettings[EsmCoinFlipInterval] = "3600000";
-	mDefSettings[EsmCoinFlipProb] = "10";
-	mDefSettings[EsmMaxShows] = "3";
-
-	mDefSettings[UploadLowSpeedLimit] = "32000"; // bytes/s
-	mDefSettings[UploadLowSpeedTime] = "5";  // seconds
-
-	mDefSettings[AutoSubmitRetryCount] = "3";
-	mDefSettings[AutoSubmitRetryInterval] = "5000"; // 5s
-	mDefSettings[AutoSubmitInterval] = "1800000";   // 30min
-	mDefSettings[SubmitServer] = "https://muse.inria.fr/hostview";
-
-	mDefSettings[AutoUpdateInterval] = "43200000"; // twice a day
-	mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview/latest/";
-
-#ifdef _DEBUG
-	mDefSettings[QuestionnaireActive] = "0";
-	mDefSettings[NetLabellingActive] = "0";
-	mDefSettings[AutoSubmitRetryCount] = "2";
-	mDefSettings[AutoSubmitRetryInterval] = "1000"; // 1s
-	mDefSettings[AutoSubmitInterval] = "120000";    // 2min
-	mDefSettings[SubmitServer] = "http://localhost:3000";
-	mDefSettings[UpdateLocation] = "http://foobar";
-#endif
-
+	// read the actual settings from the file
 	FILE *f = NULL;
-	fopen_s(&f, "settings", "r");
+	fopen_s(&f, src, "r");
 	if (f)
 	{
-		char szBuffer[1024] = {0};
+		char szBuffer[1024] = { 0 };
 		while (fgets(szBuffer, _countof(szBuffer), f))
 		{
 			trim(szBuffer);
@@ -201,8 +94,8 @@ bool CSettings::load()
 
 			if (token != NULL)
 			{
-				char szKey[MAX_PATH] = {0};
-				char szValue[MAX_PATH] = {0};
+				char szKey[MAX_PATH] = { 0 };
+				char szValue[MAX_PATH] = { 0 };
 
 				strcpy_s(szKey, token);
 				trim(szKey);
@@ -214,29 +107,94 @@ bool CSettings::load()
 					strcpy_s(szValue, token);
 					trim(szValue);
 
-					mSettings[szKey] = szValue;
+					map[szKey] = szValue;
 				}
 			}
 		}
 		fclose(f);
-
-		/**
-		HKEY hKey = 0;
-		RegCreateKey(HKEY_LOCAL_MACHINE, HOSTVIEW_REG, &hKey);
-
-		char szUser[MAX_PATH] = {0};
-		DWORD dwSize = sizeof(szUser);
-		DWORD dwType = REG_SZ;
-		if (RegQueryValueExA(hKey, EndUser, NULL, &dwType, (LPBYTE) szUser, &dwSize) == ERROR_SUCCESS)
-		{
-			szUser[dwSize] = 0;
-			mSettings[EndUser] = szUser;
-		}
-
-		RegCloseKey(hKey);
-		*/
 		return true;
 	}
-
 	return false;
+}
+
+
+CSettings::CSettings() :
+	version(0),
+	filename("settings")
+{
+	mSettings = new std::hash_map<std::string, std::string>();
+	mLongSettings = new std::hash_map<std::string, ULONG>();
+
+	loadDefaults();
+	ReloadSettings();
+}
+
+CSettings::CSettings(char *file) :
+	version(0)
+{
+	sprintf_s(filename, "%s", file);
+	mSettings = new std::hash_map<std::string, std::string>();
+	mLongSettings = new std::hash_map<std::string, ULONG>();
+
+	loadDefaults();
+	ReloadSettings();
+}
+
+CSettings::~CSettings()
+{
+	delete mSettings;
+	delete mLongSettings;
+}
+
+bool CSettings::ReloadSettings()
+{
+	bool res = false;
+	if (load(filename, *mSettings) && HasKey(SettingsVersion)) {
+		version = GetULong(SettingsVersion);
+		res = true;
+	}
+	return res;
+}
+
+bool CSettings::HasKey(char *szKey) {
+	bool found = (mSettings->find(szKey) != mSettings->end() || mDefSettings.find(szKey) != mDefSettings.end());
+	return found;
+}
+
+bool CSettings::GetBoolean(char *szKey) {
+	// if the key is missing this will evaluate to false !!
+	return (GetULong(szKey) != 0);
+}
+
+ULONG CSettings::GetULong(char *szKey)
+{
+	ULONG lRes = 0L;
+	if (mLongSettings->find(szKey) == mLongSettings->end())
+	{
+		const char *szValue = GetString(szKey);
+		if (szValue)
+		{
+			(*mLongSettings)[szKey] = (ULONG) atol(szValue);
+			lRes = (*mLongSettings)[szKey];
+		}
+	}
+	else
+	{
+		lRes = (*mLongSettings)[szKey];
+	}
+	return lRes;
+}
+
+char *CSettings::GetString(char *szKey)
+{
+	char * pszResult = 0;
+	if (mSettings->find(szKey) != mSettings->end())
+	{
+		pszResult = (char *)(*mSettings)[szKey].c_str();
+	}
+	else if (mDefSettings.find(szKey) != mDefSettings.end())
+	{
+		pszResult = (char *) mDefSettings[szKey].c_str();
+	}
+	return pszResult;
 }

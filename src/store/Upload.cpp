@@ -38,38 +38,39 @@ size_t read_file(char *bufptr, size_t size, size_t nitems, void *userp) {
 	if (fd && !feof(fd)) {
 		nRead = fread(bufptr, size, nitems, fd);
 	}
-	fprintf(stderr, "[upload] read %zd bytes\n", nRead);
 	return nRead;
 }
 
-// zip helper
-bool zipfile(char *src, char *dest)
+// assumues src is already in .\submit !
+bool createzip(char *src)
 {
-	// FIXME: there's no library interface to this compresssion tool we could use ?!?
+	char dest[MAX_PATH] = { 0 };
+	sprintf_s(dest, "%s.zip", src);
+
+	// FIXME: there's no library interfac we could use ?!? this is quite horrible ...
 	TCHAR szCmdLine[1024] = { 0 };
 	_stprintf_s(szCmdLine, _T("7za.exe a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on %S %S"), dest, src);
 
 	PROCESS_INFORMATION proc = { 0 };
-
 	STARTUPINFO startupInfo = { 0 };
 	startupInfo.cb = sizeof(startupInfo);
-
-	// create the process
 	if (CreateProcess(NULL, szCmdLine, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW,
 		NULL, NULL, &startupInfo, &proc))
 	{
-		// wait for process
-		WaitForSingleObject(proc.hProcess, INFINITE);
-
-		// get exit code
 		DWORD dwExit = 0;
+		WaitForSingleObject(proc.hProcess, INFINITE);
 		BOOL bResult = GetExitCodeProcess(proc.hProcess, &dwExit);
-
-
 		CloseHandle(proc.hProcess);
 		CloseHandle(proc.hThread);
 
-		Debug("7za.exe exit %d\n", dwExit);
+		// make sure no broken zip files are left behind
+		if (dwExit != 0) {
+			DeleteFileA(dest);
+		}
+		else {
+			DeleteFileA(src); // remove src since we now have the zip
+		}
+
 		return (dwExit == 0);
 	}
 
@@ -90,9 +91,22 @@ CUpload::CUpload(void)
 
 	// common options
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20L);
-//	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+
+	if (settings.HasKey(UploadVerifyPeer))
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, settings.GetULong(UploadVerifyPeer));
+
+	if (settings.HasKey(UploadLowSpeedLimit))
+		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
+
+	if (settings.HasKey(UploadLowSpeedTime))
+		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, settings.GetULong(UploadLowSpeedTime));
+
+	if (settings.HasKey(UploadMaxSendSpeed))
+		curl_easy_setopt(curl, CURLOPT_MAX_SEND_SPEED_LARGE, settings.GetULong(UploadMaxSendSpeed));
+
+#ifdef _DEBUG
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+#endif
 }
 
 CUpload::~CUpload(void)
@@ -132,17 +146,12 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 
 	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 
-	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
-	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, settings.GetULong(UploadLowSpeedTime));
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_file);
 	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 	curl_easy_setopt(curl, CURLOPT_READDATA, f);
 	curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)nTotalFileSize);
-#ifdef _DEBUG
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-#endif
 
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
@@ -183,11 +192,17 @@ bool MoveFileToSubmit(const char *file, bool renameWithTs) {
 	}
 
 	if (!MoveFileA(file, sFile)) {
-		fprintf(stderr, "[upload] failed to move file %s to %s [%d]\n", file, sFile, GetLastError());
+		fprintf(stderr, "[upload] failed to move file %s to %s %d\n", file, sFile, GetLastError());
 		return false;
 	}
 
-	Trace("Add submit file %s.", sFile);
+	if (!createzip(sFile)) {
+		// TODO: this will leave unzipped file to submit -- so upload needs to make sure things are zipped
+		fprintf(stderr, "[upload] failed to zip file %s.zip\n", sFile);
+		return false;
+	}
+
+	Trace("Add submit file %s.zip", sFile);
 	return true;
 }
 
@@ -214,22 +229,26 @@ bool CopyFileToSubmit(const char *file, bool renameWithTs) {
 	}
 
 	if (!CopyFileA(file, sFile, false)) {
-		fprintf(stderr, "[upload] failed to copy file %s to %s [%d]\n", file, sFile, GetLastError());
+		fprintf(stderr, "[upload] failed to copy file %s to %s %d\n", file, sFile, GetLastError());
 		return false;
 	}
 
-	Trace("Add submit file %s.", sFile);
+	if (!createzip(sFile)) {
+		// TODO: this will leave unzipped file to submit -- so upload needs to make sure things are zipped
+		fprintf(stderr, "[upload] failed to zip file %s.zip\n", sFile);
+		return false;
+	}
+
+	Trace("Add submit file %s.zip", sFile);
 	return true;
 }
 
 bool DoSubmit(const char *deviceId) {
+	char szFilename[MAX_PATH] = { 0 };
 	bool result = true;
 	CUpload upload;
-
-	char szFilename[MAX_PATH] = { 0 };
-	char szZipFilename[MAX_PATH] = { 0 };
-
 	WIN32_FIND_DATAA wfd;
+
 	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
 	if (hFind != INVALID_HANDLE_VALUE)
 	{
@@ -243,44 +262,26 @@ bool DoSubmit(const char *deviceId) {
 
 			sprintf_s(szFilename, "%s\\%s", SUBMIT_DIRECTORY, wfd.cFileName);
 
+			// TODO: we need this here now as move/copy to submit may leave unzipped files to submit ..
 			if (strcmp(PathFindExtensionA(szFilename), ".zip") != 0)
 			{
-				sprintf_s(szZipFilename, "%s\\%s.zip", SUBMIT_DIRECTORY, wfd.cFileName);
-				Debug("[upload] create zip %s -> %s\n", szFilename, szZipFilename);
-
-				if (zipfile(szFilename, szZipFilename))
+				if (!createzip(szFilename))
 				{
-					// remove original file,
-					// since we have the zip;
-					DeleteFileA(szFilename);
-					Trace("Create zip file %s.", szZipFilename);
+					fprintf(stderr, "[upload] failed to create zip file %s.zip\n", szFilename);
+					continue; // move forward and try others ..
 				}
-				else
-				{
-					// remove broken zip
-					fprintf(stderr, "[upload] failed to create zip file %s\n", szZipFilename);
-					DeleteFileA(szZipFilename);
-					result = false;
+				else {
+					sprintf_s(szFilename, "%s\\%s.zip", SUBMIT_DIRECTORY, wfd.cFileName);
 				}
 			}
-			else {
-				// already zipped
-				sprintf_s(szZipFilename, "%s", szFilename);
-			}
 
-			if (PathFileExistsA(szZipFilename))
+			result = upload.SubmitFile(szFilename, deviceId);
+			if (result)
 			{
-				Debug("[upload] send zip %s\n", szZipFilename);
-				if (upload.SubmitFile(szZipFilename, deviceId))
-				{
-					DeleteFileA(szZipFilename);
-					Trace("Remove submitted file %s.", szZipFilename);
-				}
-				else
-				{
-					result = false;
-				}
+				DeleteFileA(szFilename);
+				Trace("Remove submitted file %s.", szFilename);
 			}
+
 		} while (result && FindNextFileA(hFind, &wfd));
 
 		FindClose(hFind);

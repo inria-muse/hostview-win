@@ -52,7 +52,6 @@ enum SessionEvent {
 	Start = 0,
 	Pause,
 	Restart,
-	Rotated,
 	Stop
 };
 
@@ -100,7 +99,7 @@ public:
 	void Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR * szDnsSuffix, const TCHAR *szMac,
 		const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed, bool wireless,
 		const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType, unsigned long phyIndex,
-		unsigned long channel, unsigned long rssi, unsigned long signal, bool connected, __int64 timestamp);
+		unsigned long channel, bool connected, __int64 timestamp);
 
 	// insert location information
 	void Insert(const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
@@ -113,7 +112,7 @@ public:
 	void Insert(__int64 timestamp, SessionEvent e);
 
 	// insert sysinfo
-	void Insert(__int64 timestamp, SysInfo &info);
+	void Insert(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version);
 
 	size_t GetQueueSize();
 	DWORD ExecThread();

@@ -76,30 +76,6 @@ extern "C" PCAPAPI bool StopAllCaptures();
 
 extern "C" PCAPAPI bool CleanAllCaptureFiles();
 
-/** On-going capture meta-data. */
-struct Capture {
-	ULONGLONG session;
-	ULONGLONG connection;
-	UINT number;
-	void *thread;
-	pcap_t *pcap;
-	pcap_dumper_t *dumper;
-	char capture_file[MAX_PATH];
-	CCaptureCallback *cb;
-
-	// dummy default constuctor
-	Capture() :
-		session(0),
-		connection(0),
-		number(0),
-		thread(NULL),
-		pcap(NULL),
-		dumper(NULL),
-		cb(NULL)
-	{
-	}
-};
-
 /**
  * NetInterf with custom details.
  **/
@@ -128,17 +104,13 @@ struct NetworkInterface
 	std::string strPHYType;
 	ULONG phyIndex;
 	ULONG channel;
-	ULONG signal;
-	ULONG rssi;
 
 	NetworkInterface()
 		: wireless(false),
 		tSpeed(0),
 		rSpeed(0),
 		channel(0),
-		phyIndex(0),
-		signal(0),
-		rssi(0)
+		phyIndex(0)
 	{
 	}
 	
@@ -181,7 +153,7 @@ public:
 	virtual void OnInterfaceDisconnected(const NetworkInterface& networkInterface) = 0;
 };
 
-extern "C" PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit, unsigned long interfaceMonitorTimeout);
+extern "C" PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit);
 extern "C" PCAPAPI bool StopInterfacesMonitor();
 
 

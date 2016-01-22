@@ -131,7 +131,6 @@ void QueryWlanAdapterInfo(GUID guid, NetworkInterface &networkInterface)
 			}
 
 			networkInterface.phyIndex = pConnectInfo->wlanAssociationAttributes.uDot11PhyIndex;
-			networkInterface.signal = pConnectInfo->wlanAssociationAttributes.wlanSignalQuality;
 			networkInterface.rSpeed = pConnectInfo->wlanAssociationAttributes.ulRxRate;
 			networkInterface.tSpeed = pConnectInfo->wlanAssociationAttributes.ulTxRate;
 		}
@@ -142,12 +141,6 @@ void QueryWlanAdapterInfo(GUID guid, NetworkInterface &networkInterface)
 		if (WlanQueryInterface(hClient, &guid, wlan_intf_opcode_channel_number, NULL, &dwSize, (PVOID *) &ulChannel, NULL) == ERROR_SUCCESS)
 		{
 			networkInterface.channel = *ulChannel;
-		}
-
-		PULONG ulRSSI = 0;
-		if (WlanQueryInterface(hClient, &guid, wlan_intf_opcode_rssi, NULL, &dwSize, (PVOID *) &ulRSSI, NULL) == ERROR_SUCCESS)
-		{
-			networkInterface.rssi = *ulRSSI;
 		}
 
 		WlanCloseHandle(hClient, NULL);
@@ -350,6 +343,7 @@ void QueryActiveInterfaces(std::set<NetworkInterface> &interfaces)
 }
 
 std::set<NetworkInterface> previousInterfaces;
+
 /**
  * Checks whether there are differences in the connectivity between calls.
  **/
@@ -385,7 +379,6 @@ bool interfacesMonitorRunning = false;
 HANDLE hInterfacesMonitor = NULL;
 
 unsigned long g_pcapSizeLimit;
-unsigned long g_interfaceMonitorTimeout;
 
 DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 {
@@ -404,16 +397,22 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 		HANDLE handle = NULL;
 		NotifyAddrChange(&handle, &overlap);
 
+		unsigned long dwCheck = 0;
 		while (interfacesMonitorRunning)
 		{
-			if (WaitForSingleObject(overlap.hEvent, g_interfaceMonitorTimeout) == WAIT_OBJECT_0)
+			// don't block here forever so that the thread is responsive to stop events
+			if (WaitForSingleObject(overlap.hEvent, 100) == WAIT_OBJECT_0 && interfacesMonitorRunning)
 			{
 				CheckConnectedInterfaces(pCallback);
 				break;
 			}
-			else
+
+			dwCheck += 100;
+
+			// check pcap files sizes every minute only
+			if (interfacesMonitorRunning && dwCheck > 60000)
 			{
-				// check files sizes;
+				dwCheck = 0; // reset
 				for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin(); it != previousInterfaces.end(); it ++)
 				{
 					const char *adapterId = it->strName.c_str();
@@ -430,10 +429,9 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 	return 0;
 }
 
-PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit, unsigned long interfaceMonitorTimeout)
+PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit)
 {
 	g_pcapSizeLimit = pcapSizeLimit;
-	g_interfaceMonitorTimeout = interfaceMonitorTimeout;
 
 	if (!hInterfacesMonitor)
 	{

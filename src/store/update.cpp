@@ -226,6 +226,17 @@ BOOL GetLatestProductVersion(char *szLatestProdVer, DWORD dwSize)
 	return bResult;
 }
 
+// FIXME: 
+BOOL CheckForResourceUpdates() {
+	// TODO: replace auto-update with this:
+	// TODO: - pull md5 first => pull entire file if different
+	// TODO: - pull recursively (e.g. md5 for entire folder, etc.)
+	PullFile(_T("settings"));
+	PullFile(_T("html/esm_wizard.html"));
+	PullFile(_T("html/network_wizard.html"));
+
+	return true;
+}
 
 VOID PullFile(TCHAR *szFilePath)
 {

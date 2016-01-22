@@ -28,6 +28,7 @@
 #include "Capture.h"
 #include "Upload.h"
 #include "iphdr.h"
+#include "trace.h"
 
  // currently tracked adapters
 std::set<std::string> adapterIds;
@@ -298,6 +299,29 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 // implemented in http.cpp
 extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback);
 
+// capture meta-data
+struct Capture {
+	ULONGLONG session;
+	ULONGLONG connection;
+	void *thread;
+	pcap_t *pcap;
+	pcap_dumper_t *dumper;
+	char capture_file[MAX_PATH];
+	CCaptureCallback *cb;
+
+	// dummy default constuctor
+	Capture() :
+		session(0),
+		connection(0),
+		thread(NULL),
+		pcap(NULL),
+		dumper(NULL),
+		cb(NULL)
+	{
+	}
+};
+
+
 void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
 	ETHER_HDR *pEthernet = (ETHER_HDR *) pkt_data;
@@ -432,8 +456,7 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 session, __int64 t
 	{
 		cap.session = session;
 		cap.connection = timestamp;
-		cap.number = 0;
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%s_%d.pcap", DATA_DIRECTORY, cap.session, cap.connection, adapterId, cap.number);
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)
@@ -557,8 +580,7 @@ PCAPAPI bool RotateCaptureFile(const char *adapterId) {
 		MoveFileToSubmit(cap.capture_file, false);
 
 		// restart
-		cap.number++;
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%s_%d.pcap", DATA_DIRECTORY, cap.session, cap.connection, adapterId, cap.number);
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)

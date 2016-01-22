@@ -33,12 +33,13 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 {
 	InitializeCriticalSection(&m_cs);
 
+
 	m_fStopping = FALSE;
 	m_fUserStopped = FALSE;
-	m_dwLastSubmit = GetTickCount(); // delay next submit to now + interval
 	m_dwRetryCount = 0;
 	m_dwUserStoppedTime = 0;
-	m_dwLastUpdateCheck = 0; // check as soon as possible
+	m_dwLastSubmit = 0;
+	m_dwLastUpdateCheck = 0;
 
 	m_fIdle = FALSE;
 	m_fFullScreen = FALSE;
@@ -68,6 +69,14 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 
 	m_startTime = GetHiResTimestamp();
 
+	DWORD now = GetTickCount();
+
+	// next upload will take place after configured interval
+	m_dwLastSubmit = now;
+
+	// next update check will take place 5min after service start
+	m_dwLastUpdateCheck = now - m_settings.GetULong(AutoUpdateInterval) + 5 * 60 * 1000;
+
 	Trace("Hostview service start.");
 
 	WriteEventLogEntry(L"CHostViewService in OnStart", EVENTLOG_INFORMATION_TYPE);
@@ -87,7 +96,7 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 
 	// log session start + once per session data
 	m_store.Insert(m_startTime, SessionEvent::Start);
-	m_store.Insert(m_startTime, m_sysInfo);
+	m_store.Insert(m_startTime, m_sysInfo, ProductVersionStr, m_settings.GetVersion());
 
 	// make sure we don't have any pending pcaps in the capture folder
 	CleanAllCaptureFiles();
@@ -101,20 +110,28 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 
 void CHostViewService::ServiceWorkerThread(void)
 {
+	// session rotation info
+	DWORD lastSessionCheck = 0;
+	WORD lastRotateDay = 0;
+
 	while (!m_fStopping)
 	{
 		Sleep(500);
+
 		DWORD dwNow = GetTickCount();
+		if (!lastSessionCheck) {
+			lastSessionCheck = dwNow;
+		}
 
 		if (m_fUserStopped)
 		{
-			// auto-start in 30 minutes TODO: put this in settings;
 			if (dwNow - m_dwUserStoppedTime >= m_settings.GetULong(AutoRestartTimeout))
 			{
-				// send self message to re-start capture;
+				// send self message to re-start capture
 				SendServiceMessage(Message(MessageStartCapture));
 			}
-			continue; // we're still stopped - do nothing else on this round
+
+			continue; // we're stopped
 		}
 
 		// Run different measurement actions if need
@@ -129,7 +146,11 @@ void CHostViewService::ServiceWorkerThread(void)
 			if (m_dwRetryCount > m_settings.GetULong(AutoSubmitRetryCount)) 
 			{
 				// failed x times in a row, mark as done for now and try again in full interval
+				Trace("Data submission failed (reached max retry count: %d)", m_dwRetryCount);
+
 				CheckDiskUsage();
+
+				// reset
 				m_dwLastSubmit = dwNow;
 				m_dwRetryCount = 0;
 			}
@@ -141,18 +162,19 @@ void CHostViewService::ServiceWorkerThread(void)
 			}
 			else
 			{
-				// trick the last submit time so that we try again sooner
-				m_dwRetryCount++;
-				m_dwLastSubmit = dwNow - m_settings.GetULong(AutoSubmitInterval) + m_settings.GetULong(AutoSubmitRetryInterval);
 				Trace("Data submission failed (retry count: %d)", m_dwRetryCount);
+				m_dwRetryCount++;
+				// trick the last submit time so that we try again sooner
+				m_dwLastSubmit = dwNow - m_settings.GetULong(AutoSubmitInterval) + m_settings.GetULong(AutoSubmitRetryInterval);
 			}
 		}
 
-		// automatic update
+		// check for updates ?
 		if (dwNow - m_dwLastUpdateCheck >= m_settings.GetULong(AutoUpdateInterval))
 		{
 			m_dwLastUpdateCheck = dwNow;
 
+			// HostView update 
 			if (CheckForUpdate())
 			{
 				TCHAR szUpdate[MAX_PATH] = {0};
@@ -160,13 +182,49 @@ void CHostViewService::ServiceWorkerThread(void)
 				{
 					// TODO: will be as system; what happens to UI?
 					ShellExecute(NULL, L"open", szUpdate, 0, 0, SW_SHOW);
+					continue; // or break ?
 				}
 			}
+
+			// UI + settings
+			CheckForResourceUpdates();
+
+			// in case we just updated the settings
+			m_settings.ReloadSettings();
 		}
 
-		// update resources
-		PullLatestResources(dwNow);
+		// Rotate session once per day (4am)
+		if (dwNow - lastSessionCheck > 3600000) {
+			SYSTEMTIME st;
+			GetLocalTime(&st);
 
+			if (st.wHour == 4 && (lastRotateDay == 0 || lastRotateDay != st.wDay)) {
+				// take down all captures
+				StopCollect();
+				CleanAllCaptureFiles();
+				Trace("Hostview service rotate session %d/%d/%d %d:%d.", st.wDay, st.wMonth, st.wYear, st.wHour, st.wMinute);
+				Trace(0);
+
+				// end session db
+				m_startTime = GetHiResTimestamp();
+				m_store.Insert(m_startTime, SessionEvent::Stop);
+				m_store.Close();
+
+				m_settings.ReloadSettings();
+
+				// open new session db
+				QuerySystemInfo(m_sysInfo);
+				m_store.Open(m_startTime);
+				m_store.Insert(m_startTime, SessionEvent::Start);
+				m_store.Insert(m_startTime, m_sysInfo, ProductVersionStr, m_settings.GetVersion());
+
+				// restart collectors
+				StartCollect();
+
+				lastRotateDay = st.wDay;
+			}
+			lastSessionCheck = dwNow;
+		}
 	} // end while
 
 	// signal the stopped event;
@@ -177,8 +235,6 @@ void CHostViewService::OnStop()
 {
 	WriteEventLogEntry(L"CHostViewService in OnStop", EVENTLOG_INFORMATION_TYPE);
 
-	Trace("Hostview service stop.");
-
 	// Indicate that the service is stopping and wait for the finish of the 
 	// main service function (ServiceWorkerThread).
 	m_fStopping = TRUE;
@@ -187,12 +243,16 @@ void CHostViewService::OnStop()
 		throw GetLastError();
 	}
 
+
+	// stop captures
 	StopCollect();
+	Trace("Hostview service stop.");
+	Trace(0);
+
 	StopServiceCommunication();
 
 	// clean up all data files and move to submit
 	CleanAllCaptureFiles();
-	Trace(0);
 	m_store.Insert(GetHiResTimestamp(), SessionEvent::Stop);
 	m_store.Close();
 }
@@ -204,7 +264,7 @@ void CHostViewService::OnShutdown()
 
 void CHostViewService::StartCollect()
 {
-	StartInterfacesMonitor(*this, m_settings.GetULong(PcapSizeLimit), m_settings.GetULong(InterfaceMonitorTimeout));
+	StartInterfacesMonitor(*this, m_settings.GetULong(PcapSizeLimit));
 	StartWifiMonitor(*this, m_settings.GetULong(WirelessMonitorTimeout));
 	StartBatteryMonitor(*this, m_settings.GetULong(BatteryMonitorTimeout));
 	StartHttpDispatcher(*this);
@@ -305,7 +365,7 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, __int64 timestamp,
 	m_store.Insert(ni.strName.c_str(), ni.strFriendlyName.c_str(), ni.strDescription.c_str(), ni.strDnsSuffix.c_str(),
 		ni.strMac.c_str(), szIps, szGateways, szDnses, ni.tSpeed, ni.rSpeed, ni.wireless, ni.strProfile.c_str(),
 		ni.strSSID.c_str(), ni.strBSSID.c_str(), ni.strBSSIDType.c_str(), ni.strPHYType.c_str(), ni.phyIndex,
-		ni.channel, ni.rssi, ni.signal, connected, timestamp);
+		ni.channel, connected, timestamp);
 }
 
 void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInterface)
@@ -390,19 +450,26 @@ void CHostViewService::OnHttpHeaders(int protocol, char *szSrc, u_short srcport,
 }
 
 
+// FIXME: not sure this works as intended ...
 void CHostViewService::RunQuestionnaireIfCase()
 {
 	static DWORD sdwLastCheck = 0;
 
 	if (m_settings.GetULong(QuestionnaireActive)) {
 		DWORD dwNow = GetTickCount();
-		// check once per interval (and when the user is there)
+
+		// check once per interval (if the user is there)
 		if (dwNow - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && !m_fIdle && !m_fFullScreen)
 		{
 			sdwLastCheck = dwNow;
 
-			// enforce max shows per day
-			if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows))
+			SYSTEMTIME st;
+			GetLocalTime(&st);
+
+			// enforce max shows per day and start + end hours
+			if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows) &&
+				st.wHour >= m_settings.GetULong(EsmStartHour) &&
+				st.wHour <= m_settings.GetULong(EsmStopHour))
 			{
 				// pick random number between [0,100) and compare to the selected probability
 				if ((double) rand() / (RAND_MAX + 1) * 100.0 <= 1.0*m_settings.GetULong(EsmCoinFlipProb))
@@ -411,25 +478,6 @@ void CHostViewService::RunQuestionnaireIfCase()
 				}
 			}
 		}
-	}
-}
-
-void CHostViewService::PullLatestResources(DWORD dwNow)
-{
-	static BOOL fUpdated = FALSE;
-	if (fUpdated)
-		return;
-
-	// if 10 minutes after system restart, 1 time update
-	if (dwNow > m_settings.GetULong(AutoUpdateInterval))
-	{
-		// TODO: replace auto-update with this:
-		// TODO: - pull md5 first => pull entire file if different
-		// TODO: - pull recursively (e.g. md5 for entire folder, etc.)
-		PullFile(_T("settings"));
-		PullFile(_T("html/esm_wizard.html"));
-		PullFile(_T("html/network_wizard.html"));
-		fUpdated = TRUE;
 	}
 }
 
@@ -576,7 +624,7 @@ bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
 	if (jsonbuf && len > 0) {
 		char fn[MAX_PATH];
-		sprintf_s(fn, "%S\\%llu.json", TEMP_PATH, GetHiResTimestamp());
+		sprintf_s(fn, "%S\\%llu_%llu_browserupload.json", m_startTime, TEMP_PATH, GetHiResTimestamp());
 		FILE * f = NULL;
 		fopen_s(&f, fn, "w");
 		if (f)
