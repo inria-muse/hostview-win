@@ -96,7 +96,7 @@ an UTC timestamp with millisecond accuracy.
 
 	wirelessMonitorTimeout = 10000
 
-	Table: wifi(timestamp, ...)
+	Table: wifistats(timestamp, ...)
 
 * System battery status (charge, status):
 
@@ -238,4 +238,134 @@ Automatic Updates
 	https://muse.inria.fr/hostview2016/latest/settings 					[updated settings]	
 	https://muse.inria.fr/hostview2016/latest/html/esm_wizard.html		[updated ESM questionnaire UI]	
 	https://muse.inria.fr/hostview2016/latest/html/network_wizard.html	[updated network labeling UI]
+
+
+Local Hostview Database Schema
+------------------------------
+
+CREATE TABLE IF NOT EXISTS connectivity(
+	name VARCHAR(260), 
+	friendlyname VARCHAR(260), 
+	description VARCHAR(260), 
+	dnssuffix VARCHAR(260),
+	mac VARCHAR(64),
+	ips VARCHAR(300),
+	gateways VARCHAR(300),
+	dnses VARCHAR(300), 
+	tspeed INT8, 
+	rspeed INT8, 
+	wireless TINYINT, 
+	profile VARCHAR(64),
+	ssid VARCHAR(64),
+	bssid VARCHAR(64),
+	bssidtype VARCHAR(20),
+	phytype VARCHAR(20),
+	phyindex INTEGER,
+	channel INTEGER,
+	connected TINYINT,
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS wifistats(
+	guid VARCHAR(260), 
+	tspeed INT8, 
+	rspeed INT8, 
+	signal INTEGER,
+	rssi INTEGER, 
+	state INTEGER, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS battery(status INTEGER, percent INTEGER, timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS procs(
+	pid INTEGER, 
+	name VARCHAR(260), 
+	memory INTEGER,
+	cpu DOUBLE, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS ports(
+	pid INTEGER, 
+	name VARCHAR(260), 
+	protocol INTEGER,
+	srcip VARCHAR(42), 
+	destip VARCHAR(42), 
+	srcport INTEGER, 
+	destport INTEGER, 
+	state INTEGER, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS activity(
+	user VARCHAR(260), 
+	pid INTEGER, 
+	name VARCHAR(260), 
+	description VARCHAR(260),
+	fullscreen TINYINT, 
+	idle TINYINT, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS io(
+	device INTEGER, 
+	pid INTEGER, 
+	name VARCHAR(260), 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS http(
+	httpverb VARCHAR(64), 
+	httpverbparam VARCHAR(300), 
+	httpstatuscode VARCHAR(64),
+	httphost VARCHAR(300), 
+	referer VARCHAR(300), 
+	contenttype VARCHAR(300), 
+	contentlength VARCHAR(300), 
+	protocol INTEGER,
+	srcip VARCHAR(42), 
+	destip VARCHAR(42), 
+	srcport INTEGER, 
+	destport INTEGER, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS dns(
+	type INTEGER, 
+	ip VARCHAR(42), 
+	host VARCHAR(260), 
+	protocol INTEGER,
+	srcip VARCHAR(42), 
+	destip VARCHAR(42), 
+	srcport INTEGER, 
+	destport INTEGER, 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS location(
+	ip VARCHAR(100),
+	rdns VARCHAR(100), 
+	asnumber VARCHAR(100), 
+	asname VARCHAR(100),
+	countryCode VARCHAR(100), 
+	city VARCHAR(100), 
+	lat VARCHAR(100), 
+	lon VARCHAR(100), 
+	timestamp INT8);
+
+CREATE TABLE IF NOT EXISTS browseractivity(
+	timestamp INT8, 
+	browser VARCHAR(1024), 
+	location VARCHAR(1024));
+
+CREATE TABLE IF NOT EXISTS session(
+	timestamp INT8, 
+	event VARCHAR(32));
+
+CREATE TABLE IF NOT EXISTS sysinfo(
+	timestamp INT8, 
+	manufacturer VARCHAR(32), 
+	product VARCHAR(32), 
+	os VARCHAR(32),
+	cpu VARCHAR(32), 
+	totalRAM INTEGER, 
+	totalHDD INTEGER, 
+	serial VARCHAR(32), 
+	hostview_version VARCHAR(32), 
+	settings_version INTEGER,
+	timezone VARCHAR(32), 
+	timezone_offset INTEGER);
 
