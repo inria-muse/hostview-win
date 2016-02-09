@@ -176,3 +176,45 @@ exports.onUnload = function (reason) {
 		onClose(tab);
   	}
 };
+
+
+// PageMod to add the mechanism for monitoring the application-level QoS of video streaming services.
+var data = require("sdk/self").data;
+pageMod.PageMod({
+	include: /^http[s]*\:\/\/.*youtube.com\/.*/,
+	//contentStyleFile: [],
+	contentScriptFile: [
+		data.url("../video/jquery/jquery-1.9.1.min.js"),
+		data.url("../video/jquery/jquery-ui-1.10.3.min.js"),
+		data.url("../video/Utils/Utils.js"),
+		data.url("../video/Log/Logger.js"),
+		data.url("../video/Log/DatasetLogger.js"),
+		data.url("../video/Dataset/Dataset.js"),
+		data.url("../video/Dataset/VideoSession.js"),
+		data.url("../video/Dataset/BufferingEvent.js"),
+		data.url("../video/Dataset/PauseEvent.js"),
+		data.url("../video/Dataset/SeekEvent.js"),
+		data.url("../video/Dataset/OffScreenEvent.js"),
+		data.url("../video/Dataset/VideoResolution.js"),
+		data.url("../video/Dataset/PlayerSize.js"),
+		data.url("../video/Dataset/VideoPlaybackQualitySample.js"),
+		data.url("../video/Dataset/BufferedPlayTimeSample.js"),
+		data.url("../video/Dataset/VideoSessionSummary.js"),
+		data.url("../video/VideoMonitor/VideoMonitor.js"),
+		data.url("../video/main.js"),
+	],
+	contentScript: '',
+	contentScriptWhen: 'start', // Important! "start" is required! // start, ready, end
+	onAttach: function (worker) {
+		// request and handle pageload stats
+		worker.port.on("upload", function (obj) {
+			// upload with hostview
+			upload.sendjson(obj);
+
+			// For debugging: Draw a red border to the body elemens.
+			//require("sdk/tabs").activeTab.attach({
+			//	contentScript: 'alert("index.js: Uploading"); document.body.style.border = "5px solid red";'
+			//});
+		});
+	}
+});
