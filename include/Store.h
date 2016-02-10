@@ -48,17 +48,22 @@ enum IoDevice {
 	Speaker = 4
 };
 
+// Enum that describe the various reasons to start/stop a recording session
 enum SessionEvent {
-	Start = 0,
-	Pause,
-	Restart,
-	Stop
+	Start = 0,      // service start
+	AutoStart = 1,  // start after session rotate
+	Resume = 2,     // start after suspend
+	Restart = 3,    // start after pause      
+	Pause = 4,      // stop due user pause
+	Suspend = 5,    // stop due system suspend
+	AutoStop = 6,   // stop due daily rotation
+	Stop = 7        // service stop
 };
 
 /**
- * Traffic Store Class
- * Used to insert HostView user data.
- **/
+ *  Main data store backed up by a sqlite db. The main idea is to have a db file
+ *  per session, open creates a new session database, and close moves it to submit.
+ */
 class STOREAPI CStore
 {
 public:
@@ -68,54 +73,61 @@ public:
 	bool Open(ULONGLONG session);
 	void Close();
 
-	void InitTables();
-
 	// inserts a process pid mapping
-	void Insert(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp);
+	void InsertPort(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp);
 
 	// inserts a process usage
-	void Insert(DWORD pid, char *name, int memory, double cpu, __int64 timestamp);
+	void InsertProc(DWORD pid, char *name, int memory, double cpu, __int64 timestamp);
 
 	// insert a http header
-	void Insert(char *szVerb, char *szVerbParam, char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength,
+	void InsertHttp(__int64 connstart, 
+		char *szVerb, char *szVerbParam, char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength,
 		int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp);
 
 	// inserts a dns mapping
-	void Insert(int type, char *szIp, char *szHost, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp);
+	void InsertDns(__int64 connstart,
+		int type, char *szIp, char *szHost, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp);
 
 	// insert user activity
-	void Insert(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescription, bool isFullScreen, bool isIdle, __int64 timestamp);
+	void InsertActivity(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescription, bool isFullScreen, bool isIdle, __int64 timestamp);
 
 	// insert generic I/O activity
-	void Insert(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp);
+	void InsertIo(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp);
 
 	// insert wifi stats
-	void Insert(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp);
+	void InsertWifi(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp);
 
-	// insert battery stats
-	void Insert(unsigned char status, unsigned char percent, __int64 timestamp);
+	// insert user network label
+	void InsertNetLabel(__int64 timestamp, TCHAR *szGUID, TCHAR *szGW, TCHAR *szLabel);
 
 	// insert network connection events
-	void Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR * szDnsSuffix, const TCHAR *szMac,
-		const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed, bool wireless,
-		const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType, unsigned long phyIndex,
-		unsigned long channel, bool connected, __int64 timestamp);
+	void InsertConn(const char *szGuid, const TCHAR *szFriendlyName, 
+		const TCHAR *szDescription, const TCHAR * szDnsSuffix, const TCHAR *szMac,
+		const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed, 
+		bool wireless, const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, 
+		const char *szPHYType, unsigned long phyIndex, unsigned long channel, bool connected, __int64 timestamp);
 
 	// insert location information
-	void Insert(const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
+	void InsertLoc(const char *szGuid, const char *szIp, const char *szRDNS, const char *szAsNumber, 
+		const char *szAsName, const char *szCountryCode, const char * szCity,
 		const char *szLat, const char *szLon, __int64 timestamp);
 
 	// insert browser activity log
-	void Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
+	void InsertBrowser(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp);
 
 	// insert session event
-	void Insert(__int64 timestamp, SessionEvent e);
+	void InsertSession(__int64 timestamp, SessionEvent e);
 
 	// insert sysinfo
-	void Insert(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version);
+	void InsertSys(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version);
+
+	// insert power state ecent
+	void InsertPowerState(__int64 timestamp, char *event, int value);
 
 	size_t GetQueueSize();
+
 	DWORD ExecThread();
+
 private:
 	sqlite3 *db;
 	char szError[MAX_PATH];
@@ -124,8 +136,7 @@ private:
 
 	ULONGLONG m_session;
 
-	bool openDbFile();
-	void closeDbFile();
+	void InitTables();
 
 	bool exec(const char *statement);
 	SQLTable query(const char *statement);

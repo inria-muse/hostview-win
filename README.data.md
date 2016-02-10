@@ -19,24 +19,27 @@ Event-based Data
 
 ### Session ###
 
-The HostView runs (sessions) are tracked in the sqlite database (one per session). Start event 
-is quaranteed, others maybe missing (user never pauses HostView or the service dies). 
+The HostView runs (sessions) are tracked in the sqlite database (one per session). A new session
+starts when HostView (service) is started, system resumes from sleep, or HostView is re-started after 
+user paused it. A session ends when HostView (service) is shutdown, user pushes the pause button or 
+the computer goes to sleep (suspend). The end event may be missing if HostView service crashed.
+
+If HostView (PC) is on all the time, HostView auto re-starts a new session once a day (~3-5am) in order 
+to limit the size of the uploaded files. The autostop event and the autorestart event of the new session will
+have the same timestamps in order to facilitate reconstruction of complete sessions if need.
 
 	Table: session(timestamp, event)
 
-	Possible events: start|pause|restart|stop
+	Possible events: start|resume|restart|stop|pause|suspend|autostop|autorestart
 
-When HostView is stopped by the user, or in anycase at least once a day at night, we mark 
-the current session as stopped, and rotate the local sqlite database and capture files. This is done 
-to limit the size of the local  database and to guarantee continuous data uploads from
-the monitored host.
 
 ### SysInfo ###
 
-At start time HostView records the current system information (some of these may change from one 
+At session start, HostView records the current system information (some of these may change from one 
 session to another,, e.g. HostView version update, system memory update, ..). 
 
 	Table: sysinfo(timestamp, ..)
+
 
 ### Connectivity ###
 
@@ -46,13 +49,11 @@ interface (see Packet Capture for more info).
 
 	Table: connectivity(timestamp, connected, ...)
 
+
 ### Network Location ###
 
-TODO: need to still check that all this works as advertised !!
-
-When HostView identifies a new network location, it requests more information
-about the network using RIPEstats APIs and stores this to the database. A network
-location is identified using tuple () for location updates. 
+When a network interface goes up, Hostview requests more information about the
+network location from the backend service. TODO: just once per session ? 
 
 	Table: location(timestamp, ..)
 
@@ -60,18 +61,36 @@ location is identified using tuple () for location updates.
 
 	netLocationActive = 1
 
-* Location data timeout (in days), re-fresh location data if older than this
+* Network location API url (resolver service)
 
-	netLocationTimeout = 7
+	netLocationApiUrl = https://muse.inria.fr/hostview/location
 
-In addition, we ask the user to label the network and store the data to the database. Network
-locations are identified using tuple () for labeling.
+In addition, we ask the user to label the network locations and store the data 
+to the database. Unique network locations are identified using tuple 
+(device guid, gateway id) for labeling and the user is asked for the label only
+once per location.
 
-	Table: networkname(timestamp, );
+	Table: netlabel(timestamp, ...);
 
 * Enable/disable network labeling, default 'enabled'
 
 	netLabellingActive = 1
+
+
+### System Power States ###
+
+HostView tracks updates to system power state changes via power settings change events. 
+
+	Table: powerstates(timestamp, event, value)
+
+	Possible events: 
+		power_source - 0 (AC power) | 1 (battery) | 2 (short-term source)
+		battery_remaining - value (pourcentage)
+		display_state - 0 (off) | 1 (on) | 2 (dimmed)
+		user_precense - 0 (present) | 2 (not present)
+		monitor_power - 0 (off) | 1 (on)
+
+See MSDN documentation on ''Power Setting GUIDs' for more info on the above power states.
 
 
 ### User Activity ###
@@ -85,24 +104,19 @@ idle timeout (milliseconds) of inactivity:
 	Table: activity(timestamp, )
 
 
-Continuous Data
----------------
+Continuous Timeseries
+---------------------
 
 Continuos metrics are recorded periodically using the intervals specified below (all timeouts are in 
 milliseconds). The data is stored in the current session database, and each row is timestamped with 
-an UTC timestamp with millisecond accuracy. 
+an UTC timestamp with millisecond accuracy.
+
 
 * Wireless network metrics (RSSI, tx/rx speed):
 
 	wirelessMonitorTimeout = 10000
 
 	Table: wifistats(timestamp, ...)
-
-* System battery status (charge, status):
-
-	batteryMonitorTimeout = 15000
-
-	Table: battery(timestamp, ...)
 
 * Socket table (sockets to processes mapping):
 
@@ -132,24 +146,26 @@ capture file. Related configurations:
 
 * Max pcap file size, default 100MB:
 
-	pcapSizeLimit = 100000000
+	pcapSizeLimit = 1048576000
 
 The raw capture files are named as follows:
 
-	File: sessionStartTime_connectivityUpTime_fileStartTime_interfaceId.pcap
+	File: sessionStartTime_connectivityUpTime_fileStartTime_interfaceId_flag.pcap
 
 The three timestamps in the file name correspond to the session start time (session table 'start' event), 
 connectivity up time (connectivity table connected=1), and the pcap file creation time (can be used to 
 distinguish and order rotated pcaps for merging). The interface id is the network interface id as in 
-the connectivity table.
+the connectivity table. The flag is one of F|P|L (First|Rotated|Last). If the connection only 
 
 HostView does some processing on the packet trace during the capture: it parses DNS packets and HTTP requests.
 DNS packets are also fully recorded in the pcap. In contrast, HTTP headers are not included in the trace, only the parsed
 requests. The HTTP parsing is a bit redundant with the browser activity tracking extensions (which can also see HTTPS
 requests that we cannot parse from the pcap) but we'll keep it for now to capture non-browser HTTP traffic for example.
+Both dns and http table record the related connectivity event time (connstart), so that we can find the related pcap
+file for further analysis.
 
-	Table: dns(timestamp, 5-tuple, ...)
-	Table: http(timestamp, 5-tuple, ...)
+	Table: dns(timestamp, connstart, 5-tuple, ...)
+	Table: http(timestamp, connstart, 5-tuple, ...)
 
 
 Browser Data
@@ -160,6 +176,7 @@ updates (new tab is opened, new url is loaded, user switches between tabs) are w
 the performance metrics are written to json files. 
 
 	Table: browseractivity(timestamp, browser, url)
+
 	File: sessionStartTime_timestamp_browserupload.json
 
 
@@ -170,21 +187,19 @@ The experience sample questionaire popups are controlled using the following par
 
 * Enable/disable ESM
 
-	questionnaireActive = 1
+	esmActive = 1
 
 * Popup algorithm (see below):
 
 	esmCoinFlipInterval = 3600000
 	esmCoinFlipProb = 15
 	esmMaxShows = 3
-	esmStartHour = 8 
-	esmStopHour = 23
 
 The popup algorithm is roughly as follows:
 
 	every day:
 		esmShows = 0
-		every esmCoinFlipInterval between esmStartHour to esmStopHour: 
+		every esmCoinFlipInterval: 
 			if (esmShows < esmMaxShows && useractive && !fullscreen && flipCoin() < exmCoinFlipProb):
 				doESM()
 				esmShows++
@@ -229,22 +244,22 @@ Automatic Updates
 
 * Update URL
 
-	updateLocation = https://muse.inria.fr/hostview2016/latest/
+	updateLocation = https://muse.inria.fr/hostview/latest/
 
 * Hostview update is checking for (and downloading) the following updates:
 
-	https://muse.inria.fr/hostview2016/latest/version 					[available update version]	
-	https://muse.inria.fr/hostview2016/latest/hostview_installer.exe 	[updated installer]	
-	https://muse.inria.fr/hostview2016/latest/settings 					[updated settings]	
-	https://muse.inria.fr/hostview2016/latest/html/esm_wizard.html		[updated ESM questionnaire UI]	
-	https://muse.inria.fr/hostview2016/latest/html/network_wizard.html	[updated network labeling UI]
+	https://muse.inria.fr/hostview/latest/version 					[available update version]	
+	https://muse.inria.fr/hostview/latest/hostview_installer.exe 	[updated installer]	
+	https://muse.inria.fr/hostview/latest/settings 					[updated settings]	
+	https://muse.inria.fr/hostview/latest/html/esm_wizard.html		[updated ESM questionnaire UI]	
+	https://muse.inria.fr/hostview/latest/html/network_wizard.html	[updated network labeling UI]
 
 
 Local Hostview Database Schema
 ------------------------------
 
 CREATE TABLE IF NOT EXISTS connectivity(
-	name VARCHAR(260), 
+	guid VARCHAR(260), 
 	friendlyname VARCHAR(260), 
 	description VARCHAR(260), 
 	dnssuffix VARCHAR(260),
@@ -273,8 +288,6 @@ CREATE TABLE IF NOT EXISTS wifistats(
 	rssi INTEGER, 
 	state INTEGER, 
 	timestamp INT8);
-
-CREATE TABLE IF NOT EXISTS battery(status INTEGER, percent INTEGER, timestamp INT8);
 
 CREATE TABLE IF NOT EXISTS procs(
 	pid INTEGER, 
@@ -310,6 +323,7 @@ CREATE TABLE IF NOT EXISTS io(
 	timestamp INT8);
 
 CREATE TABLE IF NOT EXISTS http(
+	connstart INT8,
 	httpverb VARCHAR(64), 
 	httpverbparam VARCHAR(300), 
 	httpstatuscode VARCHAR(64),
@@ -325,6 +339,7 @@ CREATE TABLE IF NOT EXISTS http(
 	timestamp INT8);
 
 CREATE TABLE IF NOT EXISTS dns(
+	connstart INT8,
 	type INTEGER, 
 	ip VARCHAR(42), 
 	host VARCHAR(260), 
@@ -336,6 +351,7 @@ CREATE TABLE IF NOT EXISTS dns(
 	timestamp INT8);
 
 CREATE TABLE IF NOT EXISTS location(
+	guid VARCHAR(260), 
 	ip VARCHAR(100),
 	rdns VARCHAR(100), 
 	asnumber VARCHAR(100), 
@@ -369,3 +385,7 @@ CREATE TABLE IF NOT EXISTS sysinfo(
 	timezone VARCHAR(32), 
 	timezone_offset INTEGER);
 
+CREATE TABLE IF NOT EXISTS powerstate(
+	timestamp INT8, 
+	event VARCHAR(32), 
+	value INT);

@@ -62,7 +62,7 @@ public:
 	void LoadKnownNetworks();
 	void SaveKnownNetworks();
 
-	void OnNetworkLabel(Message &message);
+	void OnNetworkLabel(TCHAR *szGUID, TCHAR *szBSSID, TCHAR *szLabel);
 	bool IsKnown(const NetworkInterface &ni);
 };
 

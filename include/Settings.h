@@ -37,7 +37,6 @@
 #define AutoRestartTimeout "autoRestartTimeout"            // restart hostview after pause (ms)
 
 #define WirelessMonitorTimeout	"wirelessMonitorTimeout"   // check wireless status (ms)
-#define BatteryMonitorTimeout "batteryMonitorTimeout"      // check battery status (ms)
 #define SocketStatsTimeout "socketStatsTimeout"            // check socket table (ms)             
 #define SystemStatsTimeout "systemStatsTimeout"            // check performance stats (ms)
 #define IoTimeout "ioTimeout"                              // check io activity (ms)
@@ -46,13 +45,12 @@
 
 #define NetLabellingActive "netLabellingActive"      // boolean
 #define NetLocationActive "netLocationActive"        // boolean
+#define NetLocationApiUrl "netLocationApiUrl"        // location requests API
 
-#define QuestionnaireActive "questionnaireActive"    // boolean
+#define EsmActive "esmActive"						 // boolean
 #define EsmCoinFlipInterval "esmCoinFlipInterval"    // flip coin every x (ms)
 #define EsmCoinFlipProb "esmCoinFlipProb"            // coin flip success probability [0-100]
 #define EsmMaxShows "esmMaxShows"                    // max num of questionnaires per day
-#define EsmStartHour "esmStartHour"                  // check between startHour
-#define EsmStopHour "esmStopHour"                    // and stopHour only
 
 #define PcapSizeLimit "pcapSizeLimit"                // max pcap filesize (bytes)
 

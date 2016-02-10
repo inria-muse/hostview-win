@@ -67,7 +67,7 @@ void printSockets(void)
 		printf("%10s%7d%20s%41s%7d%41s%7d%7d\r\n", it.IsUDP() ? udp : tcp,
 			it.pid, it.name, it.srcIp, it.srcport, it.destIp, it.destport, it.state);
 
-		store.Insert(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
+		store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
 	}
 
 	ReleaseIpTable(table);
@@ -84,7 +84,7 @@ void printProcs(void)
 	{
 		PerfRow it = table->get(i);
 		printf("%7d%30s%10d%10.2f\r\n", it.pid, it.name, it.memory, it.cpu);
-		store.Insert(it.pid, it.name, it.memory, it.cpu, timestamp);
+		store.InsertProc(it.pid, it.name, it.memory, it.cpu, timestamp);
 	}
 
 	ReleasePerfTable(table);
@@ -139,10 +139,9 @@ class CNetCallback : public CInterfacesCallback
 			}
 		}
 
-		store.Insert(ni.strName.c_str(), ni.strFriendlyName.c_str(), ni.strDescription.c_str(), ni.strDnsSuffix.c_str(),
+		store.InsertConn(ni.strGuid.c_str(), ni.strFriendlyName.c_str(), ni.strDescription.c_str(), ni.strDnsSuffix.c_str(),
 			ni.strMac.c_str(), szIps, szGateways, szDnses, ni.tSpeed, ni.rSpeed, ni.wireless, ni.strProfile.c_str(), ni.strSSID.c_str(),
-			ni.strBSSID.c_str(), ni.strBSSIDType.c_str(), ni.strPHYType.c_str(), ni.phyIndex, ni.channel, ni.signal,
-			ni.rssi, connected, timestamp);
+			ni.strBSSID.c_str(), ni.strBSSIDType.c_str(), ni.strPHYType.c_str(), ni.phyIndex, ni.channel, connected, timestamp);
 	}
 
 public:
@@ -162,7 +161,7 @@ public:
 
 void startNetworkMonitor()
 {
-	if (StartInterfacesMonitor(netCallback, 5, 250))
+	if (StartInterfacesMonitor(netCallback, 5))
 	{
 		printf("interfaces monitor started.\r\n");
 	}
@@ -225,7 +224,7 @@ int consoleMain()
 {
 	InitConsole();
 	store.Open(GetHiResTimestamp());
-	StartInterfacesMonitor(netCallback, 5, 250);
+	StartInterfacesMonitor(netCallback, 5);
 
 //	MAKE_COMMAND("nstart", "start connection monitor", &startNetworkMonitor);
 //	MAKE_COMMAND("nstop", "stop connection monitor", &stopNetworkMonitor);

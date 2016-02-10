@@ -79,12 +79,39 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
     assert(s_service != NULL);
 
     // Register the handler function for the service
-    s_service->m_statusHandle = RegisterServiceCtrlHandler(
-        s_service->m_name, ServiceCtrlHandler);
+    s_service->m_statusHandle = RegisterServiceCtrlHandlerEx(
+        s_service->m_name, ServiceCtrlHandlerEx, NULL);
     if (s_service->m_statusHandle == NULL)
     {
         throw GetLastError();
     }
+
+	// register for selected power settings
+	s_service->m_powerHandles[0] = 
+		RegisterPowerSettingNotification(
+			s_service->m_statusHandle,
+			&GUID_ACDC_POWER_SOURCE,
+			DEVICE_NOTIFY_SERVICE_HANDLE);
+	s_service->m_powerHandles[1] =
+		RegisterPowerSettingNotification(
+			s_service->m_statusHandle,
+			&GUID_BATTERY_PERCENTAGE_REMAINING,
+			DEVICE_NOTIFY_SERVICE_HANDLE);
+	s_service->m_powerHandles[2] =
+		RegisterPowerSettingNotification(
+			s_service->m_statusHandle,
+			&GUID_GLOBAL_USER_PRESENCE,
+			DEVICE_NOTIFY_SERVICE_HANDLE);
+	s_service->m_powerHandles[3] =
+		RegisterPowerSettingNotification(
+			s_service->m_statusHandle,
+			&GUID_CONSOLE_DISPLAY_STATE,
+			DEVICE_NOTIFY_SERVICE_HANDLE);
+	s_service->m_powerHandles[4] =
+		RegisterPowerSettingNotification(
+			s_service->m_statusHandle,
+			&GUID_MONITOR_POWER_ON,
+			DEVICE_NOTIFY_SERVICE_HANDLE);
 
     // Start the service.
     s_service->Start(dwArgc, pszArgv);
@@ -92,7 +119,7 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
 
 
 //
-//   FUNCTION: CServiceBase::ServiceCtrlHandler(DWORD)
+//   FUNCTION: CServiceBase::ServiceCtrlHandlerEx(DWORD)
 //
 //   PURPOSE: The function is called by the SCM whenever a control code is 
 //   sent to the service. 
@@ -114,7 +141,7 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
 //   This parameter can also be a user-defined control code ranges from 128 
 //   to 255.
 //
-void WINAPI CServiceBase::ServiceCtrlHandler(DWORD dwCtrl)
+DWORD WINAPI CServiceBase::ServiceCtrlHandlerEx(DWORD dwCtrl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext)
 {
     switch (dwCtrl)
     {
@@ -122,9 +149,12 @@ void WINAPI CServiceBase::ServiceCtrlHandler(DWORD dwCtrl)
     case SERVICE_CONTROL_PAUSE: s_service->Pause(); break;
     case SERVICE_CONTROL_CONTINUE: s_service->Continue(); break;
     case SERVICE_CONTROL_SHUTDOWN: s_service->Shutdown(); break;
+	case SERVICE_CONTROL_POWEREVENT: s_service->PowerEvent(dwEventType, lpEventData); break;
     case SERVICE_CONTROL_INTERROGATE: break;
     default: break;
     }
+
+	return NO_ERROR;
 }
 
 #pragma endregion
@@ -187,6 +217,11 @@ CServiceBase::CServiceBase(PWSTR pszServiceName,
 //
 CServiceBase::~CServiceBase(void)
 {
+	// cleanup from power notifications
+	for (int i = 0; i < 5; i++) {
+		if (m_powerHandles[i] != NULL)
+			UnregisterPowerSettingNotification(m_powerHandles[i]);
+	}
 }
 
 #pragma endregion
@@ -458,6 +493,30 @@ void CServiceBase::Shutdown()
 //   system shutting down.
 //
 void CServiceBase::OnShutdown()
+{
+}
+
+void CServiceBase::PowerEvent(DWORD dwEventType, LPVOID lpEventData) {
+	try
+	{
+		// Perform service-specific power event handling.
+		if (dwEventType == PBT_POWERSETTINGCHANGE) {
+			OnPowerEvent((PPOWERBROADCAST_SETTING)lpEventData);
+		}
+	}
+	catch (DWORD dwError)
+	{
+		// Log the error.
+		WriteErrorLogEntry(L"Service PowerEvent", dwError);
+	}
+	catch (...)
+	{
+		// Log the error.
+		WriteEventLogEntry(L"Service failed to handle power event.", EVENTLOG_ERROR_TYPE);
+	}
+}
+
+void CServiceBase::OnPowerEvent(PPOWERBROADCAST_SETTING event)
 {
 }
 

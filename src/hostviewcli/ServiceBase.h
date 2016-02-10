@@ -74,6 +74,10 @@ protected:
     // system shutting down.
     virtual void OnShutdown();
 
+	// When implemented in a derived class, executes when the system receives
+	// a power state change event.
+	virtual void OnPowerEvent(PPOWERBROADCAST_SETTING event);
+
     // Set the service status and report the status to the SCM.
     void SetServiceStatus(DWORD dwCurrentState, 
         DWORD dwWin32ExitCode = NO_ERROR, 
@@ -94,7 +98,7 @@ private:
 
     // The function is called by the SCM whenever a control code is sent to 
     // the service.
-    static void WINAPI ServiceCtrlHandler(DWORD dwCtrl);
+    static DWORD WINAPI ServiceCtrlHandlerEx(DWORD dwCtrl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext);
 
     // Start the service.
     void Start(DWORD dwArgc, PWSTR *pszArgv);
@@ -108,6 +112,9 @@ private:
     // Execute when the system is shutting down.
     void Shutdown();
 
+	// Execute on system power events.
+	void PowerEvent(DWORD dwEventType, LPVOID lpEventData);
+
     // The singleton service instance.
     static CServiceBase *s_service;
 
@@ -119,4 +126,7 @@ private:
 
     // The service status handle
     SERVICE_STATUS_HANDLE m_statusHandle;
+
+	// The service power notification handles
+	HPOWERNOTIFY m_powerHandles[5];
 };

@@ -202,7 +202,7 @@ unsigned char* ReadDnsName(unsigned char* reader, unsigned char* buffer, int* co
 
 // DNS parsing (should be a plug in)
 // return whether or not to include this in the payload
-bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char * data, CCaptureCallback &callback)
+bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char * data, CCaptureCallback &callback, ULONGLONG connection)
 {
 	if (sp == 53 || dp == 53)
 	{
@@ -256,7 +256,7 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 				inet_ntop2(AF_INET, reader, ipFinal, _countof(ipFinal));
 				reader += 4;
 
-				callback.OnDNSAnswer(nProtocol, szSrc, sp, szDest, dp, rtype, ipFinal, (char *) name);
+				callback.OnDNSAnswer(connection, nProtocol, szSrc, sp, szDest, dp, rtype, ipFinal, (char *) name);
 			}
 			else if (rtype == 28)
 			{
@@ -265,7 +265,7 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 				inet_ntop2(AF_INET6, reader, ipFinal, _countof(ipFinal));
 				reader += 16;
 
-				callback.OnDNSAnswer(nProtocol, szSrc, sp, szDest, dp, rtype, ipFinal, (char *) name);
+				callback.OnDNSAnswer(connection, nProtocol, szSrc, sp, szDest, dp, rtype, ipFinal, (char *) name);
 			}
 			else if (rtype == 15)
 			{
@@ -274,7 +274,7 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 				unsigned char *p = ReadDnsName(reader, data, &stop);
 				reader += stop;
 
-				callback.OnDNSAnswer(nProtocol, szSrc, sp, szDest, dp, rtype, (char *) p, (char *) name);
+				callback.OnDNSAnswer(connection, nProtocol, szSrc, sp, szDest, dp, rtype, (char *) p, (char *) name);
 			}
 			else if (rtype == 12 || rtype == 5 || rtype == 2)
 			{
@@ -282,7 +282,7 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 				unsigned char *p = ReadDnsName(reader, data, &stop);
 				reader += stop;
 
-				callback.OnDNSAnswer(nProtocol, szSrc, sp, szDest, dp, rtype, (char *) p, (char *) name);
+				callback.OnDNSAnswer(connection, nProtocol, szSrc, sp, szDest, dp, rtype, (char *) p, (char *) name);
 			}
 			else
 			{
@@ -297,7 +297,7 @@ bool parseDNS(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, 
 }
 
 // implemented in http.cpp
-extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback);
+extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback, ULONGLONG connection);
 
 // capture meta-data
 struct Capture {
@@ -388,10 +388,10 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 			nCapLength += max(pTCP->data_offset * 4, sizeof(TCP_HDR));
 
 			// HTTP parsing
-			parseHTTP(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), header->caplen - nCapLength, *cap.cb);
+			parseHTTP(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), header->caplen - nCapLength, *cap.cb, cap.connection);
 
 			// DNS parsing
-			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb))
+			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb, cap.connection))
 			{
 				// include whole dns
 				nCapLength = header->caplen;
@@ -407,7 +407,7 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 			nCapLength += sizeof(UDP_HDR);
 
 			// DNS parsing
-			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb))
+			if (parseDNS(nProtocol, szSrc, szDest, sp, dp, ((u_char*)pkt_data + nCapLength), *cap.cb, cap.connection))
 			{
 				// include whole dns
 				nCapLength = header->caplen;
@@ -444,7 +444,7 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
 }
 
-PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 session, __int64 timestamp, const char *adapterId)
+PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, const char *adapterId)
 {
 	// ensure directory
 	if (!PathFileExistsA(DATA_DIRECTORY)) {
@@ -502,7 +502,7 @@ PCAPAPI bool StopCapture(const char *adapterId)
 		}
 
 		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file, false);
+		MoveFileToSubmit(cap.capture_file);
 
 		captures.erase(adapterId);
 		return true;
@@ -527,7 +527,7 @@ PCAPAPI bool CleanAllCaptureFiles() {
 			}
 
 			sprintf_s(szFilename, "%s\\%s", DATA_DIRECTORY, wfd.cFileName);
-			MoveFileToSubmit(szFilename, false);
+			MoveFileToSubmit(szFilename);
 
 		} while (FindNextFileA(hFind, &wfd));
 		FindClose(hFind);
@@ -577,7 +577,7 @@ PCAPAPI bool RotateCaptureFile(const char *adapterId) {
 		}
 
 		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file, false);
+		MoveFileToSubmit(cap.capture_file);
 
 		// restart
 		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);

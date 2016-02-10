@@ -92,10 +92,10 @@ char* GetHeader(int protocol, char *szSrc, u_short srcport, char *szDest, u_shor
 }
 
 bool OnHttpHeader(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szHttp);
-void OnHttpHeadersEnd(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, CCaptureCallback &callback);
+void OnHttpHeadersEnd(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, CCaptureCallback &callback, ULONGLONG connection);
 
 // HTTP parsing
-bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback)
+bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp, u_char *data, int packetSize, CCaptureCallback &callback, ULONGLONG connection)
 {
 	bool bHeaderFound = false;
 
@@ -121,7 +121,7 @@ bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp,
 
 			if (strlen(buffer) == 0 && bHeaderFound)
 			{
-				OnHttpHeadersEnd(nProtocol, szSrc, sp, szDest, dp, callback);
+				OnHttpHeadersEnd(nProtocol, szSrc, sp, szDest, dp, callback, connection);
 			}
 			else
 			{
@@ -133,7 +133,7 @@ bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_short dp,
 	return bHeaderFound;
 }
 
-void OnHttpHeadersEnd(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, CCaptureCallback &callback)
+void OnHttpHeadersEnd(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, CCaptureCallback &callback, ULONGLONG connection)
 {
 	char szConn[MAX_PATH] = {0}, szConnReq[MAX_PATH] = {0};
 	sprintf_s(szConn, "%d_%s_%d_%s_%d", protocol, szSrc, srcport, szDest, destport);
@@ -142,7 +142,7 @@ void OnHttpHeadersEnd(int protocol, char *szSrc, u_short srcport, char *szDest, 
 	// is there data on both request / response ?
 	if (perConnectionMap.find(szConn) != perConnectionMap.end() && perConnectionMap.find(szConnReq) != perConnectionMap.end())
 	{
-		callback.OnHttpHeaders(protocol, szSrc, srcport, szDest, destport,
+		callback.OnHttpHeaders(connection, protocol, szSrc, srcport, szDest, destport,
 			GetHeader(protocol, szSrc, srcport, szDest, destport, HttpVerb),
 			GetHeader(protocol, szSrc, srcport, szDest, destport, HttpVerbParam),
 			GetHeader(protocol, szSrc, srcport, szDest, destport, HttpStatusCode),

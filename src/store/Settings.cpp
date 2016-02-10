@@ -35,26 +35,24 @@ void loadDefaults() {
 		mDefSettings[PcapSizeLimit] = "100000000";
 		mDefSettings[UserIdleTimeout] = "5000";
 		mDefSettings[WirelessMonitorTimeout] = "10000";
-		mDefSettings[BatteryMonitorTimeout] = "15000";
 		mDefSettings[SocketStatsTimeout] = "60000";
 		mDefSettings[SystemStatsTimeout] = "60000";		
 		mDefSettings[IoTimeout] = "1000";
 		mDefSettings[UserMonitorTimeout] = "1000";
 		mDefSettings[NetLabellingActive] = "1";
 		mDefSettings[NetLocationActive] = "1";
-		mDefSettings[QuestionnaireActive] = "1";
+		mDefSettings[EsmActive] = "1";
 		mDefSettings[EsmCoinFlipInterval] = "3600000";
 		mDefSettings[EsmCoinFlipProb] = "10";
 		mDefSettings[EsmMaxShows] = "3";
-		mDefSettings[EsmStartHour] = "8";
-		mDefSettings[EsmStopHour] = "23";
-		mDefSettings[SubmitServer] = "https://muse.inria.fr/hostview2016/upload";
+		mDefSettings[SubmitServer] = "https://muse.inria.fr/hostviewupload-dev";
 		mDefSettings[UploadVerifyPeer] = "1";
 		mDefSettings[AutoSubmitRetryCount] = "3";
 		mDefSettings[AutoSubmitRetryInterval] = "10000";
 		mDefSettings[AutoSubmitInterval] = "3600000";
 		mDefSettings[AutoUpdateInterval] = "86400000";
-		mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview2016/latest/";
+		mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview-dev/latest";
+		mDefSettings[NetLocationApiUrl] = "https://muse.inria.fr/hostview-dev/location";
 
 #ifdef _DEBUG
 		mDefSettings[AutoSubmitRetryCount] = "1";
@@ -62,6 +60,7 @@ void loadDefaults() {
 		mDefSettings[AutoSubmitInterval] = "60000";
 		mDefSettings[SubmitServer] = "http://localhost:3000";
 		mDefSettings[UpdateLocation] = "http://localhost:3000/latest";
+		mDefSettings[NetLocationApiUrl] = "http://locahost:3000/location";
 #endif
 	}
 }

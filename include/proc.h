@@ -274,13 +274,3 @@ extern "C" PROCAPI void ReleaseMultiMediaSessions(DWORD * &pSession);
 
 extern "C" PROCAPI void QueryMouseKeyboardState(bool &isMouseUsed, bool &isKeyboardUsed);
 
-// battery
-class CBatteryMonitor
-{
-public:
-	virtual void OnBatteryStats(byte status, byte percent) = 0;
-};
-
-extern "C" PROCAPI bool StartBatteryMonitor(CBatteryMonitor &callback, unsigned long batteryMonitorTimeout);
-extern "C" PROCAPI bool StopBatteryMonitor();
-

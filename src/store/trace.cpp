@@ -73,7 +73,10 @@ void Debug(char *szFormat, ...) {
 void Trace(char *szFormat, ...) {
 	if (!szFormat || GetFileSize(LOGFILE) >= 5 * 1024 * 1024) // 5MB
 	{
-		MoveFileToSubmit(LOGFILE, true);
+		char szFile[MAX_PATH] = { 0 };
+		sprintf_s(szFile, MAX_PATH, "%llu_%s", GetHiResTimestamp(), LOGFILE);
+		MoveFileA(LOGFILE, szFile);
+		MoveFileToSubmit(szFile);
 	}
 
 	if (szFormat)

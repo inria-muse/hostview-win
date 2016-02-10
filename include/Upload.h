@@ -56,10 +56,7 @@ private:
 };
 
 /** Move a file to the submit folder. */
-extern "C" UPLOADAPI bool MoveFileToSubmit(const char *file, bool renameWithTs);
-
-/** Copy a file to the submit folder. */
-extern "C" UPLOADAPI bool CopyFileToSubmit(const char *file, bool renameWithTs);
+extern "C" UPLOADAPI bool MoveFileToSubmit(const char *file);
 
 /** Loop over files in the submit folder and upload to the server. */
 extern "C" UPLOADAPI bool DoSubmit(const char *deviceId);

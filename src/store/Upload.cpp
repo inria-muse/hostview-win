@@ -170,7 +170,7 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 	return result;
 }
 
-bool MoveFileToSubmit(const char *file, bool renameWithTs) {
+bool MoveFileToSubmit(const char *file) {
 	if (!PathFileExistsA(file)) {
 		return false;
 	}
@@ -182,54 +182,9 @@ bool MoveFileToSubmit(const char *file, bool renameWithTs) {
 
 	// new name: ./submit/timestamp_filename.ext
 	char sFile[MAX_PATH] = { 0 };
-	if (!renameWithTs) {
-		// pcap files have a timestamp already
-		sprintf_s(sFile, "%s\\%s", SUBMIT_DIRECTORY, PathFindFileNameA(file));
-	}
-	else {
-		// others need to add timestamp to get unique names
-		sprintf_s(sFile, "%s\\%llu_%s", SUBMIT_DIRECTORY, GetHiResTimestamp(), PathFindFileNameA(file));
-	}
-
+	sprintf_s(sFile, "%s\\%s", SUBMIT_DIRECTORY, PathFindFileNameA(file));
 	if (!MoveFileA(file, sFile)) {
 		fprintf(stderr, "[upload] failed to move file %s to %s %d\n", file, sFile, GetLastError());
-		return false;
-	}
-
-	if (!createzip(sFile)) {
-		// TODO: this will leave unzipped file to submit -- so upload needs to make sure things are zipped
-		fprintf(stderr, "[upload] failed to zip file %s.zip\n", sFile);
-		return false;
-	}
-
-	Trace("Add submit file %s.zip", sFile);
-	return true;
-}
-
-bool CopyFileToSubmit(const char *file, bool renameWithTs) {
-	if (!PathFileExistsA(file)) {
-		fprintf(stderr, "[upload] no such file %s\n", file);
-		return false;
-	}
-
-	// ensure directory
-	if (!PathFileExistsA(SUBMIT_DIRECTORY)) {
-		CreateDirectoryA(SUBMIT_DIRECTORY, NULL);
-	}
-
-	// new name: ./submit/timestamp_filename.ext
-	char sFile[MAX_PATH] = { 0 };
-	if (!renameWithTs) {
-		// pcap files have a timestamp already
-		sprintf_s(sFile, "%s\\%s", SUBMIT_DIRECTORY, PathFindFileNameA(file));
-	}
-	else {
-		// others need to add timestamp to get unique names
-		sprintf_s(sFile, "%s\\%llu_%s", SUBMIT_DIRECTORY, GetHiResTimestamp(), PathFindFileNameA(file));
-	}
-
-	if (!CopyFileA(file, sFile, false)) {
-		fprintf(stderr, "[upload] failed to copy file %s to %s %d\n", file, sFile, GetLastError());
 		return false;
 	}
 

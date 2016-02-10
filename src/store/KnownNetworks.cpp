@@ -124,6 +124,7 @@ bool CKnownNetworks::IsKnown(const NetworkInterface &ni)
 {
 	TCHAR szSSID[MAX_PATH] = {0};
 	_stprintf_s(szSSID, _T("%S"), ni.strSSID.c_str());
+
 	for (size_t i = 0; i < knownBSSIDs.size(); i ++)
 	{
 		if ((ni.wireless && _tcscmp(szSSID, knownBSSIDs[i].c_str()) == 0)
@@ -136,16 +137,14 @@ bool CKnownNetworks::IsKnown(const NetworkInterface &ni)
 	return false;
 }
 
-void CKnownNetworks::OnNetworkLabel(Message &message)
+void CKnownNetworks::OnNetworkLabel(TCHAR *szGUID, TCHAR *szBSSID, TCHAR *szLabel)
 {
-	// add label
-	LoadNetworkInterface(message.szUser);
+	knownGUIDs.push_back(szGUID);
+	knownBSSIDs.push_back(szBSSID);
+	knownLabels.push_back(szLabel);
 
 	// flush new data to the file
 	SaveKnownNetworks();
-
-	// do a copy of the file for upload
-	CopyFileToSubmit(KNOWN_NETWORKS_FILE, true);
 }
 
 void LabelNetwork(const NetworkInterface &ni, TCHAR * szProfile)
@@ -155,12 +154,12 @@ void LabelNetwork(const NetworkInterface &ni, TCHAR * szProfile)
 
 	if (ni.wireless)
 	{
-		_stprintf_s(message.szUser, _T("%S,%S,%s"), ni.strName.c_str(),
+		_stprintf_s(message.szUser, _T("%S,%S,%s"), ni.strGuid.c_str(),
 			ni.strSSID.c_str(), szProfile);
 	}
 	else
 	{
-		_stprintf_s(message.szUser, _T("%S,%s,%s"), ni.strName.c_str(),
+		_stprintf_s(message.szUser, _T("%S,%s,%s"), ni.strGuid.c_str(),
 			ni.strBSSID.c_str(), szProfile);
 	}
 
@@ -181,7 +180,7 @@ void NetworkInterfaceToCommand(const NetworkInterface &ni, TCHAR *szCmdLine, siz
 	{
 		_ftprintf_s(f, _T("%s\n"), ni.strFriendlyName.c_str());
 		_ftprintf_s(f, _T("%S\n"), ni.strSSID.c_str());
-		_ftprintf_s(f, _T("%S\n"), ni.strName.c_str());
+		_ftprintf_s(f, _T("%S\n"), ni.strGuid.c_str());
 		_ftprintf_s(f, _T("%s\n"), ni.strBSSID.c_str());
 		fclose(f);
 	}
@@ -220,7 +219,7 @@ bool CommandToNetworkInterface(TCHAR szCmdLine[MAX_PATH], NetworkInterface * &pn
 
 		fgets(szBuffer, _countof(szBuffer), f);
 		szBuffer[strlen(szBuffer) - 1] = szBuffer[strlen(szBuffer) - 1] == '\n' ? 0 : szBuffer[strlen(szBuffer) - 1];
-		pni->strName = szBuffer;
+		pni->strGuid = szBuffer;
 
 		_fgetts(szLine, _countof(szLine), f);
 		szLine[_tcslen(szLine) - 1] = szLine[_tcslen(szLine) - 1] == '\n' ? 0 : szLine[_tcslen(szLine) - 1];

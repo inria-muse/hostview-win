@@ -43,7 +43,6 @@ class CHostViewService :
 	public CServiceBase,
 	public CInterfacesCallback,
 	public CWifiMonitor,
-	public CBatteryMonitor,
 	public CCaptureCallback,
 	public CHttpCallback,
 	public CMessagesCallback
@@ -55,49 +54,35 @@ public:
 		BOOL fCanPauseContinue = FALSE);
 	~CHostViewService(void);
 
-
-	// main HostView ctl;
-	void StartCollect();
-	void StopCollect();
-
-	void ReadIpTable();
-	void ReadPerfTable();
-
-	// interfaces monitor
+	// from CInterfacesCallback
 	void OnInterfaceConnected(const NetworkInterface& networkInterface);
 	void OnInterfaceDisconnected(const NetworkInterface& networkInterface);
-	void LogNetwork(const NetworkInterface &ni, __int64 timestamp, bool connected);
 
-	// wireless stats monitor
-	void OnWifiStats(const std::tstring &interfaceGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
+	// from CWifiMonitor
+	void OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
 
-	// battery stats monitor
-	void OnBatteryStats(byte status, byte percent);
-
-	// capture callback
-	void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
+	// from CCaptureCallback
+	void OnHttpHeaders(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 		char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength);
-	void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost);
+	void OnDNSAnswer(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost);
 
-	// COMM callback
+	// from CMessagesCallback
 	Message OnMessage(Message &message);
 
-	// http_server callback
+	// from CHttpCallback
 	bool OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser);
 	bool OnJsonUpload(char **jsonbuf, size_t len);
 
 	// from CServiceBase
 	void OnStart(DWORD dwArgc, PWSTR *pszArgv);
 	void OnStop();
+	void OnShutdown();
+	void OnPowerEvent(PPOWERBROADCAST_SETTING event);
 
 protected:
-	void OnShutdown();
 	void ServiceWorkerThread(void);
 
-	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
-
 private:
-
 	// used to query installed app icons in an async manner
 	std::vector<std::tstring> m_appList;
 	void QueryIconsThreadFunc();
@@ -106,14 +91,11 @@ private:
 	BOOL m_fIdle;
 	BOOL m_fFullScreen;
 
+	// this is the current session identifier
 	ULONGLONG m_startTime;
+
 	SysInfo m_sysInfo;
 	char szHdd[MAX_PATH] = { 0 };
-
-	void RunNetworkLabeling();
-	void RunQuestionnaireIfCase();
-
-	void PullInstalledApps(TCHAR *szPath, DWORD dwSize);
 
 	BOOL m_fStopping;
 	HANDLE m_hStoppedEvent;
@@ -130,6 +112,25 @@ private:
 	CSettings m_settings;
 	CStore m_store;
 
+	void OnSuspend();
+	void OnResume();
+
+	// start/stop sessions
+	void StartCollect(SessionEvent e, ULONGLONG ts);
+	void StopCollect(SessionEvent e, ULONGLONG ts);
+
+	void LogNetwork(const NetworkInterface &ni, ULONGLONG timestamp, bool connected);
+
+	void ReadIpTable();
+	void ReadPerfTable();
+
+	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
+
+	void RunNetworkLabeling();
+	void RunQuestionnaireIfCase();
+
+	void PullInstalledApps(TCHAR *szPath, DWORD dwSize);
+
 	// Network Labelling
 	void LabelNetwork(const NetworkInterface &ni);
 
@@ -141,6 +142,5 @@ private:
 	// when a user is ready
 	std::vector<NetworkInterface> m_interfacesQueue;
 	CRITICAL_SECTION m_cs;
-
 	CKnownNetworks m_networks;
 };

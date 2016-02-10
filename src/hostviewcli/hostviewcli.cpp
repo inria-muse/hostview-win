@@ -83,8 +83,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 			// double make sure all data is in the submit folder
 			CleanAllCaptureFiles();
-			MoveFileToSubmit(STORE_FILE, true);
-			MoveFileToSubmit(LOGFILE, true);
 
 			// final submit
 			DoSubmit(szHdd);
@@ -148,7 +146,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	_CrtDumpMemoryLeaks();
 #endif
 
-	Trace("Hostviewcli stopped.");
 	return 0;
 }
 

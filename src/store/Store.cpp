@@ -119,19 +119,28 @@ CStore::CStore(void)
 
 CStore::~CStore(void)
 {
-	Close();
 	DeleteCriticalSection(&cs);
 }
 
 bool CStore::Open(ULONGLONG session)
 {
-	m_session = session;
-	bool result = openDbFile();
-	if (result) {
-		closing = false;
-		hExecThread = CreateThread(NULL, NULL, ExecThreadFunc, this, NULL, NULL);
+	if (m_session > 0)
+		Close();
+
+	if (sqlite3_open_v2(STORE_FILE, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+	{
+		seterror(sqlite3_errmsg(db));
+		return false;
 	}
-	return result;
+	seterror("Success");
+
+	InitTables();
+
+	m_session = session;
+	closing = false;
+	hExecThread = CreateThread(NULL, NULL, ExecThreadFunc, this, NULL, NULL);
+
+	return true;
 }
 
 void CStore::Close()
@@ -143,51 +152,34 @@ void CStore::Close()
 		CloseHandle(hExecThread);
 		hExecThread = NULL;
 	}
-	closeDbFile();
-}
 
-bool CStore::openDbFile()
-{
-	// make sure there's not old stats db file running around
-	MoveFileToSubmit(STORE_FILE, true);
-
-	if (sqlite3_open_v2(STORE_FILE, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
-	{
-		seterror(sqlite3_errmsg(db));
-		return false;
-	}
-
-	seterror("Success");
-	InitTables();
-	return true;
-}
-
-void CStore::closeDbFile()
-{
 	if (db)
 	{
 		sqlite3_close(db);
-		db = NULL;
 	}
 
-	// rename with session id
-	char uploadfile[MAX_PATH] = { 0 };
-	sprintf_s(uploadfile, "%llu_%s", m_session, STORE_FILE);
-	MoveFileA(STORE_FILE, uploadfile);
-	MoveFileToSubmit(uploadfile, false);
+	if (m_session > 0) {
+		// rename with session id
+		char uploadfile[MAX_PATH] = { 0 };
+		sprintf_s(uploadfile, "%llu_%s", m_session, STORE_FILE);
+		MoveFileA(STORE_FILE, uploadfile);
+		MoveFileToSubmit(uploadfile);
+	}
+
+	closing = false;
+	db = NULL;
+	m_session = 0;
 }
 
 void CStore::InitTables()
 {
-	exec("CREATE TABLE IF NOT EXISTS connectivity(name VARCHAR(260), friendlyname VARCHAR(260), description VARCHAR(260), dnssuffix VARCHAR(260), \
+	exec("CREATE TABLE IF NOT EXISTS connectivity(guid VARCHAR(260), friendlyname VARCHAR(260), description VARCHAR(260), dnssuffix VARCHAR(260), \
 		 mac VARCHAR(64), ips VARCHAR(300), gateways VARCHAR(300), dnses VARCHAR(300), tspeed INT8, rspeed INT8, wireless TINYINT, profile VARCHAR(64), \
 		 ssid VARCHAR(64), bssid VARCHAR(64), bssidtype VARCHAR(20), phytype VARCHAR(20), phyindex INTEGER, channel INTEGER, \
 		 connected TINYINT, timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS wifistats(guid VARCHAR(260), tspeed INT8, rspeed INT8, signal INTEGER, \
 		 rssi INTEGER, state INTEGER, timestamp INT8)");
-
-	exec("CREATE TABLE IF NOT EXISTS battery(status INTEGER, percent INTEGER, timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS procs(pid INTEGER, name VARCHAR(260), memory INTEGER, \
 		cpu DOUBLE, timestamp INT8)");
@@ -200,14 +192,15 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS io(device INTEGER, pid INTEGER, name VARCHAR(260), timestamp INT8)");
 
-	exec("CREATE TABLE IF NOT EXISTS http(httpverb VARCHAR(64), httpverbparam VARCHAR(300), httpstatuscode VARCHAR(64), \
+	exec("CREATE TABLE IF NOT EXISTS http(connstart INT8, httpverb VARCHAR(64), httpverbparam VARCHAR(300), httpstatuscode VARCHAR(64), \
 		 httphost VARCHAR(300), referer VARCHAR(300), contenttype VARCHAR(300), contentlength VARCHAR(300), protocol INTEGER,\
 		 srcip VARCHAR(42), destip VARCHAR(42), srcport INTEGER, destport INTEGER, timestamp INT8)");
 
-	exec("CREATE TABLE IF NOT EXISTS dns(type INTEGER, ip VARCHAR(42), host VARCHAR(260), protocol INTEGER, \
+	exec("CREATE TABLE IF NOT EXISTS dns(connstart INT8, type INTEGER, ip VARCHAR(42), host VARCHAR(260), protocol INTEGER, \
 		srcip VARCHAR(42), destip VARCHAR(42), srcport INTEGER, destport INTEGER, timestamp INT8)");
 
-	exec("CREATE TABLE IF NOT EXISTS location(ip VARCHAR(100), rdns VARCHAR(100), asnumber VARCHAR(100), asname VARCHAR(100),\
+	exec("CREATE TABLE IF NOT EXISTS location(guid VARCHAR(260), public_ip VARCHAR(100), reverse_dns VARCHAR(100), \
+		 asnumber VARCHAR(100), asname VARCHAR(100),\
 		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), timestamp INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser VARCHAR(1024), location VARCHAR(1024))");
@@ -218,15 +211,30 @@ void CStore::InitTables()
 	     cpu VARCHAR(32), totalRAM INTEGER, totalHDD INTEGER, serial VARCHAR(32), hostview_version VARCHAR(32), settings_version INTEGER,\
 		 timezone VARCHAR(32), timezone_offset INTEGER)");
 
+	exec("CREATE TABLE IF NOT EXISTS powerstate(timestamp INT8, event VARCHAR(32), value INT)");
+
+	exec("CREATE TABLE IF NOT EXISTS netlabel(timestamp INT8, guid VARCHAR(260), gateway VARCHAR(64), label VARCHAR(260))");
+
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
 }
 
-void CStore::Insert(__int64 timestamp, SessionEvent e) {
+void CStore::InsertNetLabel(__int64 timestamp, TCHAR *szGUID, TCHAR *szGW, TCHAR *szLabel) {
+	char szStatement[4096] = { 0 };
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, guid, gateway, label) VALUES(%llu, \"%S\", \"%S\", \"%S\")",
+		"netlabel", timestamp, szGUID, szGW, szLabel);
+	enqueue(szStatement);
+}
+
+
+void CStore::InsertSession(__int64 timestamp, SessionEvent e) {
 	char szStatement[1024] = { 0 };
 	switch (e) {
 	case SessionEvent::Start:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"start\")", "session", timestamp);
+		break;
+	case SessionEvent::Stop:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"stop\")", "session", timestamp);
 		break;
 	case SessionEvent::Pause:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"pause\")", "session", timestamp);
@@ -234,8 +242,17 @@ void CStore::Insert(__int64 timestamp, SessionEvent e) {
 	case SessionEvent::Restart:
 		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"restart\")", "session", timestamp);
 		break;
-	case SessionEvent::Stop:
-		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"stop\")", "session", timestamp);
+	case SessionEvent::Suspend:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"suspend\")", "session", timestamp);
+		break;
+	case SessionEvent::Resume:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"resume\")", "session", timestamp);
+		break;
+	case SessionEvent::AutoStop:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"autostop\")", "session", timestamp);
+		break;
+	case SessionEvent::AutoStart:
+		sprintf_s(szStatement, "INSERT INTO %s(timestamp, event) VALUES(%llu, \"autostart\")", "session", timestamp);
 		break;
 	default:
 		return;
@@ -244,7 +261,7 @@ void CStore::Insert(__int64 timestamp, SessionEvent e) {
 	enqueue(szStatement);
 }
 
-void CStore::Insert(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version) {
+void CStore::InsertSys(__int64 timestamp, SysInfo &info, char *hostview_version, ULONG settings_version) {
 	char szStatement[8192] = { 0 };
 
 	sprintf_s(szStatement, "INSERT INTO %s(timestamp, manufacturer, product, os, cpu, totalRAM, totalHDD, serial, \
@@ -258,39 +275,39 @@ void CStore::Insert(__int64 timestamp, SysInfo &info, char *hostview_version, UL
 	enqueue(szStatement);
 }
 
-void CStore::Insert(const char *szName, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
+void CStore::InsertConn(const char *szGuid, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
 	const TCHAR *szMac, const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
 	bool wireless, const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType,
 	unsigned long phyIndex, unsigned long channel, bool connected, __int64 timestamp)
 {
 	char szStatement[8192] = {0};
-	sprintf_s(szStatement, "INSERT INTO %s(name, friendlyname, description, dnssuffix, mac, ips, gateways, dnses, tspeed, rspeed, wireless, profile, \
-		 ssid, bssid, bssidtype, phytype, phyindex, channel, rssi, signal, connected, timestamp) VALUES(\"%s\", \"%S\", \"%S\", \"%S\", \"%S\", \
+	sprintf_s(szStatement, "INSERT INTO %s(guid, friendlyname, description, dnssuffix, mac, ips, gateways, dnses, tspeed, rspeed, wireless, profile, \
+		 ssid, bssid, bssidtype, phytype, phyindex, channel, connected, timestamp) VALUES(\"%s\", \"%S\", \"%S\", \"%S\", \"%S\", \
 		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %d, %llu)", 
-		"connectivity", szName, szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, 
+		"connectivity", szGuid, szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, 
 		 wireless ? 1 : 0, szProfile, szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, connected ? 1 : 0, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp)
+void CStore::InsertWifi(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp)
 {
 	char szStatement[4096] = { 0 };
-	sprintf_s(szStatement, "INSERT INTO %s(guid, tspeed, rspeed, signal, rssi, state, timestamp) VALUES(\"%S\", %llu, %llu, %d, %d, %d, %llu)",
+	sprintf_s(szStatement, "INSERT INTO %s(guid, tspeed, rspeed, signal, rssi, state, timestamp) VALUES(\"%s\", %llu, %llu, %d, %d, %d, %llu)",
 		"wifistats", szGuid, tSpeed, rSpeed, signal, rssi, state, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(unsigned char status, unsigned char percent, __int64 timestamp)
-{
+void CStore::InsertPowerState(__int64 timestamp, char *event, int value) {
 	char szStatement[4096] = { 0 };
-	sprintf_s(szStatement, "INSERT INTO %s(status, percent, timestamp) VALUES(%d, %d, %llu)", "battery", status, percent, timestamp);
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, event, value) VALUES(%llu, \"%s\", %d)",
+		"powerstate", timestamp, event, value);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescription, bool isFullScreen, bool isIdle, __int64 timestamp)
+void CStore::InsertActivity(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescription, bool isFullScreen, bool isIdle, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(user, pid, name, description, fullscreen, idle, timestamp) VALUES(\"%S\", %d, \"%S\", \"%S\", \
@@ -299,7 +316,7 @@ void CStore::Insert(TCHAR *szUser, DWORD dwPid, TCHAR *szApp, TCHAR *szDescripti
 	enqueue(szStatement);
 }
 
-void CStore::Insert(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp)
+void CStore::InsertIo(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(device, pid, name, timestamp) VALUES(%d, %d, \"%S\", %llu)",
@@ -308,7 +325,7 @@ void CStore::Insert(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestam
 	enqueue(szStatement);
 }
 
-void CStore::Insert(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp)
+void CStore::InsertPort(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(pid, name, protocol, srcip, destip, srcport, destport, state, timestamp)\
@@ -318,7 +335,7 @@ void CStore::Insert(int pid, char *name, int protocol, char *srcIp, char *destIp
 	enqueue(szStatement);
 }
 
-void CStore::Insert(DWORD pid, char *name, int memory, double cpu, __int64 timestamp)
+void CStore::InsertProc(DWORD pid, char *name, int memory, double cpu, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(pid, name, memory, cpu, timestamp) VALUES(%d, \"%s\", %d, %.2f, %llu)",
@@ -327,40 +344,42 @@ void CStore::Insert(DWORD pid, char *name, int memory, double cpu, __int64 times
 	enqueue(szStatement);
 }
 
-void CStore::Insert(char *szVerb, char *szVerbParam, char *szStatusCode, char *szHost, char *szReferer, char *szContentType,
+void CStore::InsertHttp(__int64 connstart, char *szVerb, char *szVerbParam, char *szStatusCode, char *szHost, char *szReferer, char *szContentType,
 	char *szContentLength, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp)
 {
 	char szStatement[65536] = { 0 };
-	sprintf_s(szStatement, "INSERT INTO %s(httpverb, httpverbparam, httpstatuscode, httphost, referer, contenttype, contentlength, \
-						   protocol, srcip, destip, srcport, destport, timestamp) VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \
-						   \"%s\", %d, \"%s\", \"%s\", %d, %d, %llu)", "http", szVerb, szVerbParam, szStatusCode, szHost, szReferer,
+	sprintf_s(szStatement, "INSERT INTO %s(connstart, httpverb, httpverbparam, httpstatuscode, httphost, referer, contenttype, contentlength, \
+						   protocol, srcip, destip, srcport, destport, timestamp) VALUES(%llu, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \
+						   \"%s\", %d, \"%s\", \"%s\", %d, %d, %llu)", 
+						   "http", connstart, szVerb, szVerbParam, szStatusCode, szHost, szReferer,
 						   szContentType, szContentLength, protocol, srcIp, destIp, srcPort, destPort, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(int type, char *szIp, char *szHost, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp)
+void CStore::InsertDns(__int64 connstart,  int type, char *szIp, char *szHost, int protocol, 
+	char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
-	sprintf_s(szStatement, "INSERT INTO %s(type, ip, host, protocol, srcip, destip, srcport, destport, timestamp) \
-						   VALUES(%d, \"%s\", \"%s\", %d, \"%s\", \"%s\", %d, %d, %llu)", "dns", type, szIp, szHost,
-						   protocol, srcIp, destIp, srcPort, destPort, timestamp);
+	sprintf_s(szStatement, "INSERT INTO %s(connstart, type, ip, host, protocol, srcip, destip, srcport, destport, timestamp) \
+						   VALUES(%llu, %d, \"%s\", \"%s\", %d, \"%s\", \"%s\", %d, %d, %llu)", 
+						   "dns", connstart, type, szIp, szHost, protocol, srcIp, destIp, srcPort, destPort, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
+void CStore::InsertLoc(const char *szGuid, const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
 	const char *szLat, const char *szLon, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
-	sprintf_s(szStatement, "INSERT INTO %s(ip, rdns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
-						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
-						   szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
+	sprintf_s(szStatement, "INSERT INTO %s(guid, public_ip, reverse_dns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
+						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
+						   szGuid, szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::Insert(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp)
+void CStore::InsertBrowser(const TCHAR *szBrowser, const TCHAR *szLocation, __int64 timestamp)
 {
 	char szStatement[4096] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(browser, location, timestamp) VALUES(\"%S\", \"%S\", %llu)", 

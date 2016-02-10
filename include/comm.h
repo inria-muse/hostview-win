@@ -39,6 +39,8 @@
 #define HOSTVIEW_PIPE _T("\\\\.\\pipe\\HostView")
 #define HOSTVIEW_REG _T("Software\\HostView\\")
 
+#define MessageError               -1
+#define MessageResult               0
 #define MessageStartCapture			1
 #define MessageStopCapture			2
 #define MessageUserActivity			3
@@ -52,6 +54,8 @@
 #define MessageCameraUsage			11
 #define MessageQueryLastApps		12
 #define MessageQueryInstalledApps	13
+#define MessageSuspend				14
+#define MessageResume				15
 
 struct Message
 {
@@ -65,7 +69,7 @@ struct Message
 
 	Message()
 	{
-		this->type = 0;
+		this->type = MessageError;
 		this->dwPid = 0;
 		this->isFullScreen = false;
 		this->isIdle = false;

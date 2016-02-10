@@ -259,36 +259,48 @@ VOID PullFile(TCHAR *szFilePath)
 
 UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info)
 {
+	bool bResult = false;
 	info = new std::vector<std::string>();
 
-	bool bResult = false;
+	if (!settings.GetBoolean(NetLocationActive)) {
+		return bResult; // disabled
+	}
 
-	TCHAR szURL[MAX_PATH] = {0};
-	_tcscpy_s(szURL, _T("https://muse.inria.fr/hostview/location"));
+	TCHAR szURL[MAX_PATH] = { 0 };
+	_stprintf_s(szURL, _T("%S"), settings.GetString(NetLocationApiUrl));
 
 	HINTERNET hConnect = NULL;
 	HINTERNET hFile = NULL;
 
-	hConnect = InternetOpen(L"HostView", NULL, NULL, NULL, NULL);
-
-	DWORD dwTimeout = 1000;
-	InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
-		&dwTimeout, sizeof(dwTimeout));
-
 	char szInfo[2048] = {0};
-
 	DWORD dwSize = _countof(szInfo);
 	DWORD dwRead = dwSize;
 
+	hConnect = InternetOpen(L"HostView", NULL, NULL, NULL, NULL);
 	if (hConnect)
 	{
+		DWORD dwTimeout = 1000;
+		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
+			&dwTimeout, sizeof(dwTimeout));
+
 		hFile = InternetOpenUrl(hConnect, szURL, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
 		if (hFile)
 		{
-			InternetReadFile(hFile, szInfo, dwSize, &dwRead);
+			TCHAR szResponseText[MAX_PATH] = { 0 };
+			DWORD dwSize = sizeof(szResponseText);
 
-			bResult = dwRead > 0;
-
+			// check HTTP error code;
+			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwSize, NULL))
+			{
+				DWORD dwStatusCode = _ttoi(szResponseText);
+				if (dwStatusCode == HTTP_STATUS_OK)
+				{
+					if (InternetReadFile(hFile, szInfo, dwSize, &dwRead))
+					{
+						bResult = dwRead > 0;
+					}
+				}
+			}
 			InternetCloseHandle(hFile);
 		}
 		InternetCloseHandle(hConnect);

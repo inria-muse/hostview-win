@@ -154,10 +154,10 @@ void QueryAdapterInfo(PIP_ADAPTER_ADDRESSES pCurrAddresses, NetworkInterface &ne
 	IP_ADAPTER_DNS_SERVER_ADDRESS *pDnServer = NULL;
 	networkInterface.strDescription = pCurrAddresses->Description;
 	networkInterface.strFriendlyName = pCurrAddresses->FriendlyName;
-	networkInterface.strName = pCurrAddresses->AdapterName;
+	networkInterface.strGuid = pCurrAddresses->AdapterName;
 	networkInterface.strDnsSuffix = pCurrAddresses->DnsSuffix;
 
-	std::string &str = networkInterface.strName;
+	std::string &str = networkInterface.strGuid;
 	str.erase(std::remove(str.begin(), str.end(), '{'), str.end());
 	str.erase(std::remove(str.begin(), str.end(), '}'), str.end());
 
@@ -415,7 +415,7 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 				dwCheck = 0; // reset
 				for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin(); it != previousInterfaces.end(); it ++)
 				{
-					const char *adapterId = it->strName.c_str();
+					const char *adapterId = it->strGuid.c_str();
 					if (GetCaptureFileSize(adapterId) >= g_pcapSizeLimit)
 					{
 						RotateCaptureFile(adapterId);
@@ -512,9 +512,9 @@ DWORD WINAPI WifiMonitorThreadProc(LPVOID lpParameter)
 					}
 
 					StringFromGUID2(pIfInfo->InterfaceGuid, (LPOLESTR) &szGuid, sizeof(szGuid)/sizeof(*szGuid));
-					std::tstring strGuid = szGuid;
-
-					pCallback->OnWifiStats(strGuid, tSpeed, rSpeed, signal, ulRSSI, pIfInfo->isState);
+					char str[40] = { 0 };
+					sprintf_s(str, "%S", szGuid);
+					pCallback->OnWifiStats(str, tSpeed, rSpeed, signal, ulRSSI, pIfInfo->isState);
 				}
 			}
 

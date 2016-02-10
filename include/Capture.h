@@ -61,12 +61,12 @@ class PCAPAPI CCaptureCallback
 public:
 	virtual ~CCaptureCallback() {};
 
-	virtual void OnHttpHeaders(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
+	virtual void OnHttpHeaders(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 		char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength) = 0;
-	virtual void OnDNSAnswer(int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost) = 0;
+	virtual void OnDNSAnswer(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost) = 0;
 };
 
-extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, __int64 session, __int64 timestamp, const char *adapterId = "interactive");
+extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG connection, const char *adapterId = "interactive");
 extern "C" PCAPAPI bool StopCapture(const char *adapterId = "interactive");
 extern "C" PCAPAPI bool IsCaptureRunning(const char *adapterId = "interactive");
 extern "C" PCAPAPI bool RotateCaptureFile(const char *adapterId = "interactive");
@@ -81,7 +81,7 @@ extern "C" PCAPAPI bool CleanAllCaptureFiles();
  **/
 struct NetworkInterface
 {
-	std::string strName;
+	std::string strGuid;
 	std::tstring strFriendlyName;
 	std::tstring strDescription;
 	std::tstring strMac;
@@ -100,7 +100,6 @@ struct NetworkInterface
 	std::string strSSID;
 	std::tstring strBSSID;
 	std::string strBSSIDType;
-
 	std::string strPHYType;
 	ULONG phyIndex;
 	ULONG channel;
@@ -117,7 +116,7 @@ struct NetworkInterface
 	bool operator<(const NetworkInterface& other) const
 	{
 		// TODO: should be more complex;
-		int compare = strName.compare(other.strName);
+		int compare = strGuid.compare(other.strGuid);
 		if (compare == 0)
 		{
 			if (gateways.size() < other.gateways.size())
@@ -163,7 +162,7 @@ extern "C" PCAPAPI bool StopInterfacesMonitor();
 class CWifiMonitor
 {
 public:
-	virtual void OnWifiStats(const std::tstring &interfaceGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
+	virtual void OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
 		ULONG signal, ULONG rssi, short state) = 0;
 };
 

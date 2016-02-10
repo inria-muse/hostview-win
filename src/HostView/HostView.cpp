@@ -259,10 +259,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 
 	if (_tcsstr(szCmdLine, _T("/start")))
 	{
+		// only gets called with /start from the
+		// installer script ... ?!
 		OnStartCommand();
 	}
 	else if (_tcsstr(szCmdLine, _T("/stop")))
 	{
+		// who's calling this ?
 		OnStopCommand(ltCtrl);
 		return FALSE;
 	}
@@ -288,6 +291,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 		return FALSE;
 	}
 
+	// make sure all captures are started
+	SendServiceMessage(Message(MessageStartCapture));
+
 	// load resources
 	InitNotificationResources(hInstance);
 
@@ -298,6 +304,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), NULL, MakeProcInstance(DlgCallback, hInstance));
 
 	StopUserMonitor();
+
+	// signal stop capture to the service
+	SendServiceMessage(Message(MessageStopCapture));
 
 	DestroyIcon(g_hIcons[0]);
 	DestroyIcon(g_hIcons[1]);
@@ -463,7 +472,6 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		if (wParam == TIMER_STATUS)
 		{
 			Message status = SendServiceMessage(queryMsg);
-
 			switch (status.type)
 			{
 			case MessageStartCapture:
@@ -489,6 +497,10 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					RefreshSystrayIcon();
 				}
 				break;
+			case MessageError:
+				// FIXME: could not get the service status
+				// maybe it's not running ?!?!
+				break;
 			}
 		}
 		else if (wParam == TIMER_USER_IO)
@@ -511,6 +523,9 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		switch (LOWORD(wParam))
 		{
 		case IDM_EXIT_TRAY:
+			// TODO: is this correct ? also should check the service state upon start
+			if (g_isRunning)
+				ToggleHostViewState(g_isRunning);
 			PostMessage(hDlg, WM_CLOSE, 0, 0);
 			break;
 		case IDM_PAUSE_HOSTVIEW:
@@ -523,6 +538,21 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			break;
 		}
 		break;
+	case WM_POWERBROADCAST:
+		{
+			switch (wParam) {
+			case PBT_APMSUSPEND:
+				SendServiceMessage(Message(MessageSuspend));
+				break;
+			case PBT_APMRESUMEAUTOMATIC:
+				SendServiceMessage(Message(MessageResume));
+				break;
+			case PBT_POWERSETTINGCHANGE:
+				break;
+			}
+		}
+		break;
 	}
+
 	return FALSE;
 }
