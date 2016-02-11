@@ -1,21 +1,37 @@
-Data Collection and Configuration
-=================================
+# HostView Data Collection and Configuration #
 
 This README explains in detail the collected metrics and collector configuration (parameters).
 
-Configuration Basics
---------------------
+
+## Configuration Basics ##
 
 HostView is installed with a default configuration file from:
 
 	./installer/settings
 
-The file is installed with HostView to %PROGRAMFILES%/Hostview/settings and the software checks
-periodially for updates (see Automatic Updates below).
+The file is installed with HostView to %PROGRAMFILES%\Hostview\settings and the software checks
+periodially for updates (see Automatic Updates below). To track the current settings version, 
+the file has the following key (reported along with session configuration to the backend):
+
+    Setting: version = 1
+
+For boolean options, 0 == FALSE and 1 == TRUE.
+
+If an option is missing from the config file, the code has some hard-coded defaults (more or less
+the ones documented below).
 
 
-Event-based Data
-----------------
+## Debugging ##
+
+Set the debug flag to 1 to turn on more verbose logging and to keep a copy of all uploaded files 
+(in %PROGRAMFILES%\Hostview\debug):
+
+	Setting: debug = 0
+
+
+
+## Event-based Data ##
+
 
 ### Session ###
 
@@ -31,6 +47,11 @@ have the same timestamps in order to facilitate reconstruction of complete sessi
 	Table: session(timestamp, event)
 
 	Possible events: start|resume|restart|stop|pause|suspend|autostop|autorestart
+
+If user pauses HostView, it will restart again after a configured timeout (user has the option to restart
+earlier as well):
+
+	Setting: autoRestartTimeout = 1800000
 
 
 ### SysInfo ###
@@ -59,11 +80,11 @@ network location from the backend service. TODO: just once per session ?
 
 * Enable/disable network location identification, default 'enabled'
 
-	netLocationActive = 1
+	Setting: netLocationActive = 1
 
 * Network location API url (resolver service)
 
-	netLocationApiUrl = https://muse.inria.fr/hostview/location
+	Setting: netLocationApiUrl = https://muse.inria.fr/hostview/location
 
 In addition, we ask the user to label the network locations and store the data 
 to the database. Unique network locations are identified using tuple 
@@ -74,7 +95,7 @@ once per location.
 
 * Enable/disable network labeling, default 'enabled'
 
-	netLabellingActive = 1
+	Setting: netLabellingActive = 1
 
 
 ### System Power States ###
@@ -98,14 +119,13 @@ See MSDN documentation on ''Power Setting GUIDs' for more info on the above powe
 User activity (changes in foreground app, idle or fullscreen status) is polled every timeout (milliseconds), user is declared idle after 
 idle timeout (milliseconds) of inactivity:
 
-	userMonitorTimeout = 1000
-	userIdleTimeout = 5000
+	Setting: userMonitorTimeout = 1000
+	Setting: userIdleTimeout = 5000
 
 	Table: activity(timestamp, )
 
 
-Continuous Timeseries
----------------------
+## Continuous Timeseries ##
 
 Continuos metrics are recorded periodically using the intervals specified below (all timeouts are in 
 milliseconds). The data is stored in the current session database, and each row is timestamped with 
@@ -114,31 +134,31 @@ an UTC timestamp with millisecond accuracy.
 
 * Wireless network metrics (RSSI, tx/rx speed):
 
-	wirelessMonitorTimeout = 10000
+	Setting: wirelessMonitorTimeout = 10000
 
 	Table: wifistats(timestamp, ...)
 
 * Socket table (sockets to processes mapping):
 
-	socketStatsTimeout = 60000
+	Setting: socketStatsTimeout = 60000
 
 	Table: ports(timestamp, 5-tuple, pid, name)
 
 * Running applications (processes and their cpu + memory use):
 
-	systemStatsTimeout = 60000
+	Setting: systemStatsTimeout = 60000
 
 	Table: procs(timestamp, pid, name ...)
 
 * System IO activity (if microphone, camera, mic are in use and by which app), checked at timeout intervals (milliseconds):
 
-	ioTimeout = 1000
+	Setting: ioTimeout = 1000
 
 	Table: io(timestamp, )
 
 
-Packet Capture
---------------
+## Packet Capture ##
+
 
 We do a packet capture on each active interface to record IP+TCP/UDP headers + complete DNS traffic. Captures are 
 started / stopped when network interfaces go up/down. In addition, HostView enforces a max size for a single
@@ -146,7 +166,7 @@ capture file. Related configurations:
 
 * Max pcap file size, default 100MB:
 
-	pcapSizeLimit = 1048576000
+	Setting: pcapSizeLimit = 1048576000
 
 The raw capture files are named as follows:
 
@@ -168,8 +188,7 @@ file for further analysis.
 	Table: http(timestamp, connstart, 5-tuple, ...)
 
 
-Browser Data
-------------
+## Browser Data ##
 
 The browser addons send updates on user browsing activity, pageload performance and video qoe. The location
 updates (new tab is opened, new url is loaded, user switches between tabs) are written to the database, and
@@ -180,20 +199,19 @@ the performance metrics are written to json files.
 	File: sessionStartTime_timestamp_browserupload.json
 
 
-ESM questionnaire
------------------
+## ESM questionnaire ##
 
 The experience sample questionaire popups are controlled using the following parameters:
 
 * Enable/disable ESM
 
-	esmActive = 1
+	Setting: esmActive = 1
 
 * Popup algorithm (see below):
 
-	esmCoinFlipInterval = 3600000
-	esmCoinFlipProb = 15
-	esmMaxShows = 3
+	Setting: esmCoinFlipInterval = 3600000
+	Setting: esmCoinFlipProb = 15
+	Setting: esmMaxShows = 3
 
 The popup algorithm is roughly as follows:
 
@@ -205,38 +223,39 @@ The popup algorithm is roughly as follows:
 				esmShows++
 
 
-Data Uploads
-------------
+## Data Uploads ##
+
+All data files ready for upload are stored in %PROGRAMFILES%\HostView\submit. When a file is moved to submit folder it
+is compressed (7z zip). HostView tries to upload the zip files periodically to the submitServer, and upon success
+removes the files from the local file system. HostView also keeps track of the disk space used by the un-submitted files,
+and if these files take more than 50% of the available free space, oldest files are removed to make space. 
+
+Following settings control the upload behavior:
 
 * Upload server URL:
 
-	submitServer = https://muse.inria.fr/hostview2016/upload
+	Setting: submitServer = https://muse.inria.fr/hostview2016/upload
 
 * Upload interval in milliseconds, default 60min:
 
-	autoSubmitInterval = 3600000
+	Setting: autoSubmitInterval = 3600000
 
 * Number of retries if upload fails and retry interval in milliseconds, default 10s (i.e. HostView tries to upload data 
 3 times every ten seconds before waiting again the full interval): 
 
-	autoSubmitRetryCount = 3
-	autoSubmitRetryInterval = 10000
+	Setting: autoSubmitRetryCount = 3
+	Setting: autoSubmitRetryInterval = 10000
 
 * cURL options for data uploads (if the key is missing, will use cURL defaults), 
 see http://curl.haxx.se/libcurl/c/curl_easy_setopt.html for more info:
 
-	curlUploadVerifyPeer = 1
-	curlUploadLowSpeedLimit = 16000
-	curlUploadLowSpeedTime = 5
-	curlUploadMaxSendSpeed = 10000000
+	Setting: curlUploadVerifyPeer = 1
+	Setting: curlUploadLowSpeedLimit = 16000
+	Setting: curlUploadLowSpeedTime = 5
+	Setting: curlUploadMaxSendSpeed = 10000000
 
 
-Automatic Updates
------------------
-
-* Settings file version (change if you need to track varying config versions):
-
-    version = 1
+## Automatic Updates ##
 
 * Update check interval in milliseconds, default 24h:
 
@@ -244,19 +263,18 @@ Automatic Updates
 
 * Update URL
 
-	updateLocation = https://muse.inria.fr/hostview/latest/
+	Setting: updateLocation = https://muse.inria.fr/hostview/latest/
 
 * Hostview update is checking for (and downloading) the following updates:
 
-	https://muse.inria.fr/hostview/latest/version 					[available update version]	
+	https://muse.inria.fr/hostview/latest/version 					[updated version]	
 	https://muse.inria.fr/hostview/latest/hostview_installer.exe 	[updated installer]	
 	https://muse.inria.fr/hostview/latest/settings 					[updated settings]	
 	https://muse.inria.fr/hostview/latest/html/esm_wizard.html		[updated ESM questionnaire UI]	
 	https://muse.inria.fr/hostview/latest/html/network_wizard.html	[updated network labeling UI]
 
 
-Local Hostview Database Schema
-------------------------------
+## Local Hostview Database Schema ##
 
 CREATE TABLE IF NOT EXISTS connectivity(
 	guid VARCHAR(260), 
@@ -389,3 +407,9 @@ CREATE TABLE IF NOT EXISTS powerstate(
 	timestamp INT8, 
 	event VARCHAR(32), 
 	value INT);
+
+netlabel(
+	timestamp INT8, 
+	guid VARCHAR(260), 
+	gateway VARCHAR(64), 
+	label VARCHAR(260));

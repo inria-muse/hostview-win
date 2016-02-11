@@ -379,6 +379,7 @@ bool interfacesMonitorRunning = false;
 HANDLE hInterfacesMonitor = NULL;
 
 unsigned long g_pcapSizeLimit;
+bool g_debugMode = false;
 
 DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 {
@@ -425,13 +426,20 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 		}
 	}
 
-	// TODO: last time call? disconnected
+	// monitor stopping - signal all interfaces down
+	for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin();
+	it != previousInterfaces.end(); it++)
+	{
+		pCallback->OnInterfaceDisconnected(*it);
+	}
+	previousInterfaces.clear();
 	return 0;
 }
 
-PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit)
+PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long pcapSizeLimit, bool debugMode)	
 {
 	g_pcapSizeLimit = pcapSizeLimit;
+	g_debugMode = debugMode;
 
 	if (!hInterfacesMonitor)
 	{
@@ -439,10 +447,7 @@ PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long
 		hInterfacesMonitor = CreateThread(NULL, NULL, InterfacesMonitorThread, &callback, NULL, NULL);
 		return true;
 	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
 
 PCAPAPI bool StopInterfacesMonitor()
@@ -453,8 +458,6 @@ PCAPAPI bool StopInterfacesMonitor()
 		WaitForSingleObject(hInterfacesMonitor, INFINITE);
 		CloseHandle(hInterfacesMonitor);
 		hInterfacesMonitor = NULL;
-
-		previousInterfaces.clear();
 		return true;
 	}
 	return false;

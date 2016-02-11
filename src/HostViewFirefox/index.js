@@ -184,10 +184,10 @@ pageMod.PageMod({
 	include: /^http[s]*\:\/\/.*youtube.com\/.*/,
 	//contentStyleFile: [],
 	contentScriptFile: [
-		data.url("../video/jquery/jquery-1.9.1.min.js"),
-		data.url("../video/jquery/jquery-ui-1.10.3.min.js"),
+//		data.url("../video/jquery/jquery-1.9.1.min.js"),
+//		data.url("../video/jquery/jquery-ui-1.10.3.min.js"),
 		data.url("../video/Utils/Utils.js"),
-		data.url("../video/Log/Logger.js"),
+//		data.url("../video/Log/Logger.js"),
 		data.url("../video/Log/DatasetLogger.js"),
 		data.url("../video/Dataset/Dataset.js"),
 		data.url("../video/Dataset/VideoSession.js"),

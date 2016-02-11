@@ -53,14 +53,16 @@ void loadDefaults() {
 		mDefSettings[AutoUpdateInterval] = "86400000";
 		mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview-dev/latest";
 		mDefSettings[NetLocationApiUrl] = "https://muse.inria.fr/hostview-dev/location";
+		mDefSettings[DebugMode] = "0";
 
 #ifdef _DEBUG
 		mDefSettings[AutoSubmitRetryCount] = "1";
 		mDefSettings[AutoSubmitRetryInterval] = "1000";
-		mDefSettings[AutoSubmitInterval] = "60000";
+		mDefSettings[AutoSubmitInterval] = "300000";
 		mDefSettings[SubmitServer] = "http://localhost:3000";
-		mDefSettings[UpdateLocation] = "http://localhost:3000/latest";
-		mDefSettings[NetLocationApiUrl] = "http://locahost:3000/location";
+		mDefSettings[UpdateLocation] = "http://localhost:3001/latest";
+		mDefSettings[NetLocationApiUrl] = "http://locahost:3001/location";
+		mDefSettings[DebugMode] = "1";
 #endif
 	}
 }

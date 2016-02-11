@@ -25,6 +25,9 @@
 #include "stdafx.h"
 #include "trace.h"
 #include "Upload.h"
+#include "Settings.h"
+
+static CSettings g_settings;
 
 ULONGLONG GetHiResTimestamp()
 {
@@ -60,34 +63,58 @@ long GetFileSize(char *szFilename)
 }
 
 void Debug(char *szFormat, ...) {
-#ifdef _DEBUG
+	bool dodebug = g_settings.GetBoolean(DebugMode);
+#ifndef _DEBUG
+	// early out in non-debug versions
+	if (!dodebug)
+		return;
+#endif
+
 	va_list vArgs;
 	va_start(vArgs, szFormat);
 	char szMessage[4096] = { 0 };
-	if (vsprintf_s(szMessage, 4096, szFormat, vArgs) > 0)
-		fprintf(stderr, "[%llu] [debug] %s\n", GetHiResTimestamp(), szMessage);
-	va_end(vArgs);
+	vsprintf_s(szMessage, 4096, szFormat, vArgs);
+	__int64 ts = GetHiResTimestamp();
+
+#ifdef _DEBUG
+	fprintf(stderr, "[%llu] [debug] %s\n", ts, szMessage);
 #endif
+
+	if (dodebug) {
+		FILE * f = NULL;
+		fopen_s(&f, LOGFILE, "a+");
+		if (f)
+		{
+			fprintf(f, "[%llu] [debug] %s\n", ts, szMessage);
+			fclose(f);
+		}
+	}
+	va_end(vArgs);
 }
 
 void Trace(char *szFormat, ...) {
-	if (!szFormat || GetFileSize(LOGFILE) >= 5 * 1024 * 1024) // 5MB
+	bool dodebug = g_settings.GetBoolean(DebugMode);
+
+	if (!szFormat || GetFileSize(LOGFILE) >= 10 * 1024 * 1024)
 	{
 		char szFile[MAX_PATH] = { 0 };
 		sprintf_s(szFile, MAX_PATH, "%llu_%s", GetHiResTimestamp(), LOGFILE);
 		MoveFileA(LOGFILE, szFile);
-		MoveFileToSubmit(szFile);
+		MoveFileToSubmit(szFile, dodebug);
+
+		// log files is usually rotated upon session end, so good time to reload
+		g_settings.ReloadSettings();
 	}
 
 	if (szFormat)
 	{
-		char szMessage[1024] = { 0 };
+		char szMessage[2048] = { 0 };
 		__int64 ts = GetHiResTimestamp();
 
 		va_list vArgs;
 		va_start(vArgs, szFormat);
 
-		vsprintf_s(szMessage, 1024, szFormat, vArgs);
+		vsprintf_s(szMessage, 2048, szFormat, vArgs);
 
 #ifdef _DEBUG
 		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);

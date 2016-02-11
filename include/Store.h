@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "proc.h"
+#include "Settings.h"
 #include "sqlite3.h"
 
 #if defined(STORELIBRARY_EXPORT) // inside DLL
@@ -133,6 +134,8 @@ private:
 	char szError[MAX_PATH];
 	const char* error();
 	void seterror(const char *error);
+
+	CSettings m_settings;
 
 	ULONGLONG m_session;
 

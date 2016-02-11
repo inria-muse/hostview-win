@@ -217,7 +217,7 @@ npfdone:
 	
 	; start everything
 	nsExec::Exec "net start $\"HostView Service$\""
-	Exec "$\"$INSTDIR\HostView.exe$\" /start"
+	Exec "$\"$INSTDIR\HostView.exe$\""
 
 SectionEnd ; end the section
 

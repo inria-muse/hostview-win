@@ -308,6 +308,7 @@ struct Capture {
 	pcap_dumper_t *dumper;
 	char capture_file[MAX_PATH];
 	CCaptureCallback *cb;
+	bool debugMode;
 
 	// dummy default constuctor
 	Capture() :
@@ -316,7 +317,8 @@ struct Capture {
 		thread(NULL),
 		pcap(NULL),
 		dumper(NULL),
-		cb(NULL)
+		cb(NULL),
+		debugMode(FALSE)
 	{
 	}
 };
@@ -444,7 +446,7 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
 }
 
-PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, const char *adapterId)
+PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, const char *adapterId, bool debugMode)
 {
 	// ensure directory
 	if (!PathFileExistsA(DATA_DIRECTORY)) {
@@ -452,6 +454,7 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 	}
 
 	struct Capture cap = captures[adapterId];
+	cap.debugMode = debugMode;
 	if (cap.thread == NULL)
 	{
 		cap.session = session;
@@ -502,7 +505,7 @@ PCAPAPI bool StopCapture(const char *adapterId)
 		}
 
 		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file);
+		MoveFileToSubmit(cap.capture_file, cap.debugMode);
 
 		captures.erase(adapterId);
 		return true;
@@ -527,23 +530,11 @@ PCAPAPI bool CleanAllCaptureFiles() {
 			}
 
 			sprintf_s(szFilename, "%s\\%s", DATA_DIRECTORY, wfd.cFileName);
-			MoveFileToSubmit(szFilename);
+			MoveFileToSubmit(szFilename, false);
 
 		} while (FindNextFileA(hFind, &wfd));
 		FindClose(hFind);
 	}
-	return true;
-}
-
-PCAPAPI bool StopAllCaptures()
-{
-	for (std::set<std::string>::iterator it = adapterIds.begin(); it != adapterIds.end(); it ++)
-	{
-		StopCapture(it->c_str());
-	}
-
-	adapterIds.clear();
-
 	return true;
 }
 
@@ -577,7 +568,7 @@ PCAPAPI bool RotateCaptureFile(const char *adapterId) {
 		}
 
 		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file);
+		MoveFileToSubmit(cap.capture_file, cap.debugMode);
 
 		// restart
 		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);

@@ -163,7 +163,7 @@ void CStore::Close()
 		char uploadfile[MAX_PATH] = { 0 };
 		sprintf_s(uploadfile, "%llu_%s", m_session, STORE_FILE);
 		MoveFileA(STORE_FILE, uploadfile);
-		MoveFileToSubmit(uploadfile);
+		MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
 	}
 
 	closing = false;

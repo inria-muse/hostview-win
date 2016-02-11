@@ -69,23 +69,30 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
-			// shutdown and uninstall service
-			UninstallService(SERVICE_NAME);
-			Trace("Service uninstalled.");
+			Trace("Service uninstall.");
+
+			// stops captures if running
+			SendServiceMessage(Message(MessageSuspend));
 
 			SysInfo info;
 			QuerySystemInfo(info);
 			char szHdd[MAX_PATH] = { 0 };
 			sprintf_s(szHdd, "%S", info.hddSerial);
 
-			Trace("Last submit.");
-			Trace(0); // moves the logfile to submit
-
 			// double make sure all data is in the submit folder
 			CleanAllCaptureFiles();
+			Trace(0); // moves the logfile to submit
 
-			// final submit
-			DoSubmit(szHdd);
+			// upload all files
+			CUpload upload;
+			upload.TrySubmit(szHdd);
+
+			// shutdown and uninstall service
+			UninstallService(SERVICE_NAME);
+		}
+		else if (!_tcsicmp(L"restart", argv[1] + 1)) 
+		{
+			SendServiceMessage(Message(MessageRestartSession));
 		}
 		else if (!_tcsicmp(L"debug", argv[1] + 1))
 		{
@@ -125,6 +132,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			printf("Parameters (optional):\n");
 			printf("\t/install \t- to install the service.\n");
 			printf("\t/remove \t- to remove the service.\n");
+			printf("\t/restart \t- to restart a session.\n");
 			printf("\t/debug \t- to start the service for debugging.\n");
 			printf("\t/test <test> \t- to run a selected test.\n");
 		}

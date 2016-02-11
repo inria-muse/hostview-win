@@ -24,6 +24,7 @@
 #include "stdafx.h"
 #include "questionnaire.h"
 #include "comm.h"
+#include "trace.h"
 
 std::map<std::tstring, AppListT> mUserApps;
 std::map<std::tstring, std::map<std::tstring, AppListT>> mUserBrowserTabs;
@@ -204,7 +205,7 @@ void SubmitQuestionnaire(const TCHAR *szResult)
 	TCHAR szTempFile[MAX_PATH] = {0};
 
 	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-	_stprintf_s(szTempFile, _T("%s\\%s\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
+	_stprintf_s(szTempFile, _T("%s\\%s\\%llu_questionnaire.txt"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));

@@ -100,10 +100,7 @@ private:
 	BOOL m_fStopping;
 	HANDLE m_hStoppedEvent;
 
-	// TOOD: not setting this might trigger a submit every startup
 	DWORD m_dwLastSubmit;
-	DWORD m_dwRetryCount;
-
 	DWORD m_dwLastUpdateCheck;
 
 	BOOL m_fUserStopped;
@@ -140,6 +137,7 @@ private:
 
 	// networks are added to this queue to be displayed
 	// when a user is ready
+	bool m_hasSeenUI;
 	std::vector<NetworkInterface> m_interfacesQueue;
 	CRITICAL_SECTION m_cs;
 	CKnownNetworks m_networks;

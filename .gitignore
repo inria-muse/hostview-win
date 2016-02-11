@@ -8,3 +8,6 @@ Debug
 *__Debug__*
 ipch
 tmp
+lib/*/store.*
+lib/*/pcap.*
+lib/*/proc.*

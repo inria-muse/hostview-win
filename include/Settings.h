@@ -33,6 +33,7 @@
 #endif  // SETTINGSLIBRARY_EXPORT
 
 #define SettingsVersion "version"                          // settings version
+#define DebugMode "debugMode"							   // turn on/off debug mode
 
 #define AutoRestartTimeout "autoRestartTimeout"            // restart hostview after pause (ms)
 

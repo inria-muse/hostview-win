@@ -53,6 +53,7 @@ CWinApp theApp;
 HICON g_hIcons[2];
 NOTIFYICONDATA g_nidApp;
 CSettings settings;
+CLifetimeCtrl ltCtrl;
 
 TCHAR g_szUser[MAX_PATH] = {0};
 DWORD g_dwLastPid = -1;
@@ -114,8 +115,8 @@ void LoadNotificationStrings(HINSTANCE hInstance, BOOL bEnabled)
 
 void InitNotificationResources(HINSTANCE hInstance)
 {
-	g_hIcons[0] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
-	g_hIcons[1] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PLAY));
+	g_hIcons[0] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PLAY));
+	g_hIcons[1] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
 
 	TCHAR szAppName[MAX_PATH] = {0};
 	char szProdVer[MAX_PATH] = {0};
@@ -133,15 +134,6 @@ void InitNotificationResources(HINSTANCE hInstance)
 	UuidCreate(&g_nidApp.guidItem);
 
 	g_hInstance = hInstance;
-}
-
-void OnStartCommand()
-{
-}
-
-void OnStopCommand(CLifetimeCtrl &ltCtrl)
-{
-	ltCtrl.CloseAll();
 }
 
 bool IsVistaOrLater()
@@ -175,16 +167,20 @@ void OnEsmCommand(BOOL fOnDemand)
 		AppListT *runningApps = NULL, *installedApps = 0;
 
 		Message result = SendServiceMessage(Message(MessageQueryLastApps, g_szUser, 0, false, false));
-		LoadAppList(result.szUser, runningApps);
+		if (result.type == MessageResult) {
+			LoadAppList(result.szUser, runningApps);
 
-		result = SendServiceMessage(Message(MessageQueryInstalledApps, g_szUser, 0, false, false));
-		LoadAppList(result.szUser, installedApps);
+			result = SendServiceMessage(Message(MessageQueryInstalledApps, g_szUser, 0, false, false));
+			if (result.type == MessageResult) {
+				LoadAppList(result.szUser, installedApps);
 
-		dlg.SetApps(*runningApps, *installedApps);
-		dlg.DoModal();
+				dlg.SetApps(*runningApps, *installedApps);
+				dlg.DoModal();
 
-		ClearAppList(runningApps);
-		ClearAppList(installedApps);
+				ClearAppList(runningApps);
+			}
+			ClearAppList(installedApps);
+		} // else the service is not reachable ..
 	}
 	CoUninitialize();
 }
@@ -224,9 +220,12 @@ void CloseHostViewUI()
 {
 	if (g_hWnd != NULL)
 	{
-		PostMessage(g_hWnd, WM_QUIT, 0, 0);
+		PostMessage(g_hWnd, WM_CLOSE, 0, 0);
 	}
 }
+
+// capture state
+bool g_isRunning = true;
 
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 {
@@ -251,22 +250,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	AfxWinInit(::GetModuleHandle(NULL), NULL, szCmdLine, 0);
 	InitCurrentDirectory();
 
-	// force re-load
-	settings.ReloadSettings();
-
-	CLifetimeCtrl ltCtrl;
 	ltCtrl.Start(CloseHostViewUI);
 
-	if (_tcsstr(szCmdLine, _T("/start")))
+    if (_tcsstr(szCmdLine, _T("/stop")))
 	{
-		// only gets called with /start from the
-		// installer script ... ?!
-		OnStartCommand();
-	}
-	else if (_tcsstr(szCmdLine, _T("/stop")))
-	{
-		// who's calling this ?
-		OnStopCommand(ltCtrl);
+		// called from uninstaller - closes all open hostview UI components
+		ltCtrl.CloseAll();
 		return FALSE;
 	}
 	else if (_tcsstr(szCmdLine, _T("/esm")))
@@ -279,6 +268,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	}
 	else if (_tcsstr(szCmdLine, _T("/net")))
 	{
+		// FIXME: why is this needed ??
 		NetworkInterface *ni = NULL;
 		if (CommandToNetworkInterface(szCmdLine, ni))
 		{
@@ -291,22 +281,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 		return FALSE;
 	}
 
-	// make sure all captures are started
-	SendServiceMessage(Message(MessageStartCapture));
-
 	// load resources
 	InitNotificationResources(hInstance);
 
-	// start user monitor
-	StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
-
 	// dialog box
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), NULL, MakeProcInstance(DlgCallback, hInstance));
-
-	StopUserMonitor();
-
-	// signal stop capture to the service
-	SendServiceMessage(Message(MessageStopCapture));
 
 	DestroyIcon(g_hIcons[0]);
 	DestroyIcon(g_hIcons[1]);
@@ -314,23 +293,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	ltCtrl.Stop();
 	return TRUE;
 }
-
-void ToggleHostViewState(bool isRunning)
-{
-	Message message(isRunning ? MessageStartCapture : MessageStopCapture);
-	SendServiceMessage(message);
-	
-	if (!isRunning)
-	{
-		g_nidApp.uFlags |= NIF_INFO;
-
-		g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
-		Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
-	}
-}
-
-bool g_isRunning = true;
-Message queryMsg(MessageQueryStatus);
 
 void RefreshSystrayIcon()
 {
@@ -440,6 +402,8 @@ INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	return (INT_PTR) FALSE;
 }
 
+Message queryMsg(MessageQueryStatus);
+
 INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -454,14 +418,23 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		g_nidApp.uCallbackMessage = WM_USER_SHELLICON; 
 		Shell_NotifyIcon(NIM_ADD, &g_nidApp);
 
+		g_isRunning = true;
+		SendServiceMessage(Message(MessageStartCapture)); // make sure the service is capturing data
+		StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
 		SetTimer(hDlg, TIMER_STATUS, TIMER_STATUS_TIME, NULL);
 		SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 
 		SetWindowPos(hDlg, 0, 0, 0, 0, 0, SWP_SHOWWINDOW);
 		break;
 	case WM_DESTROY:
-		KillTimer(hDlg, TIMER_USER_IO);
-		KillTimer(hDlg, TIMER_STATUS);
+		if (g_isRunning) {
+			KillTimer(hDlg, TIMER_STATUS);
+			KillTimer(hDlg, TIMER_USER_IO);
+			StopUserMonitor();
+			SendServiceMessage(Message(MessageStopCapture));
+			g_isRunning = false;
+		}
+
 		Shell_NotifyIcon(NIM_DELETE, &g_nidApp);
 		PostQuitMessage(0);
 		break;
@@ -471,21 +444,25 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	case WM_TIMER:
 		if (wParam == TIMER_STATUS)
 		{
+			// FIXME: not sure why this needs to be polled from the service ?
+			// could have the timer here in the UI ?
 			Message status = SendServiceMessage(queryMsg);
 			switch (status.type)
 			{
 			case MessageStartCapture:
 				if (!g_isRunning)
 				{
-					settings.ReloadSettings();
-
-					// has been enabled
+					// has been enabled (automatically or by user after a pause)
 					g_isRunning = true;
 					RefreshSystrayIcon();
 
+					settings.ReloadSettings();
+					StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
+					SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
+
+					// show info box
 					LoadNotificationStrings(g_hInstance, TRUE);
 					g_nidApp.uFlags |= NIF_INFO;
-
 					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
 					Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
 				}
@@ -493,8 +470,18 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			case MessageStopCapture:
 				if (g_isRunning)
 				{
+					// handle user pause
 					g_isRunning = false;
 					RefreshSystrayIcon();
+
+					StopUserMonitor();
+					KillTimer(hDlg, TIMER_USER_IO);
+
+					// show notif box
+					LoadNotificationStrings(g_hInstance, FALSE);
+					g_nidApp.uFlags |= NIF_INFO;
+					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
+					Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
 				}
 				break;
 			case MessageError:
@@ -523,18 +510,14 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		switch (LOWORD(wParam))
 		{
 		case IDM_EXIT_TRAY:
-			// TODO: is this correct ? also should check the service state upon start
-			if (g_isRunning)
-				ToggleHostViewState(g_isRunning);
-			PostMessage(hDlg, WM_CLOSE, 0, 0);
+			// data captures etc handled in WM_DESTROY
+			ltCtrl.CloseAll();
+			//PostMessage(hDlg, WM_CLOSE, 0, 0);
 			break;
 		case IDM_PAUSE_HOSTVIEW:
-			g_isRunning = !g_isRunning;
-			RefreshSystrayIcon();
-
-			LoadNotificationStrings(g_hInstance, FALSE);
-			Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
-			ToggleHostViewState(g_isRunning);
+			// pause or restart 
+			// FIXME: this depends on the service being alive, otherwise nothing happens ..
+			SendServiceMessage(Message(g_isRunning ? MessageStopCapture : MessageStartCapture));
 			break;
 		}
 		break;
@@ -542,10 +525,19 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		{
 			switch (wParam) {
 			case PBT_APMSUSPEND:
+				if (g_isRunning) {
+					// not user stopped
+					StopUserMonitor();
+					KillTimer(hDlg, TIMER_USER_IO);
+				}
 				SendServiceMessage(Message(MessageSuspend));
 				break;
 			case PBT_APMRESUMEAUTOMATIC:
 				SendServiceMessage(Message(MessageResume));
+				// start in non-user-stopped mode in anycase
+				g_isRunning = true;
+				StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
+				SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 				break;
 			case PBT_POWERSETTINGCHANGE:
 				break;

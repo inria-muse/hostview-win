@@ -56,6 +56,7 @@
 #define MessageQueryInstalledApps	13
 #define MessageSuspend				14
 #define MessageResume				15
+#define MessageRestartSession       16
 
 struct Message
 {

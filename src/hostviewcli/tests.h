@@ -161,7 +161,7 @@ public:
 
 void startNetworkMonitor()
 {
-	if (StartInterfacesMonitor(netCallback, 5))
+	if (StartInterfacesMonitor(netCallback, 5, true))
 	{
 		printf("interfaces monitor started.\r\n");
 	}
@@ -191,7 +191,8 @@ void submitData()
 	char szHdd[MAX_PATH] = {0};
 	sprintf_s(szHdd, "%S", info.hddSerial);
 
-	DoSubmit(szHdd);
+	CUpload upload;
+	upload.TrySubmit(szHdd);
 }
 
 bool exec(TCHAR * szCommand)
@@ -224,7 +225,7 @@ int consoleMain()
 {
 	InitConsole();
 	store.Open(GetHiResTimestamp());
-	StartInterfacesMonitor(netCallback, 5);
+	StartInterfacesMonitor(netCallback, 5, true);
 
 //	MAKE_COMMAND("nstart", "start connection monitor", &startNetworkMonitor);
 //	MAKE_COMMAND("nstop", "stop connection monitor", &stopNetworkMonitor);

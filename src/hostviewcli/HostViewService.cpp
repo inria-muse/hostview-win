@@ -35,13 +35,13 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 
 	m_fStopping = FALSE;
 	m_fUserStopped = FALSE;
-	m_dwRetryCount = 0;
 	m_dwUserStoppedTime = 0;
 	m_dwLastSubmit = 0;
 	m_dwLastUpdateCheck = 0;
 	m_fIdle = FALSE;
 	m_fFullScreen = FALSE;
 	m_startTime = 0;
+	m_hasSeenUI = FALSE;
 
 	// Create a manual-reset event that is not signaled at first to indicate 
 	// the stopped signal of the service.
@@ -82,6 +82,7 @@ void CHostViewService::ServiceWorkerThread(void)
 
 	// next upload will take place after configured interval
 	m_dwLastSubmit = dwNow;
+	CUpload *pendingUpload = NULL; // current upload session
 
 	// next update check will take place 5min after service start
 	m_dwLastUpdateCheck = dwNow - m_settings.GetULong(AutoUpdateInterval) + 5 * 60 * 1000;
@@ -115,29 +116,16 @@ void CHostViewService::ServiceWorkerThread(void)
 		// automatic submission
 		if (dwNow - m_dwLastSubmit >= m_settings.GetULong(AutoSubmitInterval))
 		{
-			if (m_dwRetryCount > m_settings.GetULong(AutoSubmitRetryCount)) 
-			{
-				// failed x times in a row, mark as done for now and try again in full interval
-				Trace("Data submission failed (reached max retry count: %d)", m_dwRetryCount);
-
-				CheckDiskUsage();
-
-				// reset
-				m_dwLastSubmit = dwNow;
-				m_dwRetryCount = 0;
+			if (pendingUpload == NULL) {
+				// new upload session
+				pendingUpload = new CUpload();
 			}
-			else if (DoSubmit(szHdd))
-			{
-				Trace("Data submission ok (retry count: %d)", m_dwRetryCount);
+
+			if (!pendingUpload->TrySubmit(szHdd)) {
+				// no need to retry - either this was a success or then max retries was reached
+				delete pendingUpload;
+				pendingUpload = NULL;
 				m_dwLastSubmit = dwNow;
-				m_dwRetryCount = 0;
-			}
-			else
-			{
-				Trace("Data submission failed (retry count: %d)", m_dwRetryCount);
-				m_dwRetryCount++;
-				// trick the last submit time so that we try again sooner
-				m_dwLastSubmit = dwNow - m_settings.GetULong(AutoSubmitInterval) + m_settings.GetULong(AutoSubmitRetryInterval);
 			}
 		}
 
@@ -174,15 +162,7 @@ void CHostViewService::ServiceWorkerThread(void)
 			// mostly to follow computer sleep cycles (see suspend+resume). This
 			// is here just to ensure some hard limit on the duration of a single session.
 			if (st.wHour >= 3 && st.wHour <= 5 && (dwNow - m_startTime >= 21*3600*1000)) {
-				ULONGLONG ts = GetHiResTimestamp();
-
-				// take down all captures
-				Trace("Hostview service session autostop %d/%d/%d %d:%d.", st.wDay, st.wMonth, st.wYear, st.wHour, st.wMinute);
-				StopCollect(SessionEvent::AutoStop, ts);
-
-				// restart collectors
-				Trace("Hostview service session autostart %d/%d/%d %d:%d.", st.wDay, st.wMonth, st.wYear, st.wHour, st.wMinute);
-				StartCollect(SessionEvent::AutoStart, ts);
+				SendServiceMessage(Message(MessageRestartSession));
 			}
 
 			lastSessionCheck = dwNow;
@@ -240,25 +220,26 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 	if (m_startTime == 0) {
 		// new session id
 		m_startTime = ts;
-		Trace("Hostview service session %llu start %d.", ts, e);
+
+		// make sure we are using the latest settings
+		m_settings.ReloadSettings();
+
+		Trace("Hostview service session %llu start [reason=%d].", ts, e);
 
 		// get sysinfo (data that wont change during the session)
 		QuerySystemInfo(m_sysInfo);
 		if (_tcslen(m_sysInfo.hddSerial) <= 0)
 		{
-			fprintf(stderr, "[SRV] fatal : we don't know the hddSerial");
+			Debug("[SRV] fatal : we don't know the hddSerial");
 			return;
 		}
 		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
-
-		// make sure we are using the latest settings
-		m_settings.ReloadSettings();
 
 		// make sure we don't have any pending pcaps in the capture folder
 		CleanAllCaptureFiles();
 
 		if (!m_store.Open(m_startTime)) {
-			fprintf(stderr, "[SRV] fatal : failed to open the data store");
+			Debug("[SRV] fatal : failed to open the data store");
 			return;
 		}
 
@@ -267,7 +248,7 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 		m_store.InsertSys(m_startTime, m_sysInfo, ProductVersionStr, m_settings.GetVersion());
 
 		// start data collection
-		StartInterfacesMonitor(*this, m_settings.GetULong(PcapSizeLimit));
+		StartInterfacesMonitor(*this, m_settings.GetULong(PcapSizeLimit), m_settings.GetBoolean(DebugMode));
 		StartWifiMonitor(*this, m_settings.GetULong(WirelessMonitorTimeout));
 		StartHttpDispatcher(*this);
 	}
@@ -276,7 +257,7 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 {
 	if (m_startTime > 0) {
-		Trace("Hostview service session %llu stop %d.", m_startTime, e);
+		Trace("Hostview service session %llu stop [reason=%d].", m_startTime, e);
 
 		m_store.InsertSession(ts, e);
 		m_store.Close();
@@ -286,7 +267,6 @@ void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 	StopHttpDispatcher();
 	StopWifiMonitor();
 	StopInterfacesMonitor();
-	StopAllCaptures();
 }
 
 void CHostViewService::OnPowerEvent(PPOWERBROADCAST_SETTING event)
@@ -437,7 +417,8 @@ void CHostViewService::LabelNetwork(const NetworkInterface &ni)
 }
 
 void CHostViewService::RunNetworkLabeling() {
-	if (m_interfacesQueue.size() > 0) {
+	// will only ask for labels once we have seen some sign of the HostView UI
+	if (m_hasSeenUI && m_interfacesQueue.size() > 0) {
 		NetworkInterface ni = m_interfacesQueue[0];
 		TCHAR szCmdLine[MAX_PATH] = { 0 };
 
@@ -480,6 +461,10 @@ void CHostViewService::RunQuestionnaireIfCase()
 
 	if (m_settings.GetBoolean(EsmActive)) {
 		DWORD dwNow = GetTickCount();
+		if (sdwLastCheck == 0) {
+			// don't check right away on startup but pretend the last check was almost an interval ago
+			sdwLastCheck = dwNow - m_settings.GetULong(EsmCoinFlipInterval) + m_settings.GetULong(EsmCoinFlipInterval)/8;
+		}
 
 		// check once per interval (if the user is there)
 		if (dwNow - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && !m_fIdle && !m_fFullScreen)
@@ -650,7 +635,7 @@ bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
 			fprintf(f, "%s", *jsonbuf);
 			fclose(f);
 		}
-		MoveFileToSubmit(fn);
+		MoveFileToSubmit(fn, m_settings.GetBoolean(DebugMode));
 		return true;
 	}
 	return false;
@@ -660,6 +645,16 @@ Message CHostViewService::OnMessage(Message &message)
 {
 	switch (message.type)
 	{
+	case MessageRestartSession:
+		if (!m_fUserStopped)
+		{
+			ULONGLONG ts = GetHiResTimestamp();
+			Trace("Hostview service session autostop");
+			StopCollect(SessionEvent::AutoStop, ts);
+			Trace("Hostview service session autostart");
+			StartCollect(SessionEvent::AutoStart, ts);
+		}
+		break;
 	case MessageSuspend:
 		OnSuspend();
 		break;
@@ -750,6 +745,7 @@ Message CHostViewService::OnMessage(Message &message)
 		break;
 	case MessageQueryStatus:
 		{
+			m_hasSeenUI = TRUE;
 			Message result(m_fUserStopped ? MessageStopCapture : MessageStartCapture);
 			return result;
 		}
@@ -797,7 +793,7 @@ Message CHostViewService::OnMessage(Message &message)
 			sprintf_s(uploadfile, "%llu_%s", m_startTime, uFile);
 			MoveFileA(uFile, uploadfile);
 
-			MoveFileToSubmit(uploadfile);
+			MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
 
 			SetQuestionnaireCounter(QueryQuestionnaireCounter() + 1);
 		}

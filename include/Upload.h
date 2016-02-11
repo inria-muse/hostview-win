@@ -44,22 +44,28 @@
 class UPLOADAPI CUpload
 {
 public:
-	CUpload(void);
+	CUpload();
 	~CUpload(void);
 
+	/** Loop over files in the submit folder and upload to the server.
+	 *  Returns true if the caller should try again soon (retry), false if
+	 *  this upload session has failed.
+	 */
+	bool TrySubmit(const char *deviceId);
+
+private:
 	/** Returns true on success, false if should stop uploading other files (upload failed or was too slow). */
 	bool SubmitFile(const char *fileName, const char *deviceId);
 
-private:
+	/** Make sure we are not using too much disk space, and make room if so. */
+	void CheckDiskUsage();
+
 	CSettings settings;
 	CURL *curl;
+	ULONG retryCount;
+	DWORD lastRetry;
 };
 
 /** Move a file to the submit folder. */
-extern "C" UPLOADAPI bool MoveFileToSubmit(const char *file);
+extern "C" UPLOADAPI bool MoveFileToSubmit(const char *file, bool debug);
 
-/** Loop over files in the submit folder and upload to the server. */
-extern "C" UPLOADAPI bool DoSubmit(const char *deviceId);
-
-/** Make sure we are not using too much disk space, and make room if so. */
-extern "C" UPLOADAPI void CheckDiskUsage();

@@ -77,15 +77,17 @@ bool createzip(char *src)
 	return false;
 }
 
-CUpload::CUpload(void)
-	: curl(NULL)
+CUpload::CUpload()
+	: curl(NULL), 
+	retryCount(0),
+	lastRetry(0)
 {
 	char ua[512] = {0};
 	sprintf_s(ua, 512, "Hostview Windows %s", ProductVersionStr);
 
 	curl = curl_easy_init();
 	if (!curl) {
-		fprintf(stderr, "[upload] curl_easy_init failed\n");
+		Debug("[upload] curl_easy_init failed");
 		return;
 	}
 
@@ -155,11 +157,11 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
-		fprintf(stderr, "[upload] curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		Debug("[upload] curl_easy_perform failed: %s", curl_easy_strerror(res));
 		result = false;
 	}
 	else {
-		fprintf(stderr, "[upload] curl_easy_perform success\n");
+		Debug("[upload] curl_easy_perform success");
 		result = true;
 	}
 
@@ -170,7 +172,8 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 	return result;
 }
 
-bool MoveFileToSubmit(const char *file) {
+// static helper used by all data collectors to add new files to '\submit'.
+bool MoveFileToSubmit(const char *file, bool debug) {
 	if (!PathFileExistsA(file)) {
 		return false;
 	}
@@ -180,17 +183,26 @@ bool MoveFileToSubmit(const char *file) {
 		CreateDirectoryA(SUBMIT_DIRECTORY, NULL);
 	}
 
-	// new name: ./submit/timestamp_filename.ext
+	if (debug) {
+		// keep a local copy of all files
+		if (!PathFileExistsA(".\\debug")) {
+			CreateDirectoryA(".\\debug", NULL);
+		}
+		char debugFile[MAX_PATH] = { 0 };
+		sprintf_s(debugFile, ".\\debug\\%s", PathFindFileNameA(file));
+		CopyFileA(file, debugFile, false);
+	}
+
 	char sFile[MAX_PATH] = { 0 };
 	sprintf_s(sFile, "%s\\%s", SUBMIT_DIRECTORY, PathFindFileNameA(file));
 	if (!MoveFileA(file, sFile)) {
-		fprintf(stderr, "[upload] failed to move file %s to %s %d\n", file, sFile, GetLastError());
+		Debug("[upload] failed to move file %s to %s %d", file, sFile, GetLastError());
 		return false;
 	}
 
 	if (!createzip(sFile)) {
 		// TODO: this will leave unzipped file to submit -- so upload needs to make sure things are zipped
-		fprintf(stderr, "[upload] failed to zip file %s.zip\n", sFile);
+		Debug("[upload] failed to zip file %s.zip", sFile);
 		return false;
 	}
 
@@ -198,11 +210,25 @@ bool MoveFileToSubmit(const char *file) {
 	return true;
 }
 
-bool DoSubmit(const char *deviceId) {
+bool CUpload::TrySubmit(const char *deviceId) {
 	char szFilename[MAX_PATH] = { 0 };
-	bool result = true;
-	CUpload upload;
 	WIN32_FIND_DATAA wfd;
+	DWORD dwNow = GetTickCount();
+
+	ULONG maxRetries = settings.GetULong(AutoSubmitRetryCount);
+	if (retryCount >= maxRetries) {
+		return false; // we have reached the max retries - stop trying to submit
+	}
+
+	// is it time yet ?
+	if (!lastRetry == 0 && (dwNow - lastRetry) < settings.GetULong(AutoSubmitInterval))
+		return true; // try again later
+
+	// ok lets try
+	int submittedFiles = 0;
+	bool result = true;
+	retryCount += 1;
+	lastRetry = dwNow;
 
 	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
 	if (hFind != INVALID_HANDLE_VALUE)
@@ -222,7 +248,7 @@ bool DoSubmit(const char *deviceId) {
 			{
 				if (!createzip(szFilename))
 				{
-					fprintf(stderr, "[upload] failed to create zip file %s.zip\n", szFilename);
+					Debug("[upload] failed to create zip file %s.zip", szFilename);
 					continue; // move forward and try others ..
 				}
 				else {
@@ -230,11 +256,12 @@ bool DoSubmit(const char *deviceId) {
 				}
 			}
 
-			result = upload.SubmitFile(szFilename, deviceId);
+			result = SubmitFile(szFilename, deviceId);
 			if (result)
 			{
+				Trace("Submitted file %s.", szFilename);
+				submittedFiles += 1;
 				DeleteFileA(szFilename);
-				Trace("Remove submitted file %s.", szFilename);
 			}
 
 		} while (result && FindNextFileA(hFind, &wfd));
@@ -242,7 +269,24 @@ bool DoSubmit(const char *deviceId) {
 		FindClose(hFind);
 	}
 
-	return result;
+	bool doretry = true;
+	if (result) {
+		if (submittedFiles>0)
+			Trace("Data submission ok (retry count: %d, files: %d)", retryCount, submittedFiles);
+		doretry = false; // stop here
+	}
+	else {
+		// error in sending - should retry
+		Trace("Data submission failed (retry count: %d, files: %d)", retryCount, submittedFiles);
+	}
+	
+	if (retryCount == maxRetries) {
+		Trace("Data submission done (reached max retry count)", maxRetries);
+		CheckDiskUsage();
+		doretry = false; // stop here
+	}
+
+	return doretry;
 }
 
 void removeoldest()
@@ -312,7 +356,7 @@ ULONGLONG getUsage()
 	return ulUsedSpace;
 }
 
-void CheckDiskUsage() {
+void CUpload::CheckDiskUsage() {
 	ULARGE_INTEGER totalSize;
 	GetDiskFreeSpaceEx(NULL, NULL, &totalSize, NULL);
 
