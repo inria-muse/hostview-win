@@ -426,13 +426,6 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 		}
 	}
 
-	// monitor stopping - signal all interfaces down
-	for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin();
-	it != previousInterfaces.end(); it++)
-	{
-		pCallback->OnInterfaceDisconnected(*it);
-	}
-	previousInterfaces.clear();
 	return 0;
 }
 
@@ -450,7 +443,7 @@ PCAPAPI bool StartInterfacesMonitor(CInterfacesCallback &callback, unsigned long
 	return false;
 }
 
-PCAPAPI bool StopInterfacesMonitor()
+PCAPAPI bool StopInterfacesMonitor(CInterfacesCallback &callback)
 {
 	if (hInterfacesMonitor)
 	{
@@ -458,8 +451,18 @@ PCAPAPI bool StopInterfacesMonitor()
 		WaitForSingleObject(hInterfacesMonitor, INFINITE);
 		CloseHandle(hInterfacesMonitor);
 		hInterfacesMonitor = NULL;
+
+		// signal all interfaces down
+		for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin();
+		it != previousInterfaces.end(); it++)
+		{
+			callback.OnInterfaceDisconnected(*it);
+		}
+		previousInterfaces.clear();
+
 		return true;
 	}
+
 	return false;
 }
 

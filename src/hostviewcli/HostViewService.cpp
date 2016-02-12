@@ -236,7 +236,7 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
 
 		// make sure we don't have any pending pcaps in the capture folder
-		CleanAllCaptureFiles();
+		CleanAllCaptureFiles(m_settings.GetBoolean(DebugMode));
 
 		if (!m_store.Open(m_startTime)) {
 			Debug("[SRV] fatal : failed to open the data store");
@@ -266,7 +266,7 @@ void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 
 	StopHttpDispatcher();
 	StopWifiMonitor();
-	StopInterfacesMonitor();
+	StopInterfacesMonitor(*this);
 }
 
 void CHostViewService::OnPowerEvent(PPOWERBROADCAST_SETTING event)
@@ -383,7 +383,7 @@ void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInter
 	ULONGLONG timestamp = GetHiResTimestamp();
 
 	LogNetwork(networkInterface, timestamp, true);
-	StartCapture(*this, m_startTime, timestamp, networkInterface.strGuid.c_str());
+	StartCapture(*this, m_startTime, timestamp, m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
 
 	// FIXME: this could be a bit more intelligent - not sure we need to query this stuff
 	// every time an interface goes up .. ?

@@ -80,7 +80,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			sprintf_s(szHdd, "%S", info.hddSerial);
 
 			// double make sure all data is in the submit folder
-			CleanAllCaptureFiles();
+			CleanAllCaptureFiles(false);
 			Trace(0); // moves the logfile to submit
 
 			// upload all files

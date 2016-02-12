@@ -303,6 +303,7 @@ extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_sh
 struct Capture {
 	ULONGLONG session;
 	ULONGLONG connection;
+	ULONGLONG created;
 	void *thread;
 	pcap_t *pcap;
 	pcap_dumper_t *dumper;
@@ -314,6 +315,7 @@ struct Capture {
 	Capture() :
 		session(0),
 		connection(0),
+		created(0),
 		thread(NULL),
 		pcap(NULL),
 		dumper(NULL),
@@ -446,7 +448,7 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
 }
 
-PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, const char *adapterId, bool debugMode)
+PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, bool debugMode, const char *adapterId)
 {
 	// ensure directory
 	if (!PathFileExistsA(DATA_DIRECTORY)) {
@@ -459,7 +461,8 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 	{
 		cap.session = session;
 		cap.connection = timestamp;
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);
+		cap.created = GetHiResTimestamp();
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s_part.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)
@@ -504,8 +507,13 @@ PCAPAPI bool StopCapture(const char *adapterId)
 			cap.dumper = NULL;
 		}
 
+		// rename the file to indicate this is the last for this connection
+		char tmpName[MAX_PATH] = { 0 };
+		sprintf_s(tmpName, "%s\\%llu_%llu_%llu_%s_last.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
+		MoveFileA(cap.capture_file, tmpName);
+
 		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file, cap.debugMode);
+		MoveFileToSubmit(tmpName, cap.debugMode);
 
 		captures.erase(adapterId);
 		return true;
@@ -514,7 +522,7 @@ PCAPAPI bool StopCapture(const char *adapterId)
 	return false;
 }
 
-PCAPAPI bool CleanAllCaptureFiles() {
+PCAPAPI bool CleanAllCaptureFiles(bool debugMode) {
 	char szFilename[MAX_PATH] = { 0 };
 
 	WIN32_FIND_DATAA wfd;
@@ -530,7 +538,7 @@ PCAPAPI bool CleanAllCaptureFiles() {
 			}
 
 			sprintf_s(szFilename, "%s\\%s", DATA_DIRECTORY, wfd.cFileName);
-			MoveFileToSubmit(szFilename, false);
+			MoveFileToSubmit(szFilename, debugMode);
 
 		} while (FindNextFileA(hFind, &wfd));
 		FindClose(hFind);
@@ -571,7 +579,8 @@ PCAPAPI bool RotateCaptureFile(const char *adapterId) {
 		MoveFileToSubmit(cap.capture_file, cap.debugMode);
 
 		// restart
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s.pcap", DATA_DIRECTORY, cap.session, cap.connection, GetHiResTimestamp(), adapterId);
+		cap.created = GetHiResTimestamp();
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s_part.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)

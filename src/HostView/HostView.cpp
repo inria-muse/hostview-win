@@ -268,7 +268,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	}
 	else if (_tcsstr(szCmdLine, _T("/net")))
 	{
-		// FIXME: why is this needed ??
 		NetworkInterface *ni = NULL;
 		if (CommandToNetworkInterface(szCmdLine, ni))
 		{
@@ -421,12 +420,15 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		g_isRunning = true;
 		SendServiceMessage(Message(MessageStartCapture)); // make sure the service is capturing data
 		StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
+
 		SetTimer(hDlg, TIMER_STATUS, TIMER_STATUS_TIME, NULL);
 		SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 
 		SetWindowPos(hDlg, 0, 0, 0, 0, 0, SWP_SHOWWINDOW);
 		break;
 	case WM_DESTROY:
+		// TODO: this gets called when the user logs out ? is that what we want 
+		// or should the service continue capture ?
 		if (g_isRunning) {
 			KillTimer(hDlg, TIMER_STATUS);
 			KillTimer(hDlg, TIMER_USER_IO);
@@ -460,7 +462,7 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
 					SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 
-					// show info box
+					// show info popup
 					LoadNotificationStrings(g_hInstance, TRUE);
 					g_nidApp.uFlags |= NIF_INFO;
 					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
@@ -477,7 +479,7 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					StopUserMonitor();
 					KillTimer(hDlg, TIMER_USER_IO);
 
-					// show notif box
+					// show info popup
 					LoadNotificationStrings(g_hInstance, FALSE);
 					g_nidApp.uFlags |= NIF_INFO;
 					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
