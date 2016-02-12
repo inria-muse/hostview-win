@@ -173,7 +173,7 @@ void startNetworkMonitor()
 
 void stopNetworkMonitor()
 {
-	if (StopInterfacesMonitor())
+	if (StopInterfacesMonitor(netCallback))
 	{
 		printf("interfaces monitor stopped.\r\n");
 	}
@@ -255,7 +255,7 @@ int consoleMain()
 	while(!quit);
 
 	// just in case
-	StopInterfacesMonitor();
+	StopInterfacesMonitor(netCallback);
 
 	// essential;
 	store.Close();
