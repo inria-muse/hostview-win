@@ -789,7 +789,7 @@ Message CHostViewService::OnMessage(Message &message)
 			// FIXME: would be nicer if the questionnaire module knows this already ...
 			// rename with session id
 			char uploadfile[MAX_PATH] = { 0 };
-			sprintf_s(uploadfile, ".\\temp\%llu_%s", m_startTime, PathFindFileNameA(tempfile));
+			sprintf_s(uploadfile, ".\\temp\\%llu_%s", m_startTime, PathFindFileNameA(tempfile));
 			MoveFileA(tempfile, uploadfile);
 
 			MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
