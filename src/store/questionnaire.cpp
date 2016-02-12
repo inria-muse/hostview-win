@@ -205,7 +205,7 @@ void SubmitQuestionnaire(const TCHAR *szResult)
 	TCHAR szTempFile[MAX_PATH] = {0};
 
 	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-	_stprintf_s(szTempFile, _T("%s\\%s\\%llu_questionnaire.txt"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
+	_stprintf_s(szTempFile, _T("%s\\%s\\%llu_questionnaire.json"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));
