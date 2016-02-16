@@ -197,27 +197,35 @@ BOOL GetLatestProductVersion(char *szLatestProdVer, DWORD dwSize)
 {
 	BOOL bResult = FALSE;
 
-	TCHAR szURL[MAX_PATH] = {0};
-	_stprintf_s(szURL, _T("%S/version"), settings.GetString(UpdateLocation));
+	TCHAR szUrl[MAX_PATH] = {0};
+	_stprintf_s(szUrl, _T("%S/version"), settings.GetString(UpdateLocation));
 
 	HINTERNET hConnect = NULL;
 	HINTERNET hFile = NULL;
 
-	hConnect = InternetOpen(L"HostView", NULL, NULL, NULL, NULL);
-
-	DWORD dwTimeOut = ConnectionTimeout;
-	InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT, &dwTimeOut, sizeof(dwTimeOut));
-
+	hConnect = InternetOpen(L"HostView", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, NULL);
 	if (hConnect)
 	{
-		hFile = InternetOpenUrl(hConnect, szURL, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
+		DWORD dwTimeout = 1000;
+		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
+			&dwTimeout, sizeof(dwTimeout));
+
+		hFile = InternetOpenUrl(hConnect, szUrl, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
 		if (hFile)
 		{
-			DWORD dwRead = dwSize;
-
-			InternetReadFile(hFile, szLatestProdVer, dwSize, &dwRead);
-			bResult = dwRead > 0;
-
+			// check HTTP error code;
+			TCHAR szResponseText[MAX_PATH] = { 0 };
+			DWORD dwRsSize = sizeof(szResponseText);
+			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwRsSize, NULL))
+			{
+				DWORD dwStatusCode = _ttoi(szResponseText);
+				if (dwStatusCode == HTTP_STATUS_OK)
+				{
+					DWORD dwRead = dwSize;
+					InternetReadFile(hFile, szLatestProdVer, dwSize, &dwRead);
+					bResult = dwRead > 0;
+				}
+			}
 			InternetCloseHandle(hFile);
 		}
 		InternetCloseHandle(hConnect);

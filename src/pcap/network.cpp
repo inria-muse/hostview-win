@@ -410,8 +410,7 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 
 			dwCheck += 100;
 
-			// check pcap files sizes every minute only
-			if (interfacesMonitorRunning && dwCheck > 60000)
+			if (interfacesMonitorRunning && dwCheck > 10000)
 			{
 				dwCheck = 0; // reset
 				for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin(); it != previousInterfaces.end(); it ++)

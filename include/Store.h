@@ -36,8 +36,6 @@
 #   define STOREAPI   __declspec(dllimport)
 #endif  // STORELIBRARY_EXPORT
 
-#define STORE_FILE "stats.db"
-
 typedef std::vector<std::string> SQLRow;
 typedef std::vector<SQLRow> SQLTable;
 
@@ -137,6 +135,7 @@ private:
 
 	CSettings m_settings;
 
+	char dbFile[MAX_PATH];
 	ULONGLONG m_session;
 
 	void InitTables();

@@ -133,7 +133,7 @@ pcap_t* GetLiveSource(const char *adapterId = "interactive")
 	if ((adhandle = pcap_open_live(d->name,	// name of the device
 							 65536,			// portion of the packet to capture. 
 											// 65536 grants that the whole packet will be captured on all the MACs.
-							 1,				// promiscuous mode (nonzero means promiscuous)
+							 0,				// promiscuous mode (nonzero means promiscuous)
 							 1000,			// read timeout
 							 errbuf			// error buffer
 							 )) == NULL)
@@ -303,34 +303,35 @@ extern bool parseHTTP(int nProtocol, char *szSrc, char *szDest, u_short sp, u_sh
 struct Capture {
 	ULONGLONG session;
 	ULONGLONG connection;
-	ULONGLONG created;
+	ULONG number;
 	void *thread;
 	pcap_t *pcap;
 	pcap_dumper_t *dumper;
 	char capture_file[MAX_PATH];
 	CCaptureCallback *cb;
 	bool debugMode;
+	bool doRotate;
+	std::string adapterId;
 
 	// dummy default constuctor
 	Capture() :
 		session(0),
 		connection(0),
-		created(0),
+		number(0),
 		thread(NULL),
 		pcap(NULL),
 		dumper(NULL),
 		cb(NULL),
-		debugMode(FALSE)
+		debugMode(FALSE),
+		doRotate(FALSE)
 	{
 	}
 };
-
 
 void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
 	ETHER_HDR *pEthernet = (ETHER_HDR *) pkt_data;
 	int nType = ntohs(pEthernet->type);
-
 	if (nType != 0x0800 && nType != 0x86DD)
 	{
 		// not worth processing
@@ -438,13 +439,30 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	// reset the capture length
 	((struct pcap_pkthdr *)header)->caplen = nCapLength;
 
+	if (cap.doRotate) {
+		pcap_dump_flush(cap.dumper);
+		pcap_dump_close(cap.dumper);
+		Trace("pcap rotate %s",cap.capture_file);
+
+		MoveFileToSubmit(cap.capture_file, cap.debugMode);
+
+		cap.number += 1;
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 
+			DATA_DIRECTORY, cap.session, cap.connection, cap.number, cap.adapterId.c_str());
+
+		cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
+		cap.doRotate = FALSE;
+		captures[(char *)p] = cap;  // save back the changes
+	}
+
 	// dump to the pcap file
 	pcap_dump((u_char *)cap.dumper, header, pkt_data);
 }
 
 DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 {
-	struct Capture cap = captures[(char *)lpParameter];
+	char *adapterId = (char *)lpParameter;
+	struct Capture cap = captures[adapterId];
 	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
 }
 
@@ -457,12 +475,13 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 
 	struct Capture cap = captures[adapterId];
 	cap.debugMode = debugMode;
+	cap.adapterId = adapterId;
 	if (cap.thread == NULL)
 	{
 		cap.session = session;
 		cap.connection = timestamp;
-		cap.created = GetHiResTimestamp();
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s_part.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 
+			DATA_DIRECTORY, cap.session, cap.connection, cap.number, cap.adapterId.c_str());
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)
@@ -471,12 +490,9 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 			if (cap.dumper)
 			{
 				cap.cb = &callback;
-
-				captures[adapterId] = cap;
 				adapterIds.insert(adapterId);
-
-				cap.thread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID) adapterIds.find(adapterId)->c_str(), NULL, NULL);
-
+				cap.thread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID)adapterIds.find(adapterId)->c_str(), NULL, NULL);
+				captures[adapterId] = cap;
 				return true;
 			}
 		}
@@ -498,18 +514,27 @@ PCAPAPI bool StopCapture(const char *adapterId)
 			cap.thread = NULL;
 		}
 
-		pcap_close(cap.pcap);
-		cap.pcap = NULL;
-
 		if (cap.dumper)
 		{
 			pcap_dump_close(cap.dumper);
 			cap.dumper = NULL;
 		}
 
+		struct pcap_stat stats;
+		if (pcap_stats(cap.pcap, &stats) == 0) {
+			Trace("pcap close %s: captured %u dropped %u received %u",
+				cap.capture_file, stats.ps_capt, stats.ps_drop, stats.ps_recv);
+		} else {
+			Trace("pcap close %s: %s", 
+				cap.capture_file, pcap_geterr(cap.pcap));
+		}
+
+		pcap_close(cap.pcap);
+		cap.pcap = NULL;
+
 		// rename the file to indicate this is the last for this connection
 		char tmpName[MAX_PATH] = { 0 };
-		sprintf_s(tmpName, "%s\\%llu_%llu_%llu_%s_last.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
+		sprintf_s(tmpName, "%s\\%llu_%llu_%lu_%s_last.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
 		MoveFileA(cap.capture_file, tmpName);
 
 		// move pcap to upload folder
@@ -522,92 +547,32 @@ PCAPAPI bool StopCapture(const char *adapterId)
 	return false;
 }
 
-PCAPAPI bool CleanAllCaptureFiles(bool debugMode) {
-	char szFilename[MAX_PATH] = { 0 };
-
-	WIN32_FIND_DATAA wfd;
-	HANDLE hFind = FindFirstFileA(DATA_DIRECTORY_GLOB, &wfd);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			if (wfd.cFileName[0] == '.')
-			{
-				// just ignore . & ..
-				continue;
-			}
-
-			sprintf_s(szFilename, "%s\\%s", DATA_DIRECTORY, wfd.cFileName);
-			MoveFileToSubmit(szFilename, debugMode);
-
-		} while (FindNextFileA(hFind, &wfd));
-		FindClose(hFind);
-	}
-	return true;
-}
-
-PCAPAPI bool IsCaptureRunning(const char *adapterId)
-{
-	struct Capture cap = captures[adapterId];
-	return cap.thread != NULL
-		&& cap.pcap != NULL
-		&& cap.dumper != NULL;
-}
-
 PCAPAPI bool RotateCaptureFile(const char *adapterId) {
+	// just sets a flag and the packet thread will do the work
 	struct Capture cap = captures[adapterId];
-	if (cap.pcap != NULL)
-	{
-		pcap_breakloop(cap.pcap);
-		if (cap.thread != NULL)
-		{
-			WaitForSingleObject(cap.thread, INFINITE);
-			CloseHandle(cap.thread);
-			cap.thread = NULL;
-		}
-
-		pcap_close(cap.pcap);
-		cap.pcap = NULL;
-
-		if (cap.dumper)
-		{
-			pcap_dump_close(cap.dumper);
-			cap.dumper = NULL;
-		}
-
-		// move pcap to upload folder
-		MoveFileToSubmit(cap.capture_file, cap.debugMode);
-
-		// restart
-		cap.created = GetHiResTimestamp();
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%llu_%s_part.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.created, adapterId);
-
-		cap.pcap = GetLiveSource(adapterId);
-		if (cap.pcap)
-		{
-			cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
-			if (cap.dumper)
-			{
-				cap.thread = CreateThread(NULL, NULL, CaptureThreadProc, (LPVOID)adapterIds.find(adapterId)->c_str(), NULL, NULL);
-				return true;
-			}
-		}
+	if (cap.pcap != NULL && cap.dumper != NULL) {
+		cap.doRotate = TRUE;
 	}
-	return false;
+	captures[adapterId] = cap;
+	return cap.doRotate;
 }
 
 PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId) {
 	ULONGLONG res = 0;
-	WIN32_FIND_DATAA data;
+
 	struct Capture cap = captures[adapterId];
-	HANDLE hFind = FindFirstFileA(cap.capture_file, &data);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		ULARGE_INTEGER sz;
-		sz.LowPart = data.nFileSizeLow;
-		sz.HighPart = data.nFileSizeHigh;
-		res = sz.QuadPart;
-		FindClose(hFind);
+	if (cap.pcap != NULL && cap.dumper != NULL) {
+		WIN32_FIND_DATAA data;
+		HANDLE hFind = FindFirstFileA(cap.capture_file, &data);
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			ULARGE_INTEGER sz;
+			sz.LowPart = data.nFileSizeLow;
+			sz.HighPart = data.nFileSizeHigh;
+			res = sz.QuadPart;
+			FindClose(hFind);
+		}
 	}
+
 	return res;
 }

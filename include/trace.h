@@ -23,8 +23,6 @@
 **/
 #pragma once
 
-#define LOGFILE "hostview.log"
-
 #if defined(TRACELIBRARY_EXPORT) // inside DLL
 #   define HOSTVIEWTRACEAPI   __declspec(dllexport)
 #else // outside DLL

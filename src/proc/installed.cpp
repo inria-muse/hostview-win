@@ -144,3 +144,42 @@ PROCAPI void ReleaseApplicationsList(int nCount, TCHAR ** &pszPaths, TCHAR ** &p
 	pszPaths = 0;
 	pszDescriptions = 0;
 }
+
+PROCAPI void PullInstalledApps(TCHAR *szPath, DWORD dwSize)
+{
+	TCHAR szCurrDir[MAX_PATH] = { 0 };
+	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
+
+	TCHAR szOut[MAX_PATH] = { 0 };
+	_stprintf_s(szPath, dwSize, _T("%s\\%s\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
+
+	TCHAR ** pszApps = 0, ** pszDesc = 0;
+	int nCount = QueryApplicationsList(pszApps, pszDesc);
+
+	ImpersonateCurrentUser();
+
+	FILE *f = 0;
+	_tfopen_s(&f, szPath, _T("w"));
+	if (f)
+	{
+		for (int i = 0; i < nCount; i++)
+		{
+			TCHAR *szName = PathFindFileName(pszApps[i]);
+
+			_ftprintf_s(f, _T("%s\n"), szName);
+			_ftprintf_s(f, _T("%s\n"), pszDesc[i]);
+
+			// the extra line (not used)
+			_ftprintf_s(f, _T("\n"));
+		}
+
+		fclose(f);
+	}
+
+	ImpersonateRevert();
+
+	// starts a thread to update icons on the background
+	QueryIcons(nCount, pszApps);
+
+	ReleaseApplicationsList(nCount, pszApps, pszDesc);
+}

@@ -24,7 +24,6 @@
 #include "stdafx.h"
 #include "proc.h"
 
-#include <shellapi.h>
 #include <Psapi.h>
 
 //
@@ -345,7 +344,7 @@ long GetFileSize(TCHAR *szFilename)
 	return nSize;
 }
 
-PROCAPI void QueryImageIcon(TCHAR *szImage, TCHAR *szPath)
+void QueryImageIcon(TCHAR *szImage, TCHAR *szPath)
 {
 	const int count = 1;
 	HICON hLarge[count];
@@ -366,17 +365,49 @@ PROCAPI void QueryImageIcon(TCHAR *szImage, TCHAR *szPath)
 	}
 }
 
-PROCAPI void QueryProcessIcon(DWORD dwPid, TCHAR *szPath)
+PROCAPI void QueryProcessIcon(DWORD dwPid, TCHAR *szApp)
 {
-	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPid);
-	if (hProcess)
+	TCHAR szLocal[MAX_PATH] = { 0 };
+	_stprintf_s(szLocal, _T(".\\html\\out\\%s.ico"), szApp);
+	if (GetFileAttributes(szLocal) == INVALID_FILE_ATTRIBUTES)
 	{
-		TCHAR szFilename[MAX_PATH] = {0};
-		GetModuleFileNameEx(hProcess, NULL, szFilename, _countof(szFilename));
+		HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPid);
+		if (hProcess)
+		{
+			TCHAR szFilename[MAX_PATH] = {0};
+			GetModuleFileNameEx(hProcess, NULL, szFilename, _countof(szFilename));
 
-		QueryImageIcon(szFilename, szPath);
+			QueryImageIcon(szFilename, szLocal);
 
-		CloseHandle(hProcess);
-	}
+			CloseHandle(hProcess);
+		}
+	} // else exists already
 }
 
+DWORD WINAPI QueryIconsThreadProc(LPVOID lpParameter) {
+	std::vector<std::tstring> *apps = (std::vector<std::tstring> *)lpParameter;
+
+	for (size_t i = 0; i < apps->size(); i++)
+	{
+		TCHAR szLocal[MAX_PATH] = { 0 };
+		_stprintf_s(szLocal, _T(".\\html\\out\\%s.ico"), PathFindFileName((*apps)[i].c_str()));
+		if (GetFileAttributes(szLocal) == INVALID_FILE_ATTRIBUTES)
+		{
+			QueryImageIcon((TCHAR *)(*apps)[i].c_str(), szLocal);
+		} // else have already
+	}
+
+	// free the applist
+	delete apps;
+
+	return 0L;
+}
+
+PROCAPI void QueryIcons(int nCount, TCHAR ** &szAppList) {
+	// copy args for the thread
+	std::vector<std::tstring> *apps = new std::vector<std::tstring>();
+	for (int i = 0; i < nCount; i++) {
+		apps->push_back(szAppList[i]);
+	}
+	CloseHandle(CreateThread(NULL, NULL, QueryIconsThreadProc, (LPVOID)apps, NULL, NULL));
+}

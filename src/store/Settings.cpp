@@ -31,14 +31,16 @@ std::hash_map<std::string, std::string> mDefSettings;
 
 void loadDefaults() {
 	if (!mDefSettings.size()) {
+		mDefSettings[SettingsVersion] = "0";
+		mDefSettings[DebugMode] = "0";
 		mDefSettings[AutoRestartTimeout] = "1800000"; // 30min
-		mDefSettings[PcapSizeLimit] = "100000000";
-		mDefSettings[UserIdleTimeout] = "5000";
+		mDefSettings[PcapSizeLimit] = "1048576000";
 		mDefSettings[WirelessMonitorTimeout] = "10000";
 		mDefSettings[SocketStatsTimeout] = "60000";
 		mDefSettings[SystemStatsTimeout] = "60000";		
 		mDefSettings[IoTimeout] = "1000";
 		mDefSettings[UserMonitorTimeout] = "1000";
+		mDefSettings[UserIdleTimeout] = "5000";
 		mDefSettings[NetLabellingActive] = "1";
 		mDefSettings[NetLocationActive] = "1";
 		mDefSettings[EsmActive] = "1";
@@ -46,23 +48,22 @@ void loadDefaults() {
 		mDefSettings[EsmCoinFlipProb] = "10";
 		mDefSettings[EsmMaxShows] = "3";
 		mDefSettings[SubmitServer] = "https://muse.inria.fr/hostviewupload-dev";
-		mDefSettings[UploadVerifyPeer] = "1";
 		mDefSettings[AutoSubmitRetryCount] = "3";
 		mDefSettings[AutoSubmitRetryInterval] = "10000";
 		mDefSettings[AutoSubmitInterval] = "3600000";
 		mDefSettings[AutoUpdateInterval] = "86400000";
 		mDefSettings[UpdateLocation] = "https://muse.inria.fr/hostview-dev/latest";
 		mDefSettings[NetLocationApiUrl] = "https://muse.inria.fr/hostview-dev/location";
-		mDefSettings[DebugMode] = "0";
 
 #ifdef _DEBUG
 		mDefSettings[AutoSubmitRetryCount] = "1";
 		mDefSettings[AutoSubmitRetryInterval] = "1000";
 		mDefSettings[AutoSubmitInterval] = "300000";
 		mDefSettings[SubmitServer] = "http://localhost:3000";
-		mDefSettings[UpdateLocation] = "http://localhost:3001/latest";
-		mDefSettings[NetLocationApiUrl] = "http://locahost:3001/location";
+		mDefSettings[UpdateLocation] = "http://localhost:8000";
+		mDefSettings[NetLocationActive] = "0";
 		mDefSettings[DebugMode] = "1";
+		mDefSettings[PcapSizeLimit] = "1024"; // 1KB
 #endif
 	}
 }

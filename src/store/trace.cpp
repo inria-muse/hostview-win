@@ -82,7 +82,7 @@ void Debug(char *szFormat, ...) {
 
 	if (dodebug) {
 		FILE * f = NULL;
-		fopen_s(&f, LOGFILE, "a+");
+		fopen_s(&f, ".\\temp\\hostview.log", "a+");
 		if (f)
 		{
 			fprintf(f, "[%llu] [debug] %s\n", ts, szMessage);
@@ -95,11 +95,13 @@ void Debug(char *szFormat, ...) {
 void Trace(char *szFormat, ...) {
 	bool dodebug = g_settings.GetBoolean(DebugMode);
 
-	if (!szFormat || GetFileSize(LOGFILE) >= 10 * 1024 * 1024)
+	if (!szFormat || GetFileSize(".\\temp\\hostview.log") >= 10 * 1024 * 1024)
 	{
+		// rename with timestamp
 		char szFile[MAX_PATH] = { 0 };
-		sprintf_s(szFile, MAX_PATH, "%llu_%s", GetHiResTimestamp(), LOGFILE);
-		MoveFileA(LOGFILE, szFile);
+		sprintf_s(szFile, MAX_PATH, ".\\temp\\%llu_hostview.log", GetHiResTimestamp());
+		MoveFileA(".\\temp\\hostview.log", szFile);
+
 		MoveFileToSubmit(szFile, dodebug);
 
 		// log files is usually rotated upon session end, so good time to reload
@@ -121,7 +123,7 @@ void Trace(char *szFormat, ...) {
 #endif
 
 		FILE * f = NULL;
-		fopen_s(&f, LOGFILE, "a+");
+		fopen_s(&f, ".\\temp\\hostview.log", "a+");
 		if (f)
 		{
 			fprintf(f, "[%llu] %s\n", ts, szMessage);

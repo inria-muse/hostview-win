@@ -127,17 +127,19 @@ bool CStore::Open(ULONGLONG session)
 	if (m_session > 0)
 		Close();
 
-	if (sqlite3_open_v2(STORE_FILE, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+	sprintf_s(dbFile, ".\\temp\\%llu_stats.db", session);
+	if (sqlite3_open_v2(dbFile, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
 	{
 		seterror(sqlite3_errmsg(db));
 		return false;
 	}
 	seterror("Success");
 
+	closing = false;
+	m_session = session;
+
 	InitTables();
 
-	m_session = session;
-	closing = false;
 	hExecThread = CreateThread(NULL, NULL, ExecThreadFunc, this, NULL, NULL);
 
 	return true;
@@ -159,13 +161,8 @@ void CStore::Close()
 	}
 
 	if (m_session > 0) {
-		// rename with session id
-		char uploadfile[MAX_PATH] = { 0 };
-		sprintf_s(uploadfile, "%llu_%s", m_session, STORE_FILE);
-		MoveFileA(STORE_FILE, uploadfile);
-		MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
+		MoveFileToSubmit(dbFile, m_settings.GetBoolean(DebugMode));
 	}
-
 	closing = false;
 	db = NULL;
 	m_session = 0;

@@ -83,11 +83,6 @@ protected:
 	void ServiceWorkerThread(void);
 
 private:
-	// used to query installed app icons in an async manner
-	std::vector<std::tstring> m_appList;
-	void QueryIconsThreadFunc();
-	static DWORD WINAPI QueryIconsThreadProc(LPVOID lpParameter);
-
 	BOOL m_fIdle;
 	BOOL m_fFullScreen;
 
@@ -97,39 +92,32 @@ private:
 	SysInfo m_sysInfo;
 	char szHdd[MAX_PATH] = { 0 };
 
+	BOOL m_fUdpdatePending;
+
 	BOOL m_fStopping;
 	HANDLE m_hStoppedEvent;
-
-	DWORD m_dwLastSubmit;
-	DWORD m_dwLastUpdateCheck;
 
 	BOOL m_fUserStopped;
 	DWORD m_dwUserStoppedTime;
 
 	CSettings m_settings;
 	CStore m_store;
-
-	void OnSuspend();
-	void OnResume();
+	CUpload *m_upload;
 
 	// start/stop sessions
 	void StartCollect(SessionEvent e, ULONGLONG ts);
 	void StopCollect(SessionEvent e, ULONGLONG ts);
 
-	void LogNetwork(const NetworkInterface &ni, ULONGLONG timestamp, bool connected);
-
-	void ReadIpTable();
-	void ReadPerfTable();
-
-	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
-
+	// periodic checks, return true if run, else false
+	bool ReadIpTable(DWORD now);
+	bool ReadPerfTable(DWORD now);
+	bool RunQuestionnaireIfCase(DWORD now);
+	bool RunAutoSubmit(DWORD now, BOOL force=FALSE);
+	bool RunAutoUpdate(DWORD now, BOOL force = FALSE);
 	void RunNetworkLabeling();
-	void RunQuestionnaireIfCase();
 
-	void PullInstalledApps(TCHAR *szPath, DWORD dwSize);
-
-	// Network Labelling
-	void LabelNetwork(const NetworkInterface &ni);
+	void LogNetwork(const NetworkInterface &ni, ULONGLONG timestamp, bool connected);
+	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
 
 	// Updates the in-memory app usage info for the questionnaire
 	void UpdateQuestionnaireAppUsageInfo(DWORD dwPid, TCHAR *szUser, TCHAR *szApp);

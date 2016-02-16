@@ -36,12 +36,12 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 	m_fStopping = FALSE;
 	m_fUserStopped = FALSE;
 	m_dwUserStoppedTime = 0;
-	m_dwLastSubmit = 0;
-	m_dwLastUpdateCheck = 0;
 	m_fIdle = FALSE;
 	m_fFullScreen = FALSE;
 	m_startTime = 0;
 	m_hasSeenUI = FALSE;
+	m_upload = NULL;
+	m_fUdpdatePending = FALSE;
 
 	// Create a manual-reset event that is not signaled at first to indicate 
 	// the stopped signal of the service.
@@ -59,6 +59,8 @@ CHostViewService::~CHostViewService(void)
 		CloseHandle(m_hStoppedEvent);
 		m_hStoppedEvent = NULL;
 	}
+	if (m_upload != NULL)
+		delete m_upload;
 	DeleteCriticalSection(&m_cs);
 }
 
@@ -66,7 +68,10 @@ void CHostViewService::OnStart(DWORD dwArgc, PWSTR *pszArgv)
 {
 	srand((unsigned int)time(0));
 
+	// new trace
+	Trace(0);
 	Trace("Hostview service start.");
+
 	WriteEventLogEntry(L"CHostViewService in OnStart", EVENTLOG_INFORMATION_TYPE);
 
 	// Queue the main service function for execution in a worker thread.
@@ -80,13 +85,6 @@ void CHostViewService::ServiceWorkerThread(void)
 {
 	DWORD dwNow = GetTickCount();
 
-	// next upload will take place after configured interval
-	m_dwLastSubmit = dwNow;
-	CUpload *pendingUpload = NULL; // current upload session
-
-	// next update check will take place 5min after service start
-	m_dwLastUpdateCheck = dwNow - m_settings.GetULong(AutoUpdateInterval) + 5 * 60 * 1000;
-
 	// session autorotate info
 	DWORD lastSessionCheck = dwNow;
 	WORD lastRotateDay = 0;
@@ -96,6 +94,9 @@ void CHostViewService::ServiceWorkerThread(void)
 		Sleep(500);
 		dwNow = GetTickCount();
 
+		if (m_fUdpdatePending)
+			continue; // will stop soon
+
 		if (m_fUserStopped)
 		{
 			if (dwNow - m_dwUserStoppedTime >= m_settings.GetULong(AutoRestartTimeout))
@@ -104,55 +105,21 @@ void CHostViewService::ServiceWorkerThread(void)
 				SendServiceMessage(Message(MessageStartCapture));
 			}
 
-			continue; // we're stopped
+			continue; // we're still stopped
 		}
 
-		// Run different measurement actions
-		ReadIpTable();
-		ReadPerfTable();
+		// Run different periodic actions (if its the time now)
+		ReadIpTable(dwNow);
+		ReadPerfTable(dwNow);
 		RunNetworkLabeling();
-		RunQuestionnaireIfCase();
-		
-		// automatic submission
-		if (dwNow - m_dwLastSubmit >= m_settings.GetULong(AutoSubmitInterval))
-		{
-			if (pendingUpload == NULL) {
-				// new upload session
-				pendingUpload = new CUpload();
-			}
-
-			if (!pendingUpload->TrySubmit(szHdd)) {
-				// no need to retry - either this was a success or then max retries was reached
-				delete pendingUpload;
-				pendingUpload = NULL;
-				m_dwLastSubmit = dwNow;
-			}
+		RunQuestionnaireIfCase(dwNow);
+		RunAutoSubmit(dwNow);
+		if (RunAutoUpdate(dwNow)) {
+			m_fUdpdatePending = TRUE;
+			continue; // going to update
 		}
 
-		// autoupdates
-		if (dwNow - m_dwLastUpdateCheck >= m_settings.GetULong(AutoUpdateInterval))
-		{
-			m_dwLastUpdateCheck = dwNow;
-
-			// HostView update 
-			if (CheckForUpdate())
-			{
-				Trace("Hostview update available.");
-				TCHAR szUpdate[MAX_PATH] = {0};
-				if (DownloadUpdate(szUpdate, _countof(szUpdate)))
-				{
-					Trace("Hostview going to update.");
-					// TODO: will be as system; what happens to UI?
-					ShellExecute(NULL, L"open", szUpdate, 0, 0, SW_SHOW);
-					continue; // or break ?
-				}
-			}
-
-			// UI + settings
-			CheckForResourceUpdates();
-		}
-
-		// check for max session duration
+		// check for max session duration once per hour (and rotate at night)
 		if (dwNow - lastSessionCheck > 3600000) {
 			SYSTEMTIME st;
 			GetLocalTime(&st);
@@ -161,12 +128,13 @@ void CHostViewService::ServiceWorkerThread(void)
 			// at night (e.g. a pc that is on all the time), we except sessions 
 			// mostly to follow computer sleep cycles (see suspend+resume). This
 			// is here just to ensure some hard limit on the duration of a single session.
-			if (st.wHour >= 3 && st.wHour <= 5 && (dwNow - m_startTime >= 21*3600*1000)) {
+			if (st.wHour >= 2 && st.wHour <= 5 && (dwNow - m_startTime >= 21*3600*1000)) {
 				SendServiceMessage(Message(MessageRestartSession));
 			}
 
 			lastSessionCheck = dwNow;
 		}
+
 	} // end while
 
 	// signal the stopped event;
@@ -186,11 +154,9 @@ void CHostViewService::OnStop()
 			throw GetLastError();
 		}
 
+		Trace("Hostview service stop.");
 		if (!m_fUserStopped)
 			StopCollect(SessionEvent::Stop, GetHiResTimestamp());
-		Trace("Hostview service stop.");
-		Trace(0);
-
 		StopServiceCommunication();
 	}
 }
@@ -199,21 +165,6 @@ void CHostViewService::OnShutdown()
 {
 	OnStop();
 }
-
-void CHostViewService::OnSuspend()
-{
-	Trace("Hostview service suspend.");
-	if (!m_fUserStopped) {
-		StopCollect(SessionEvent::Suspend, GetHiResTimestamp());
-	}
-	m_fUserStopped = FALSE;
-}
-
-void CHostViewService::OnResume()
-{
-	Trace("Hostview service resume.");
-	StartCollect(SessionEvent::Resume, GetHiResTimestamp());
-}	
 
 void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 {
@@ -234,9 +185,6 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 			return;
 		}
 		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
-
-		// make sure we don't have any pending pcaps in the capture folder
-		CleanAllCaptureFiles(m_settings.GetBoolean(DebugMode));
 
 		if (!m_store.Open(m_startTime)) {
 			Debug("[SRV] fatal : failed to open the data store");
@@ -290,59 +238,21 @@ void CHostViewService::OnPowerEvent(PPOWERBROADCAST_SETTING event)
 	}
 }
 
-void CHostViewService::ReadIpTable()
-{
-	static DWORD dwIpLastWrite = GetTickCount();
-	DWORD dwNow = GetTickCount();
-
-	if (dwNow - dwIpLastWrite >= m_settings.GetULong(SocketStatsTimeout))
-	{
-		IpTable *table = GetIpTable();
-		ULONGLONG timestamp = GetHiResTimestamp();
-
-		const char * udp = "UDP";
-		const char * tcp = "TCP";
-		for (size_t i = 0; i < table->size; i ++)
-		{
-			IpRow it = table->get(i);
-			m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
-		}
-
-		ReleaseIpTable(table);
-		dwIpLastWrite = dwNow;
-	}
-}
-
-void CHostViewService::ReadPerfTable()
-{
-	static DWORD dwPerfLastWrite = GetTickCount();
-	DWORD dwNow = GetTickCount();
-
-	if (dwNow - dwPerfLastWrite >= m_settings.GetULong(SystemStatsTimeout))
-	{
-		PerfTable *table = GetPerfTable();
-		ULONGLONG timestamp = GetHiResTimestamp();
-
-		for (size_t i = 0; i < table->size; i ++)
-		{
-			PerfRow it = table->get(i);
-			m_store.InsertProc(it.pid, it.name, it.memory, it.cpu, timestamp);
-		}
-
-		ReleasePerfTable(table);
-		dwPerfLastWrite = dwNow;
-	}
-}
-
 void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestamp, bool connected)
 {
-	if (connected)
+	if (connected && m_settings.GetULong(NetLabellingActive))
 	{
-		LabelNetwork(ni);
+		// queue unknown net for labeling (by user)
+		if (!m_networks.IsKnown(ni) && ni.strBSSID.length() > 0)
+		{
+			EnterCriticalSection(&m_cs);
+			m_interfacesQueue.push_back(ni);
+			LeaveCriticalSection(&m_cs);
+		}
 	}
 
-	TCHAR szGateways[MAX_PATH] = {0};
-	for (size_t i = 0; i < ni.gateways.size(); i ++)
+	TCHAR szGateways[MAX_PATH] = { 0 };
+	for (size_t i = 0; i < ni.gateways.size(); i++)
 	{
 		_tcscat_s(szGateways, ni.gateways[i].c_str());
 
@@ -351,8 +261,8 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 			_tcscat_s(szGateways, _T(","));
 		}
 	}
-	TCHAR szDnses[MAX_PATH] = {0};
-	for (size_t i = 0; i < ni.dnses.size(); i ++)
+	TCHAR szDnses[MAX_PATH] = { 0 };
+	for (size_t i = 0; i < ni.dnses.size(); i++)
 	{
 		_tcscat_s(szDnses, ni.dnses[i].c_str());
 
@@ -361,8 +271,8 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 			_tcscat_s(szDnses, _T(","));
 		}
 	}
-	TCHAR szIps[MAX_PATH] = {0};
-	for (size_t i = 0; i < ni.ips.size(); i ++)
+	TCHAR szIps[MAX_PATH] = { 0 };
+	for (size_t i = 0; i < ni.ips.size(); i++)
 	{
 		_tcscat_s(szIps, ni.ips[i].c_str());
 
@@ -385,15 +295,18 @@ void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInter
 	LogNetwork(networkInterface, timestamp, true);
 	StartCapture(*this, m_startTime, timestamp, m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
 
-	// FIXME: this could be a bit more intelligent - not sure we need to query this stuff
-	// every time an interface goes up .. ?
-	std::vector<std::string> * pInfo = 0;
-	if (QueryPublicInfo(pInfo) && pInfo->size() > 7)
-	{
-		m_store.InsertLoc(networkInterface.strGuid.c_str(), (*pInfo)[0].c_str(), (*pInfo)[1].c_str(), (*pInfo)[2].c_str(), (*pInfo)[3].c_str(),
-			(*pInfo)[4].c_str(), (*pInfo)[5].c_str(), (*pInfo)[6].c_str(), (*pInfo)[7].c_str(), timestamp);
+	// resolve network location
+	if (m_settings.GetBoolean(NetLocationActive)) {
+		// FIXME: this could be a bit more intelligent - not sure we need to query this stuff
+		// every time an interface goes up .. ?
+		std::vector<std::string> * pInfo = 0;
+		if (QueryPublicInfo(pInfo) && pInfo->size() > 7)
+		{
+			m_store.InsertLoc(networkInterface.strGuid.c_str(), (*pInfo)[0].c_str(), (*pInfo)[1].c_str(), (*pInfo)[2].c_str(), (*pInfo)[3].c_str(),
+				(*pInfo)[4].c_str(), (*pInfo)[5].c_str(), (*pInfo)[6].c_str(), (*pInfo)[7].c_str(), timestamp);
+		}
+		FreePublicInfo(pInfo);
 	}
-	FreePublicInfo(pInfo);
 }
 
 void CHostViewService::OnInterfaceDisconnected(const NetworkInterface &networkInterface)
@@ -401,38 +314,6 @@ void CHostViewService::OnInterfaceDisconnected(const NetworkInterface &networkIn
 	ULONGLONG timestamp = GetHiResTimestamp();
 	StopCapture(networkInterface.strGuid.c_str());
 	LogNetwork(networkInterface, timestamp, false);
-}
-
-void CHostViewService::LabelNetwork(const NetworkInterface &ni)
-{
-	if (m_settings.GetULong(NetLabellingActive))
-	{
-		if (!m_networks.IsKnown(ni) && ni.strBSSID.length() > 0)
-		{
-			EnterCriticalSection(&m_cs);
-			m_interfacesQueue.push_back(ni);
-			LeaveCriticalSection(&m_cs);
-		}
-	}
-}
-
-void CHostViewService::RunNetworkLabeling() {
-	// will only ask for labels once we have seen some sign of the HostView UI
-	if (m_hasSeenUI && m_interfacesQueue.size() > 0) {
-		NetworkInterface ni = m_interfacesQueue[0];
-		TCHAR szCmdLine[MAX_PATH] = { 0 };
-
-		ImpersonateCurrentUser();
-		NetworkInterfaceToCommand(ni, szCmdLine, _countof(szCmdLine));
-		ImpersonateRevert();
-
-		if (RunAsCurrentUser(szCmdLine))
-		{
-			EnterCriticalSection(&m_cs);
-			m_interfacesQueue.erase(m_interfacesQueue.begin());
-			LeaveCriticalSection(&m_cs);
-		}
-	}
 }
 
 void CHostViewService::OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state)
@@ -455,33 +336,171 @@ void CHostViewService::OnHttpHeaders(ULONGLONG connection, int protocol, char *s
 		srcport, destport, timestamp);
 }
 
-void CHostViewService::RunQuestionnaireIfCase()
+bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 {
-	static DWORD sdwLastCheck = 0;
+	if (location && browser && !m_fUserStopped)
+	{
+		m_store.InsertBrowser(browser, location, GetHiResTimestamp());
+		UpdateQuestionnaireSiteUsageInfo(location, browser);
+		return true;
+	}
+	return false;
+}
 
-	if (m_settings.GetBoolean(EsmActive)) {
-		DWORD dwNow = GetTickCount();
-		if (sdwLastCheck == 0) {
-			// don't check right away on startup but pretend the last check was almost an interval ago
-			sdwLastCheck = dwNow - m_settings.GetULong(EsmCoinFlipInterval) + m_settings.GetULong(EsmCoinFlipInterval)/8;
+bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
+	if (jsonbuf && len > 0 && !m_fUserStopped) {
+		char fn[MAX_PATH];
+		sprintf_s(fn, "%S\\%llu_%llu_browserupload.json", TEMP_PATH, m_startTime, GetHiResTimestamp());
+		FILE * f = NULL;
+		fopen_s(&f, fn, "w");
+		if (f)
+		{
+			fprintf(f, "%s", *jsonbuf);
+			fclose(f);
+		}
+		MoveFileToSubmit(fn, m_settings.GetBoolean(DebugMode));
+		return true;
+	}
+	return false;
+}
+
+bool CHostViewService::ReadIpTable(DWORD now)
+{
+	static DWORD dwIpLastWrite = 0;
+
+	if (now - dwIpLastWrite >= m_settings.GetULong(SocketStatsTimeout))
+	{
+		IpTable *table = GetIpTable();
+		ULONGLONG timestamp = GetHiResTimestamp();
+
+		for (size_t i = 0; i < table->size; i++)
+		{
+			IpRow it = table->get(i);
+			m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
 		}
 
-		// check once per interval (if the user is there)
-		if (dwNow - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && !m_fIdle && !m_fFullScreen)
-		{
-			sdwLastCheck = dwNow;
+		ReleaseIpTable(table);
+		dwIpLastWrite = now;
+		return TRUE;
+	}
+	return FALSE;
+}
 
-			// enforce max shows per day and start + end hours
-			if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows))
+bool CHostViewService::ReadPerfTable(DWORD now)
+{
+	static DWORD dwPerfLastWrite = 0;
+
+	if (now - dwPerfLastWrite >= m_settings.GetULong(SystemStatsTimeout))
+	{
+		PerfTable *table = GetPerfTable();
+		ULONGLONG timestamp = GetHiResTimestamp();
+
+		for (size_t i = 0; i < table->size; i++)
+		{
+			PerfRow it = table->get(i);
+			m_store.InsertProc(it.pid, it.name, it.memory, it.cpu, timestamp);
+		}
+
+		ReleasePerfTable(table);
+		dwPerfLastWrite = now;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CHostViewService::RunNetworkLabeling() {
+	if (m_settings.GetBoolean(NetLabellingActive) &&
+		m_hasSeenUI && !m_fUserStopped && !m_fIdle && !m_fFullScreen &&
+		m_interfacesQueue.size() > 0) 
+	{
+		NetworkInterface ni = m_interfacesQueue[0];
+		TCHAR szCmdLine[MAX_PATH] = { 0 };
+
+		ImpersonateCurrentUser();
+		NetworkInterfaceToCommand(ni, szCmdLine, _countof(szCmdLine));
+		ImpersonateRevert();
+
+		if (RunAsCurrentUser(szCmdLine))
+		{
+			EnterCriticalSection(&m_cs);
+			m_interfacesQueue.erase(m_interfacesQueue.begin());
+			LeaveCriticalSection(&m_cs);
+		}
+	}
+}
+
+bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
+	static DWORD sdwLastSubmit = GetTickCount();
+
+	if (force || (now - sdwLastSubmit >= m_settings.GetULong(AutoSubmitInterval) &&
+				  !m_fFullScreen && m_fIdle))
+	{
+		if (m_upload == NULL) {
+			// new upload session
+			m_upload = new CUpload();
+		} // else retrying with old
+
+		if (!m_upload->TrySubmit(szHdd)) {
+			// no need to retry - either this was a success or then max retries was reached
+			delete m_upload;
+			m_upload = NULL;
+			sdwLastSubmit = now;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+bool CHostViewService::RunAutoUpdate(DWORD now, BOOL force) {
+	static DWORD sdwLastCheck = 0; // check as soon as possible for the first time
+
+	if (force || (now - sdwLastCheck >= m_settings.GetULong(AutoUpdateInterval) &&
+		  		  !m_fFullScreen && m_fIdle))
+	{
+		sdwLastCheck = now;
+
+		// HostView update 
+		Trace("Hostview check update.");
+		if (CheckForUpdate())
+		{
+			Trace("Hostview update available.");
+			TCHAR szUpdate[MAX_PATH] = { 0 };
+			if (DownloadUpdate(szUpdate, _countof(szUpdate)))
 			{
-				// pick random number between [0,100) and compare to the selected probability
-				if ((double) rand() / (RAND_MAX + 1) * 100.0 <= 1.0*m_settings.GetULong(EsmCoinFlipProb))
-				{
-					ShowQuestionnaireUI(FALSE);
-				}
+				Trace("Hostview going to update.");
+				// TODO: will be as system; what happens to UI?
+				ShellExecute(NULL, L"open", szUpdate, 0, 0, SW_SHOW);
+				return TRUE;
+			}
+		}
+		// UI + settings updates
+		CheckForResourceUpdates();
+	}
+	return FALSE;
+}
+
+bool CHostViewService::RunQuestionnaireIfCase(DWORD now)
+{
+	static DWORD sdwLastCheck = GetTickCount();
+
+	if (m_settings.GetBoolean(EsmActive) && 
+		now - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && 
+		!m_fUserStopped && !m_fIdle && !m_fFullScreen && m_hasSeenUI)
+	{
+		sdwLastCheck = now;
+
+		// enforce max shows per day and start + end hours
+		if (QueryQuestionnaireCounter() < m_settings.GetULong(EsmMaxShows))
+		{
+			// pick random number between [0,100) and compare to the selected probability
+			if ((double) rand() / (RAND_MAX + 1) * 100.0 <= 1.0*m_settings.GetULong(EsmCoinFlipProb))
+			{
+				ShowQuestionnaireUI(FALSE);
+				return TRUE;
 			}
 		}
 	}
+	return FALSE;
 }
 
 bool CHostViewService::ShowQuestionnaireUI(BOOL fOnDemand /*= TRUE*/)
@@ -516,9 +535,7 @@ void CHostViewService::UpdateQuestionnaireAppUsageInfo(DWORD dwPid, TCHAR *szUse
 		if (dwPid > 0 && _tcscmp(szApp, _T("<elevated>")) && _tcslen(szApp))
 		{
 			UpdateQuestionnaireAppsList(szUser, szApp, szDescription);
-
-			_stprintf_s(szDescription, _T("html\\out\\%s.ico"), szApp);
-			QueryProcessIcon(dwPid, szDescription);
+			QueryProcessIcon(dwPid, szApp);
 		}
 	}
 }
@@ -535,132 +552,62 @@ void CHostViewService::UpdateQuestionnaireSiteUsageInfo(TCHAR *szLocation, TCHAR
 
 		UpdateQuestionnaireTabsList(szUser, szLocation, szBrowserExe);
 
-		TCHAR szRemote[MAX_PATH] = {0}, szLocal[MAX_PATH] = {0};
-
-		_stprintf_s(szLocal, _T("html\\out\\%s.ico"), szLocation);
-
+		// FIXME: should be in icon.cpp I guess
+		TCHAR szLocal[MAX_PATH] = {0};
+		_stprintf_s(szLocal, _T(".\\html\\out\\%s.ico"), szLocation);
 		if (GetFileAttributes(szLocal) == INVALID_FILE_ATTRIBUTES)
 		{
+			// FIXME: this probably doesn't work all the time ..
+			TCHAR szRemote[MAX_PATH] = { 0 };
 			_stprintf_s(szRemote, _T("http://%s/favicon.ico"), szLocation);
 			DownloadFile(szRemote, szLocal);
 		}
 	}
 }
 
-void CHostViewService::PullInstalledApps(TCHAR *szPath, DWORD dwSize)
-{
-	TCHAR szCurrDir[MAX_PATH] =  {0};
-	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-
-	TCHAR szOut[MAX_PATH] = {0};
-	_stprintf_s(szPath, dwSize, _T("%s\\%s\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
-
-	TCHAR ** pszApps = 0, ** pszDesc = 0;
-	int nCount = QueryApplicationsList(pszApps, pszDesc);
-
-	ImpersonateCurrentUser();
-
-	FILE *f = 0;
-	_tfopen_s(&f, szPath, _T("w"));
-
-	if (f)
-	{
-		for (int i = 0; i < nCount; i ++)
-		{
-			TCHAR *szName = PathFindFileName(pszApps[i]);
-
-			_ftprintf_s(f, _T("%s\n"), szName);
-			_ftprintf_s(f, _T("%s\n"), pszDesc[i]);
-
-			// the extra line (not used)
-			_ftprintf_s(f, _T("\n"));
-		}
-
-		fclose(f);
-	}
-
-	ImpersonateRevert();
-
-	// prepare app list
-	m_appList.clear();
-	for (int i = 0; i < nCount; i ++)
-	{
-		m_appList.push_back(pszApps[i]);
-	}
-
-	// spawn thread
-	CloseHandle(CreateThread(NULL, NULL, QueryIconsThreadProc, this, NULL, NULL));
-	ReleaseApplicationsList(nCount, pszApps, pszDesc);
-}
-
-DWORD WINAPI CHostViewService::QueryIconsThreadProc(LPVOID lpParameter)
-{
-	CHostViewService *pThis = (CHostViewService *) lpParameter;
-	pThis->QueryIconsThreadFunc();
-	return 0L;
-}
-
-void CHostViewService::QueryIconsThreadFunc()
-{
-	TCHAR szOut[MAX_PATH] = {0};
-
-	// query the app icons
-	for (size_t i = 0; i < m_appList.size(); i ++)
-	{
-		TCHAR *szName = PathFindFileName(m_appList[i].c_str());
-		_stprintf_s(szOut, _T("html\\out\\%s.ico"), szName);
-		QueryImageIcon((TCHAR *) m_appList[i].c_str(), szOut);
-	}
-}
-
-bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
-{
-	if (location && browser && !m_fUserStopped)
-	{
-		m_store.InsertBrowser(browser, location, GetHiResTimestamp());
-		UpdateQuestionnaireSiteUsageInfo(location, browser);
-		return true;
-	}
-	return false;
-}
-
-bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
-	if (jsonbuf && len > 0 && !m_fUserStopped) {
-		char fn[MAX_PATH];
-		sprintf_s(fn, "%S\\%llu_%llu_browserupload.json", TEMP_PATH, m_startTime, GetHiResTimestamp());
-		FILE * f = NULL;
-		fopen_s(&f, fn, "w");
-		if (f)
-		{
-			fprintf(f, "%s", *jsonbuf);
-			fclose(f);
-		}
-		MoveFileToSubmit(fn, m_settings.GetBoolean(DebugMode));
-		return true;
-	}
-	return false;
-}
-
 Message CHostViewService::OnMessage(Message &message)
 {
 	switch (message.type)
 	{
+	case MessageUpload:
+		RunAutoSubmit(GetTickCount(), TRUE);
+		break;
+
+	case MessageCheckUpdate:
+		RunAutoUpdate(GetTickCount(), TRUE);
+		break;
+
 	case MessageRestartSession:
 		if (!m_fUserStopped)
 		{
 			ULONGLONG ts = GetHiResTimestamp();
 			Trace("Hostview service session autostop");
 			StopCollect(SessionEvent::AutoStop, ts);
+
 			Trace("Hostview service session autostart");
 			StartCollect(SessionEvent::AutoStart, ts);
 		}
 		break;
+
 	case MessageSuspend:
-		OnSuspend();
+		{
+			Trace("Hostview service suspend.");
+			if (!m_fUserStopped) {
+				StopCollect(SessionEvent::Suspend, GetHiResTimestamp());
+			}
+			m_fUserStopped = FALSE; // so that everything is resumed OnResume
+			m_fIdle = FALSE;
+			m_fFullScreen = FALSE;
+		}
 		break;
+
 	case MessageResume:
-		OnResume();
+		{
+			Trace("Hostview service resume.");
+			StartCollect(SessionEvent::Resume, GetHiResTimestamp());
+		}
 		break;
+
 	case MessageStartCapture:
 		if (m_fUserStopped)
 		{
@@ -668,14 +615,18 @@ Message CHostViewService::OnMessage(Message &message)
 			StartCollect(SessionEvent::Restart, GetHiResTimestamp());
 		}
 		break;
+
 	case MessageStopCapture:
 		if (!m_fUserStopped)
 		{
-			m_fUserStopped = TRUE;
 			m_dwUserStoppedTime = GetTickCount();
+			m_fUserStopped = TRUE;
+			m_fIdle = FALSE;
+			m_fFullScreen = FALSE;
 			StopCollect(SessionEvent::Pause, GetHiResTimestamp());
 		}
 		break;
+
 	case MessageSpeakerUsage:
 		if (!m_fUserStopped)
 		{
@@ -686,6 +637,7 @@ Message CHostViewService::OnMessage(Message &message)
 			m_store.InsertIo(IoDevice::Speaker, message.dwPid, szApp, GetHiResTimestamp());
 		}
 		break;
+
 	case MessageMicrophoneUsage:
 		if (!m_fUserStopped)
 		{
@@ -696,6 +648,7 @@ Message CHostViewService::OnMessage(Message &message)
 			m_store.InsertIo(IoDevice::Microphone, message.dwPid, szApp, GetHiResTimestamp());
 		}
 		break;
+
 	case MessageCameraUsage:
 		if (!m_fUserStopped)
 		{
@@ -706,6 +659,7 @@ Message CHostViewService::OnMessage(Message &message)
 			m_store.InsertIo(IoDevice::Camera, message.dwPid, szApp, GetHiResTimestamp());
 		}
 		break;
+
 	case MessageMouseKeyUsage:
 		if (!m_fUserStopped)
 		{
@@ -725,6 +679,7 @@ Message CHostViewService::OnMessage(Message &message)
 			UpdateQuestionnaireAppUsageInfo(message.dwPid, message.szUser, szApp);
 		}
 		break;
+
 	case MessageUserActivity:
 		if (!m_fUserStopped)
 		{
@@ -743,6 +698,7 @@ Message CHostViewService::OnMessage(Message &message)
 			UpdateQuestionnaireAppUsageInfo(message.dwPid, message.szUser, szApp);
 		}
 		break;
+
 	case MessageQueryStatus:
 		{
 			m_hasSeenUI = TRUE;
@@ -750,6 +706,7 @@ Message CHostViewService::OnMessage(Message &message)
 			return result;
 		}
 		break;
+
 	case MessageNetworkLabel:
 		{
 			Trace("New network label [%S].", message.szUser);
@@ -776,13 +733,17 @@ Message CHostViewService::OnMessage(Message &message)
 			}
 			// remember labeled networks
 			m_networks.OnNetworkLabel(szGUID, szBSSID, szLabel);
+
 			// store for upload
 			m_store.InsertNetLabel(GetHiResTimestamp(), szGUID, szBSSID, szLabel);
 		}
 		break;
+
 	case MessageQuestionnaireDone:
 		{
 			Trace("Questionnaire done.");
+			SetQuestionnaireCounter(QueryQuestionnaireCounter() + 1);
+
 			char tempfile[MAX_PATH] = { 0 };
 			sprintf_s(tempfile, "%S", message.szUser);
 
@@ -793,15 +754,15 @@ Message CHostViewService::OnMessage(Message &message)
 			MoveFileA(tempfile, uploadfile);
 
 			MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
-
-			SetQuestionnaireCounter(QueryQuestionnaireCounter() + 1);
 		}
 		break;
+
 	case MessageQuestionnaireShow:
 		{
 			ShowQuestionnaireUI();
 		}
 		break;
+
 	case MessageQueryLastApps:
 		{
 			TCHAR szFile[MAX_PATH] = {0};
@@ -814,11 +775,11 @@ Message CHostViewService::OnMessage(Message &message)
 			return result;
 		}
 		break;
+
 	case MessageQueryInstalledApps:
 		{
 			TCHAR szFile[MAX_PATH] = {0};
 			PullInstalledApps(szFile, _countof(szFile));
-
 			return Message(0, szFile, 0, true, true);
 		}
 		break;

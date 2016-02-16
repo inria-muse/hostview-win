@@ -177,9 +177,10 @@ void OnEsmCommand(BOOL fOnDemand)
 				dlg.SetApps(*runningApps, *installedApps);
 				dlg.DoModal();
 
-				ClearAppList(runningApps);
+				ClearAppList(installedApps);
 			}
-			ClearAppList(installedApps);
+
+			ClearAppList(runningApps);
 		} // else the service is not reachable ..
 	}
 	CoUninitialize();

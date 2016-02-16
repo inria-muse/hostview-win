@@ -47,7 +47,6 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	WSADATA ws;
 	WSAStartup(MAKEWORD(2, 2), &ws);
-
 	curl_global_init(CURL_GLOBAL_SSL);
 
 	EnableDebugPrivileges();
@@ -65,7 +64,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			InstallService(SERVICE_NAME, SERVICE_DISPLAY_NAME, SERVICE_START_TYPE, SERVICE_DEPENDENCIES, SERVICE_ACCOUNT, SERVICE_PASSWORD);
 
-			Trace("Service installed.");
+			Trace("Service install.");
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
@@ -79,9 +78,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			char szHdd[MAX_PATH] = { 0 };
 			sprintf_s(szHdd, "%S", info.hddSerial);
 
-			// double make sure all data is in the submit folder
-			CleanAllCaptureFiles(false);
-			Trace(0); // moves the logfile to submit
+			Trace(0); // moves to submit
 
 			// upload all files
 			CUpload upload;
@@ -92,18 +89,30 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"restart", argv[1] + 1)) 
 		{
+			Trace("Service request restart.");
 			SendServiceMessage(Message(MessageRestartSession));
 		}
+		else if (!_tcsicmp(L"upload", argv[1] + 1))
+		{
+			Trace("Service request upload.");
+			SendServiceMessage(Message(MessageUpload));
+		}
+		else if (!_tcsicmp(L"update", argv[1] + 1))
+		{
+			Trace("Service request update.");
+			SendServiceMessage(Message(MessageCheckUpdate));
+		}
+#ifdef _DEBUG
 		else if (!_tcsicmp(L"debug", argv[1] + 1))
 		{
 			// run service on the foreground and stop on key stroke
 			CHostViewService service(SERVICE_NAME);
 			service.OnStart(NULL, NULL);
-			fprintf(stderr, "hostview service started\n");
+			Trace("hostview service started");
 
 			system("pause");
 
-			fprintf(stderr, "hostview service stopping ...\n");
+			Trace("hostview service stopping ...");
 			service.OnStop();
 		}
 		else if (!_tcsicmp(L"test", argv[1] + 1))
@@ -127,14 +136,20 @@ int _tmain(int argc, _TCHAR* argv[])
 			if (!_tcsicmp(L"sysinfo", argv[2]))
 				printSysinfo();
 		}
+#endif
 		else {
 			printf("./hostviewcli.exe \t- run the hostview service.\n\n");
 			printf("Parameters (optional):\n");
-			printf("\t/install \t- to install the service.\n");
-			printf("\t/remove \t- to remove the service.\n");
-			printf("\t/restart \t- to restart a session.\n");
-			printf("\t/debug \t- to start the service for debugging.\n");
-			printf("\t/test <test> \t- to run a selected test.\n");
+			printf("\t/help \t- print this help.\n");
+			printf("\t/install \t- install the service.\n");
+			printf("\t/remove \t- remove the service.\n");
+			printf("\t/upload \t- upload files from the current submit queue.\n");
+			printf("\t/restart \t- restart a session.\n");
+			printf("\t/update \t- check and install HostView update.\n");
+#ifdef _DEBUG
+			printf("\t/debug \t- start the service for debugging.\n");
+			printf("\t/test <test> \t- run a selected test.\n");
+#endif
 		}
 	}
 	else

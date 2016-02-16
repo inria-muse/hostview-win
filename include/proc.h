@@ -26,6 +26,8 @@
 #include <winsock2.h>
 #include <string>
 #include <vector>
+#include <Shlwapi.h>
+#include <shellapi.h>
 
 #if defined(PROCLIBRARY_EXPORT) // inside DLL
 #   define PROCAPI   extern "C" __declspec(dllexport)
@@ -41,6 +43,10 @@ typedef unsigned char byte;
 #define tstring wstring
 #else
 #define tstring string
+#endif
+
+#ifndef TEMP_PATH
+#define TEMP_PATH L"temp"
 #endif
 
 struct IpRow
@@ -258,10 +264,11 @@ extern "C" PROCAPI BOOL ImpersonateRevert();
 extern "C" PROCAPI BOOL GetLoggedOnUser(TCHAR *szUser, DWORD dwSize);
 extern "C" PROCAPI BOOL CreatePublicFolder(TCHAR *szPath);
 extern "C" PROCAPI void InitCurrentDirectory();
-extern "C" PROCAPI void QueryProcessIcon(DWORD dwPid, TCHAR *szPath);
-extern "C" PROCAPI void QueryImageIcon(TCHAR *szImage, TCHAR *szPath);
+extern "C" PROCAPI void QueryProcessIcon(DWORD dwPid, TCHAR *szApp);
+extern "C" PROCAPI void QueryIcons(int nCount, TCHAR ** &szAppList);
 
 // installed apps
+extern "C" PROCAPI void PullInstalledApps(TCHAR *szPath, DWORD dwSize);
 extern "C" PROCAPI int QueryApplicationsList(TCHAR ** &pszPaths, TCHAR ** &pszDescriptions);
 extern "C" PROCAPI void ReleaseApplicationsList(int nCount, TCHAR ** &pszPaths, TCHAR ** &pszDescriptions);
 

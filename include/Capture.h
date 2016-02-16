@@ -67,11 +67,9 @@ public:
 };
 
 extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG connection, bool debugMode, const char *adapterId = "interactive");
-extern "C" PCAPAPI bool StopCapture(const char *adapterId = "interactive");
-extern "C" PCAPAPI bool IsCaptureRunning(const char *adapterId = "interactive");
-extern "C" PCAPAPI bool RotateCaptureFile(const char *adapterId = "interactive");
-extern "C" PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId = "interactive");
-extern "C" PCAPAPI bool CleanAllCaptureFiles(bool debugMode);
+extern "C" PCAPAPI bool StopCapture(const char *adapterId);
+extern "C" PCAPAPI bool RotateCaptureFile(const char *adapterId);
+extern "C" PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId);
 
 /**
  * NetInterf with custom details.

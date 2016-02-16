@@ -57,6 +57,8 @@
 #define MessageSuspend				14
 #define MessageResume				15
 #define MessageRestartSession       16
+#define MessageCheckUpdate          17
+#define MessageUpload               18
 
 struct Message
 {

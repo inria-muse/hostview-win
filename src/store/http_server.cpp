@@ -147,7 +147,7 @@ int message_complete_cb(http_parser *parser) {
 			send_http_ok(d->s);
 		}
 		else {
-			fprintf(stderr, "[SRV] invalid location update %s\n", d->body);
+			Debug("[SRV] invalid location update %s\n", d->body);
 			send_http_err(d->s);
 		}
 	} 
@@ -188,7 +188,13 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 	srvSocket = (unsigned int)socket(AF_INET, SOCK_STREAM, 0);
 	if (srvSocket == INVALID_SOCKET)
 	{
-		fprintf(stderr, "[SRV] socket failed with error: %ld\n", WSAGetLastError());
+		Debug("[SRV] socket failed with error: %ld", WSAGetLastError());
+		return 1;
+	}
+
+	BOOL optval = TRUE;
+	if (setsockopt(srvSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval)) < 0) {
+		Debug("[SRV] setsockopt failed with error: %d", WSAGetLastError());
 		return 1;
 	}
 
@@ -200,14 +206,14 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 	// Setup the TCP listening socket
 	if (bind(srvSocket, (struct sockaddr *) &server, sizeof(server)) == SOCKET_ERROR)
 	{
-		fprintf(stderr, "[SRV] bind failed with error: %d\n", WSAGetLastError());
+		Debug("[SRV] bind failed with error: %d", WSAGetLastError());
 		closesocket(srvSocket);
 		return 1;
 	}
 
 	if (listen(srvSocket, SOMAXCONN) == SOCKET_ERROR)
 	{
-		fprintf(stderr, "[SRV] listen failed with error: %d\n", WSAGetLastError());
+		Debug("[SRV] listen failed with error: %d", WSAGetLastError());
 		closesocket(srvSocket);
 		return 1;
 	}
@@ -230,7 +236,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 			parser = (http_parser*)malloc(sizeof(http_parser));
 			if (!parser) {
 				// error allocating parser
-				fprintf(stderr, "[SRV] failed to allocate new http parser");
+				Debug("[SRV] failed to allocate new http parser");
 				send_http_err(cliSocket);
 			}
 			else {
@@ -258,7 +264,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 						nParsed = http_parser_execute(parser, &psettings, szBuffer, nRecv);
 						if (nParsed != nRecv) {
 							// parsing error
-							fprintf(stderr, "[SRV] parser error\n");
+							Debug("[SRV] parser error");
 							send_http_err(cliSocket);
 							break;
 						}
@@ -266,7 +272,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					else {
 						// recv error
 						if (!data.complete) {
-							fprintf(stderr, "[SRV] recv failed with error: %d[%d]\n", nRecv, WSAGetLastError());
+							Debug("[SRV] recv failed with error: %d[%d]", nRecv, WSAGetLastError());
 							send_http_err(cliSocket);
 						}
 					}
@@ -332,7 +338,7 @@ bool SendServerMessage(char *szMessage)
 
 	curl = curl_easy_init();
 	if (!curl) {
-		fprintf(stderr, "[SRV] curl_easy_init failed\n");
+		Debug("[SRV] curl_easy_init failed");
 		return false;
 	}
 
@@ -347,7 +353,7 @@ bool SendServerMessage(char *szMessage)
 
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
-		fprintf(stderr, "[SRV] curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		Debug("[SRV] curl_easy_perform failed: %s", curl_easy_strerror(res));
 		fres = false;
 	}
 
