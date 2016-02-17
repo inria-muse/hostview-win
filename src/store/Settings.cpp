@@ -34,7 +34,7 @@ void loadDefaults() {
 		mDefSettings[SettingsVersion] = "0";
 		mDefSettings[DebugMode] = "0";
 		mDefSettings[AutoRestartTimeout] = "1800000"; // 30min
-		mDefSettings[PcapSizeLimit] = "1048576000";
+		mDefSettings[PcapSizeLimit] = "100000000"; // 100MB (uncompressed)
 		mDefSettings[WirelessMonitorTimeout] = "10000";
 		mDefSettings[SocketStatsTimeout] = "60000";
 		mDefSettings[SystemStatsTimeout] = "60000";		
@@ -63,7 +63,7 @@ void loadDefaults() {
 		mDefSettings[UpdateLocation] = "http://localhost:8000";
 		mDefSettings[NetLocationActive] = "0";
 		mDefSettings[DebugMode] = "1";
-		mDefSettings[PcapSizeLimit] = "1024"; // 1KB
+		mDefSettings[PcapSizeLimit] = "1000000"; // 1MB
 #endif
 	}
 }
@@ -176,7 +176,8 @@ ULONG CSettings::GetULong(char *szKey)
 		const char *szValue = GetString(szKey);
 		if (szValue)
 		{
-			(*mLongSettings)[szKey] = (ULONG) atol(szValue);
+			char *stop;
+			(*mLongSettings)[szKey] = strtoul(szValue, &stop, 10);
 			lRes = (*mLongSettings)[szKey];
 		}
 	}

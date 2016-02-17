@@ -198,7 +198,7 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS location(guid VARCHAR(260), public_ip VARCHAR(100), reverse_dns VARCHAR(100), \
 		 asnumber VARCHAR(100), asname VARCHAR(100),\
-		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), timestamp INT8)");
+		 countryCode VARCHAR(100), city VARCHAR(100), lat VARCHAR(100), lon VARCHAR(100), connstart INT8)");
 
 	exec("CREATE TABLE IF NOT EXISTS browseractivity(timestamp INT8, browser VARCHAR(1024), location VARCHAR(1024))");
 
@@ -354,7 +354,7 @@ void CStore::InsertHttp(__int64 connstart, char *szVerb, char *szVerbParam, char
 	enqueue(szStatement);
 }
 
-void CStore::InsertDns(__int64 connstart,  int type, char *szIp, char *szHost, int protocol, 
+void CStore::InsertDns(__int64 connstart, int type, char *szIp, char *szHost, int protocol, 
 	char *srcIp, char *destIp, int srcPort, int destPort, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
@@ -369,7 +369,7 @@ void CStore::InsertLoc(const char *szGuid, const char *szIp, const char *szRDNS,
 	const char *szLat, const char *szLon, __int64 timestamp)
 {
 	char szStatement[4096] = {0};
-	sprintf_s(szStatement, "INSERT INTO %s(guid, public_ip, reverse_dns, asnumber, asname, countryCode, city, lat, lon, timestamp) \
+	sprintf_s(szStatement, "INSERT INTO %s(guid, public_ip, reverse_dns, asnumber, asname, countryCode, city, lat, lon, connstart) \
 						   VALUES(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %llu)", "location",
 						   szGuid, szIp, szRDNS, szAsNumber, szAsName, szCountryCode, szCity, szLat, szLon, timestamp);
 

@@ -27,7 +27,21 @@
 #include "Upload.h"
 #include "Settings.h"
 
+// 10 megabytes
+#define TRACE_MAX_LOGSIZE 10000000
+
 static CSettings g_settings;
+
+ULONGLONG GetSizeInBytes(const char* fileName) {
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	if (!GetFileAttributesExA(fileName, GetFileExInfoStandard, &fad))
+		return -1;
+
+	LARGE_INTEGER size;
+	size.HighPart = fad.nFileSizeHigh;
+	size.LowPart = fad.nFileSizeLow;
+	return size.QuadPart;
+}
 
 ULONGLONG GetHiResTimestamp()
 {
@@ -44,22 +58,6 @@ ULONGLONG GetHiResTimestamp()
 	ts.QuadPart -= epoch.QuadPart;
 
 	return ts.QuadPart / 10000;
-}
-
-long GetFileSize(char *szFilename)
-{
-	long nSize = 0;
-
-	FILE * f = NULL;
-	fopen_s(&f, szFilename, "r");
-	if (f)
-	{
-		fseek(f, 0, SEEK_END);
-		nSize = ftell(f);
-		fclose(f);
-	}
-
-	return nSize;
 }
 
 void Debug(char *szFormat, ...) {
@@ -95,7 +93,8 @@ void Debug(char *szFormat, ...) {
 void Trace(char *szFormat, ...) {
 	bool dodebug = g_settings.GetBoolean(DebugMode);
 
-	if (!szFormat || GetFileSize(".\\temp\\hostview.log") >= 10 * 1024 * 1024)
+	// max log size
+	if (!szFormat || GetSizeInBytes(".\\temp\\hostview.log") >= TRACE_MAX_LOGSIZE)
 	{
 		// rename with timestamp
 		char szFile[MAX_PATH] = { 0 };

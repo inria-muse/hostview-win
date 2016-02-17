@@ -29,6 +29,10 @@
 #   define HOSTVIEWTRACEAPI   __declspec(dllimport)
 #endif  // TRACELIBRARY_EXPORT
 
+// TODO: these two could be in some utils lib really ..
+extern "C" HOSTVIEWTRACEAPI ULONGLONG GetSizeInBytes(const char* fileName);
 extern "C" HOSTVIEWTRACEAPI ULONGLONG GetHiResTimestamp();
+
+// Trace interface
 extern "C" HOSTVIEWTRACEAPI void Debug(char *szFormat, ...);
 extern "C" HOSTVIEWTRACEAPI void Trace(char *szFormat, ...);

@@ -66,10 +66,8 @@ public:
 	virtual void OnDNSAnswer(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost) = 0;
 };
 
-extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG connection, bool debugMode, const char *adapterId = "interactive");
+extern "C" PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG connection, ULONG maxPcapSize, bool debugMode, const char *adapterId = "interactive");
 extern "C" PCAPAPI bool StopCapture(const char *adapterId);
-extern "C" PCAPAPI bool RotateCaptureFile(const char *adapterId);
-extern "C" PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId);
 
 /**
  * NetInterf with custom details.

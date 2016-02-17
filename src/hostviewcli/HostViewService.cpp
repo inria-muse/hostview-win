@@ -290,10 +290,10 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 
 void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInterface)
 {
-	ULONGLONG timestamp = GetHiResTimestamp();
+	ULONGLONG timestamp = GetHiResTimestamp(); // connection id
 
 	LogNetwork(networkInterface, timestamp, true);
-	StartCapture(*this, m_startTime, timestamp, m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
+	StartCapture(*this, m_startTime, timestamp, m_settings.GetULong(PcapSizeLimit), m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
 
 	// resolve network location
 	if (m_settings.GetBoolean(NetLocationActive)) {

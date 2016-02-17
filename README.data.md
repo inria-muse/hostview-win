@@ -40,8 +40,8 @@ starts when HostView (service) is started, system resumes from sleep, or HostVie
 user paused it. A session ends when HostView (service) is shutdown, user pushes the pause button or 
 the computer goes to sleep (suspend). The end event may be missing if HostView service crashed.
 
-If HostView (PC) is on all the time, HostView auto re-starts a new session once a day (~3-5am) in order 
-to limit the size of the uploaded files. The autostop event and the autorestart event of the new session will
+If HostView (PC) is on all the time, HostView auto re-starts a new session once a day at night in order 
+to limit the size of the uploaded file(s). The autostop event and the autorestart event of the new session will
 have the same timestamps in order to facilitate reconstruction of complete sessions if need.
 
 	Table: session(timestamp, event)
@@ -74,7 +74,7 @@ interface (see Packet Capture for more info).
 ### Network Location ###
 
 When a network interface goes up, Hostview requests more information about the
-network location from the backend service. TODO: just once per session ? 
+network location from the backend service. 
 
 	Table: location(timestamp, ..)
 
@@ -88,8 +88,7 @@ network location from the backend service. TODO: just once per session ?
 
 In addition, we ask the user to label the network locations and store the data 
 to the database. Unique network locations are identified using tuple 
-(device guid, gateway id) for labeling and the user is asked for the label only
-once per location.
+(device guid, gateway) and the user is asked for the label only once per location.
 
 	Table: netlabel(timestamp, ...);
 
@@ -105,7 +104,7 @@ HostView tracks updates to system power state changes via power settings change 
 	Table: powerstates(timestamp, event, value)
 
 	Possible events: 
-		power_source - 0 (AC power) | 1 (battery) | 2 (short-term source)
+		power_source - 0 (AC power) | 1 (battery) | 2 (short-term source e.g. UPS)
 		battery_remaining - value (pourcentage)
 		display_state - 0 (off) | 1 (on) | 2 (dimmed)
 		user_precense - 0 (present) | 2 (not present)
@@ -127,9 +126,9 @@ idle timeout (milliseconds) of inactivity:
 
 ## Continuous Timeseries ##
 
-Continuos metrics are recorded periodically using the intervals specified below (all timeouts are in 
+Continuous metrics are recorded periodically using the intervals specified below (all timeouts are in 
 milliseconds). The data is stored in the current session database, and each row is timestamped with 
-an UTC timestamp with millisecond accuracy.
+an UTC epoch timestamp with millisecond accuracy.
 
 
 * Wireless network metrics (RSSI, tx/rx speed):
@@ -159,30 +158,33 @@ an UTC timestamp with millisecond accuracy.
 
 ## Packet Capture ##
 
-
-We do a packet capture on each active interface to record IP+TCP/UDP headers + complete DNS traffic. Captures are 
+HostView does packet capture on each active interface to record IP+TCP/UDP headers + complete DNS traffic. Captures are 
 started / stopped when network interfaces go up/down. In addition, HostView enforces a max size for a single
 capture file. Related configurations:
 
 * Max pcap file size, default 100MB:
 
-	Setting: pcapSizeLimit = 1048576000
+	Setting: pcapSizeLimit = 100000000
 
 The raw capture files are named as follows:
 
-	File: sessionStartTime_connectivityUpTime_fileStartTime_interfaceId_flag.pcap
+	File: sessionStartTime_connectivityUpTime_number_interfaceId_[part|last].pcap
 
-The three timestamps in the file name correspond to the session start time (session table 'start' event), 
-connectivity up time (connectivity table connected=1), and the pcap file creation time (can be used to 
-distinguish and order rotated pcaps for merging). The interface id is the network interface id as in 
-the connectivity table. The flag is one of F|P|L (First|Rotated|Last). If the connection only 
+The two timestamps in the file name correspond to the session start time (session table 'start' event) 
+and connectivity up time (connectivity table connected=1). Then number is just an increasing counter (first file 
+has number 1). The interface id is the network interface id as in the connectivity table. The flag
+after the device id indicates if this file is the last pcap of the connection, or if its a rotated file (part).
+The backend processing scripts should always first merge all pcaps with same session and connection id
+before any processing. The number and the part|last flag can be used to track if all the pcaps are 
+available.
 
 HostView does some processing on the packet trace during the capture: it parses DNS packets and HTTP requests.
 DNS packets are also fully recorded in the pcap. In contrast, HTTP headers are not included in the trace, only the parsed
 requests. The HTTP parsing is a bit redundant with the browser activity tracking extensions (which can also see HTTPS
 requests that we cannot parse from the pcap) but we'll keep it for now to capture non-browser HTTP traffic for example.
-Both dns and http table record the related connectivity event time (connstart), so that we can find the related pcap
-file for further analysis.
+
+The dns and http table record the id of the related connectivity event time (connstart), so that we can find 
+the raw pcap file corresponding to the rows.
 
 	Table: dns(timestamp, connstart, 5-tuple, ...)
 	Table: http(timestamp, connstart, 5-tuple, ...)
@@ -250,9 +252,9 @@ Following settings control the upload behavior:
 see http://curl.haxx.se/libcurl/c/curl_easy_setopt.html for more info:
 
 	Setting: curlUploadVerifyPeer = 1
-	Setting: curlUploadLowSpeedLimit = 16000
-	Setting: curlUploadLowSpeedTime = 5
-	Setting: curlUploadMaxSendSpeed = 10000000
+	Setting: curlUploadLowSpeedLimit = 12500 // 12.5Kb/s 10% of max
+	Setting: curlUploadLowSpeedTime = 10
+	Setting: curlUploadMaxSendSpeed = 125000 // 125Kb/s == 1Mbit/s
 
 
 ## Automatic Updates ##
@@ -378,7 +380,7 @@ CREATE TABLE IF NOT EXISTS location(
 	city VARCHAR(100), 
 	lat VARCHAR(100), 
 	lon VARCHAR(100), 
-	timestamp INT8);
+	connstart INT8);
 
 CREATE TABLE IF NOT EXISTS browseractivity(
 	timestamp INT8, 

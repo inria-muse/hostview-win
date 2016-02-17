@@ -310,8 +310,7 @@ struct Capture {
 	char capture_file[MAX_PATH];
 	CCaptureCallback *cb;
 	bool debugMode;
-	bool doRotate;
-	std::string adapterId;
+	ULONG maxPcapSize;
 
 	// dummy default constuctor
 	Capture() :
@@ -323,7 +322,7 @@ struct Capture {
 		dumper(NULL),
 		cb(NULL),
 		debugMode(FALSE),
-		doRotate(FALSE)
+		maxPcapSize(0)
 	{
 	}
 };
@@ -439,22 +438,6 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	// reset the capture length
 	((struct pcap_pkthdr *)header)->caplen = nCapLength;
 
-	if (cap.doRotate) {
-		pcap_dump_flush(cap.dumper);
-		pcap_dump_close(cap.dumper);
-		Trace("pcap rotate %s",cap.capture_file);
-
-		MoveFileToSubmit(cap.capture_file, cap.debugMode);
-
-		cap.number += 1;
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 
-			DATA_DIRECTORY, cap.session, cap.connection, cap.number, cap.adapterId.c_str());
-
-		cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
-		cap.doRotate = FALSE;
-		captures[(char *)p] = cap;  // save back the changes
-	}
-
 	// dump to the pcap file
 	pcap_dump((u_char *)cap.dumper, header, pkt_data);
 }
@@ -462,11 +445,37 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 {
 	char *adapterId = (char *)lpParameter;
-	struct Capture cap = captures[adapterId];
-	return pcap_loop(cap.pcap, 0, OnPacketCallback, (unsigned char *) lpParameter);
+	while (true) {
+		struct Capture cap = captures[adapterId];
+		int res = pcap_loop(cap.pcap, 2500, OnPacketCallback, (unsigned char *)lpParameter);
+		if (res == 0) {
+			// max count reached, check the file size and rotate if need
+			ULONGLONG size = GetSizeInBytes(cap.capture_file);
+			if (size >= cap.maxPcapSize)
+			{
+				pcap_dump_flush(cap.dumper);
+				pcap_dump_close(cap.dumper);
+				Trace("pcap rotate %s [%lu]", cap.capture_file, size);
+
+				MoveFileToSubmit(cap.capture_file, cap.debugMode);
+
+				cap.number += 1;
+				sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap",
+					DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
+
+				cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
+				captures[adapterId] = cap;  // save back the changes
+			}
+		}
+		else {
+			// error or pcap_breakloop called
+			break; 
+		}
+	}
+	return 0L;
 }
 
-PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, bool debugMode, const char *adapterId)
+PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, ULONG maxPcapSize, bool debugMode, const char *adapterId)
 {
 	// ensure directory
 	if (!PathFileExistsA(DATA_DIRECTORY)) {
@@ -475,13 +484,15 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 
 	struct Capture cap = captures[adapterId];
 	cap.debugMode = debugMode;
-	cap.adapterId = adapterId;
+	cap.maxPcapSize = maxPcapSize;
+	Debug("start capture on %s [%lu]", adapterId, maxPcapSize);
+
 	if (cap.thread == NULL)
 	{
 		cap.session = session;
 		cap.connection = timestamp;
 		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 
-			DATA_DIRECTORY, cap.session, cap.connection, cap.number, cap.adapterId.c_str());
+			DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)
@@ -545,34 +556,4 @@ PCAPAPI bool StopCapture(const char *adapterId)
 	}
 
 	return false;
-}
-
-PCAPAPI bool RotateCaptureFile(const char *adapterId) {
-	// just sets a flag and the packet thread will do the work
-	struct Capture cap = captures[adapterId];
-	if (cap.pcap != NULL && cap.dumper != NULL) {
-		cap.doRotate = TRUE;
-	}
-	captures[adapterId] = cap;
-	return cap.doRotate;
-}
-
-PCAPAPI ULONGLONG GetCaptureFileSize(const char *adapterId) {
-	ULONGLONG res = 0;
-
-	struct Capture cap = captures[adapterId];
-	if (cap.pcap != NULL && cap.dumper != NULL) {
-		WIN32_FIND_DATAA data;
-		HANDLE hFind = FindFirstFileA(cap.capture_file, &data);
-		if (hFind != INVALID_HANDLE_VALUE)
-		{
-			ULARGE_INTEGER sz;
-			sz.LowPart = data.nFileSizeLow;
-			sz.HighPart = data.nFileSizeHigh;
-			res = sz.QuadPart;
-			FindClose(hFind);
-		}
-	}
-
-	return res;
 }

@@ -398,7 +398,6 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 		HANDLE handle = NULL;
 		NotifyAddrChange(&handle, &overlap);
 
-		unsigned long dwCheck = 0;
 		while (interfacesMonitorRunning)
 		{
 			// don't block here forever so that the thread is responsive to stop events
@@ -406,21 +405,6 @@ DWORD WINAPI InterfacesMonitorThread(LPVOID lpParameter)
 			{
 				CheckConnectedInterfaces(pCallback);
 				break;
-			}
-
-			dwCheck += 100;
-
-			if (interfacesMonitorRunning && dwCheck > 10000)
-			{
-				dwCheck = 0; // reset
-				for (std::set<NetworkInterface>::iterator it = previousInterfaces.begin(); it != previousInterfaces.end(); it ++)
-				{
-					const char *adapterId = it->strGuid.c_str();
-					if (GetCaptureFileSize(adapterId) >= g_pcapSizeLimit)
-					{
-						RotateCaptureFile(adapterId);
-					}
-				}
 			}
 		}
 	}
