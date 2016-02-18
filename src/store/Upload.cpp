@@ -83,7 +83,7 @@ CUpload::CUpload()
 	lastRetry(0)
 {
 	char ua[512] = {0};
-	sprintf_s(ua, 512, "Hostview Windows %s", ProductVersionStr);
+	sprintf_s(ua, 512, "HostView Windows %s", ProductVersionStr);
 
 	curl = curl_easy_init();
 	if (!curl) {
@@ -220,11 +220,11 @@ bool CUpload::TrySubmit(const char *deviceId) {
 		return true; // try again later
 
 	// ok lets try
-	int submittedFiles = 0;
-	bool result = true;
 	retryCount += 1;
 	lastRetry = dwNow;
 
+	int submittedFiles = 0;
+	bool result = true;
 	HANDLE hFind = FindFirstFileA(SUBMIT_DIRECTORY_GLOB, &wfd);
 	if (hFind != INVALID_HANDLE_VALUE)
 	{

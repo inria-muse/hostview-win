@@ -130,9 +130,7 @@ void InitNotificationResources(HINSTANCE hInstance)
 
 	LoadString(hInstance, IDS_APP_TITLE, g_szAppName, MAX_LOADSTRING);
 
-	GetProductVersion(g_szProdVer, sizeof(g_szProdVer));
-	char *s = g_szProdVer;
-	while (*s ++) *s = *s == ',' ? '.' : *s;
+	GetProductVersionStr(g_szProdVer, sizeof(g_szProdVer));
 
 	LoadNotificationStrings(hInstance, FALSE);
 
@@ -234,7 +232,7 @@ void CloseHostViewUI()
 void RefreshSystrayIcon()
 {
 	g_nidApp.hIcon = g_hIcons[g_isRunning ? 0 : 1];
-	_stprintf_s(g_nidApp.szTip, _T("%s %S (%s)"), g_szAppName, g_szProdVer, (g_isRunning ? "running" : "paused"));
+	_stprintf_s(g_nidApp.szTip, _T("%s %S (%S)"), g_szAppName, g_szProdVer, (g_isRunning ? "running" : "paused"));
 	g_nidApp.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
 	Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
 }
@@ -266,7 +264,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 
     if (_tcsstr(szCmdLine, _T("/stop")))
 	{
-		// called from uninstaller - closes all open hostview UI components
+		// called from uninstaller && update - closes all open hostview UI components
 		ltCtrl.CloseAll();
 		return FALSE;
 	}

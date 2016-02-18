@@ -365,7 +365,8 @@ void CStore::InsertDns(__int64 connstart, int type, char *szIp, char *szHost, in
 	enqueue(szStatement);
 }
 
-void CStore::InsertLoc(const char *szGuid, const char *szIp, const char *szRDNS, const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
+void CStore::InsertLoc(const char *szGuid, const char *szIp, const char *szRDNS, 
+	const char *szAsNumber, const char *szAsName, const char *szCountryCode, const char * szCity,
 	const char *szLat, const char *szLon, __int64 timestamp)
 {
 	char szStatement[4096] = {0};

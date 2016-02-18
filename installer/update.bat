@@ -1,6 +1,6 @@
 :: Stop Service & Client
-net stop "HostView Service"
 start "" "%cd%\HostView.exe" /stop
+net stop "HostView Service"
 regsvr32 /u /s "hostviewbho.dll"
 
 :: Sleep a bit

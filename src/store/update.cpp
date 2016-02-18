@@ -28,39 +28,110 @@
 #include <shellapi.h>
 
 #include "update.h"
-#include "Settings.h"
+#include "trace.h"
+#include "product.h"
 
-BOOL GetLatestProductVersion(char *szLatestProdVer, DWORD dwSize);
+// connection handle
+HINTERNET HttpConnect() {
+	HINTERNET hConnect = NULL;
+	TCHAR ua[512] = { 0 };
+	_stprintf_s(ua, 512, _T("HostView Windows %S"), ProductVersionStr);
 
-BOOL ExecuteAndWait(TCHAR *szProgram, TCHAR *szArgs);
-
-CSettings settings;
-
-BOOL CheckForUpdate()
-{
-	char szProdVer[MAX_PATH] = {0};
-	char szLatestProdVer[MAX_PATH] = {0};
-
-	if (GetProductVersion(szProdVer, _countof(szProdVer))
-		&& GetLatestProductVersion(szLatestProdVer, _countof(szLatestProdVer)))
+	hConnect = InternetOpen(ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, NULL);
+	if (hConnect)
 	{
-		return strcmp(szProdVer, szLatestProdVer) != 0;
+		DWORD dwTimeout = 2500;
+		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
+			&dwTimeout, sizeof(dwTimeout));
+	}
+	return hConnect;
+}
+
+// request handle
+HINTERNET HttpGet(HINTERNET hConnect, TCHAR *szUrl) {
+	HINTERNET hFile = NULL;
+	Debug("http get %S", szUrl);
+	return InternetOpenUrl(hConnect, szUrl, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
+}
+
+BOOL GetLatestProductVersion(char *updateBaseUrl, char *szLatestProdVer, DWORD dwSize)
+{
+	BOOL bResult = FALSE;
+
+	TCHAR szUrl[MAX_PATH] = { 0 };
+	_stprintf_s(szUrl, _T("%S/version"), updateBaseUrl);
+
+	HINTERNET hConnect = HttpConnect();
+	if (hConnect) {
+		HINTERNET hFile = HttpGet(hConnect, szUrl);
+		if (hFile)
+		{
+			// check HTTP error code;
+			TCHAR szResponseText[MAX_PATH] = { 0 };
+			DWORD dwRsSize = sizeof(szResponseText);
+			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwRsSize, NULL))
+			{
+				DWORD dwStatusCode = _ttoi(szResponseText);
+				Debug("http get response code %S", szResponseText);
+				if (dwStatusCode == HTTP_STATUS_OK)
+				{
+					DWORD dwRead = dwSize;
+					InternetReadFile(hFile, szLatestProdVer, dwSize, &dwRead);
+					Debug("http get response size %lu", dwRead);
+					bResult = (dwRead > 0);
+				}
+			}
+			InternetCloseHandle(hFile);
+		}
+		InternetCloseHandle(hConnect);
+	}
+
+	return bResult;
+}
+
+BOOL ExecuteAndWait(TCHAR *szProgram, TCHAR *szCmdLine)
+{
+	SHELLEXECUTEINFO ShExecInfo = { 0 };
+	ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+	ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+	ShExecInfo.hwnd = NULL;
+	ShExecInfo.lpVerb = NULL;
+	ShExecInfo.lpFile = szProgram;
+	ShExecInfo.lpParameters = szCmdLine;
+	ShExecInfo.lpDirectory = NULL;
+	ShExecInfo.nShow = SW_SHOW;
+	ShExecInfo.hInstApp = NULL;
+	ShellExecuteEx(&ShExecInfo);
+	WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+	return TRUE;
+}
+
+BOOL CheckForUpdate(char *updateBaseUrl)
+{
+	char szProdVer[MAX_PATH] = { 0 };
+	char szLatestProdVer[MAX_PATH] = { 0 };
+
+	bool res = (GetProductVersion(szProdVer, _countof(szProdVer))
+		&& GetLatestProductVersion(updateBaseUrl, szLatestProdVer, _countof(szLatestProdVer)));
+
+	Debug("check update: current=%s latest=%s [succ=%d]", szProdVer, szLatestProdVer, res);
+	if (res)
+	{
+		return (strcmp(szProdVer, szLatestProdVer) != 0);
 	}
 	return FALSE;
 }
 
-BOOL DownloadUpdate(TCHAR *szUpdatePath, DWORD dwSize)
+BOOL DownloadUpdate(char *updateBaseUrl, TCHAR *szUpdatePath, DWORD dwSize)
 {
-	const TCHAR * szTempName = _T("hvupdate");
-
 	BOOL bResult = FALSE;
 
+	const TCHAR * szTempName = _T("hvupdate");
 	TCHAR szTempPath[MAX_PATH] = {0}, szTempFile[MAX_PATH] = {0};
 	GetTempPath(_countof(szTempPath), szTempPath);
 
-	// TODO: should be in settings
 	TCHAR szURL[MAX_PATH] = {0};
-	_stprintf_s(szURL, L"%S/w%d.zip", settings.GetString(UpdateLocation), sizeof(int *) == 4 ? 32 : 64);
+	_stprintf_s(szURL, L"%S/w%d.zip", updateBaseUrl, sizeof(int *) == 4 ? 32 : 64);
 	_stprintf_s(szTempFile, _T("%s\\%s.zip"), szTempPath, szTempName);
 
 	if (DownloadFile(szURL, szTempFile))
@@ -82,39 +153,21 @@ BOOL DownloadUpdate(TCHAR *szUpdatePath, DWORD dwSize)
 	return bResult;
 }
 
-BOOL ExecuteAndWait(TCHAR *szProgram, TCHAR *szCmdLine)
-{
-	SHELLEXECUTEINFO ShExecInfo = {0};
-	ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-	ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-	ShExecInfo.hwnd = NULL;
-	ShExecInfo.lpVerb = NULL;
-	ShExecInfo.lpFile = szProgram;
-	ShExecInfo.lpParameters = szCmdLine;
-	ShExecInfo.lpDirectory = NULL;
-	ShExecInfo.nShow = SW_SHOW;
-	ShExecInfo.hInstApp = NULL; 
-	ShellExecuteEx(&ShExecInfo);
-	WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-	return TRUE;
-}
-
-UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile)
+BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile)
 {
 	TCHAR szBuffer[4096] = {0};
 	BOOL bResult = FALSE;
 
+	TCHAR szTempPath[MAX_PATH] = { 0 };
+	_stprintf_s(szTempPath, _T("%s.download"), szFile);
+
 	HINTERNET hConnect = NULL;
 	HINTERNET hFile = NULL;
 
-	hConnect = InternetOpen(L"HostView", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, NULL);
+	hConnect = HttpConnect();
 	if (hConnect)
 	{
-		DWORD dwTimeout = 1000;
-		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
-			&dwTimeout, sizeof(dwTimeout));
-
-		hFile = InternetOpenUrl(hConnect, szUrl, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
+		hFile = HttpGet(hConnect, szUrl);
 		if (hFile)
 		{
 			TCHAR szResponseText[MAX_PATH] = {0};
@@ -124,11 +177,12 @@ UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile)
 			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwSize, NULL))
 			{
 				DWORD dwStatusCode = _ttoi(szResponseText);
+				Debug("http get response code %S", szResponseText);
 
 				if (dwStatusCode == HTTP_STATUS_OK)
 				{
 					FILE *f = NULL;
-					_tfopen_s(&f, szFile, L"wb");
+					_tfopen_s(&f, szTempPath, L"wb");
 
 					if (f)
 					{
@@ -150,6 +204,13 @@ UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile)
 			InternetCloseHandle(hFile);
 		}
 		InternetCloseHandle(hConnect);
+	}
+
+	// TODO: could check that we received all bytes based on content-length ?
+	if (bResult) {
+		MoveFileEx(szTempPath, szFile, MOVEFILE_REPLACE_EXISTING);
+	} else {
+		DeleteFile(szTempPath);
 	}
 
 	return bResult;
@@ -193,89 +254,68 @@ BOOL GetProductVersion(char *szProductVersion, DWORD dwSize)
 	return bResult;
 }
 
-BOOL GetLatestProductVersion(char *szLatestProdVer, DWORD dwSize)
+BOOL GetProductVersionStr(char *szProductVersion, DWORD dwSize)
 {
 	BOOL bResult = FALSE;
+	TCHAR szCurrPath[MAX_PATH] = { 0 };
+	GetModuleFileName(NULL, szCurrPath, _countof(szCurrPath));
 
-	TCHAR szUrl[MAX_PATH] = {0};
-	_stprintf_s(szUrl, _T("%S/version"), settings.GetString(UpdateLocation));
+	DWORD verHandle = NULL;
+	UINT size = 0;
+	LPBYTE lpBuffer = NULL;
+	DWORD verSize = GetFileVersionInfoSize(szCurrPath, &verHandle);
 
-	HINTERNET hConnect = NULL;
-	HINTERNET hFile = NULL;
-
-	hConnect = InternetOpen(L"HostView", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, NULL);
-	if (hConnect)
+	if (verSize != NULL)
 	{
-		DWORD dwTimeout = 1000;
-		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
-			&dwTimeout, sizeof(dwTimeout));
+		LPSTR verData = new char[verSize];
 
-		hFile = InternetOpenUrl(hConnect, szUrl, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
-		if (hFile)
+		if (GetFileVersionInfo(szCurrPath, verHandle, verSize, verData))
 		{
-			// check HTTP error code;
-			TCHAR szResponseText[MAX_PATH] = { 0 };
-			DWORD dwRsSize = sizeof(szResponseText);
-			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwRsSize, NULL))
+			if (VerQueryValue(verData, L"\\", (VOID FAR* FAR*)&lpBuffer, &size))
 			{
-				DWORD dwStatusCode = _ttoi(szResponseText);
-				if (dwStatusCode == HTTP_STATUS_OK)
+				if (size)
 				{
-					DWORD dwRead = dwSize;
-					InternetReadFile(hFile, szLatestProdVer, dwSize, &dwRead);
-					bResult = dwRead > 0;
+					VS_FIXEDFILEINFO *verInfo = (VS_FIXEDFILEINFO *)lpBuffer;
+					if (verInfo->dwSignature == 0xfeef04bd)
+					{
+						sprintf_s(szProductVersion, dwSize, "%d.%d.%d.%d",
+							(verInfo->dwProductVersionMS >> 16) & 0xffff, (verInfo->dwProductVersionMS >> 0) & 0xffff,
+							(verInfo->dwProductVersionLS >> 16) & 0xffff, (verInfo->dwProductVersionLS >> 0) & 0xffff);
+						bResult = TRUE;
+					}
 				}
 			}
-			InternetCloseHandle(hFile);
 		}
-		InternetCloseHandle(hConnect);
+		delete[] verData;
 	}
 
 	return bResult;
 }
 
-// FIXME: 
-BOOL CheckForResourceUpdates() {
-	// TODO: replace auto-update with this:
-	// TODO: - pull md5 first => pull entire file if different
-	// TODO: - pull recursively (e.g. md5 for entire folder, etc.)
-	PullFile(_T("settings"));
-	PullFile(_T("html/esm_wizard.html"));
-	PullFile(_T("html/network_wizard.html"));
+BOOL CheckForResourceUpdates(char *updateBaseUrl) {
+	TCHAR szURL[MAX_PATH] = { 0 };
 
-	return true;
+	_stprintf_s(szURL, _T("%S/settings"), updateBaseUrl);
+	BOOL res = DownloadFile(szURL, _T(".\\settings"));
+
+#ifdef DOWNLOADHTMLUPDATES
+	_stprintf_s(szURL, _T("%S/html/esm_wizard.html"), updateBaseUrl);
+	DownloadFile(szURL, _T(".\\html\\esm_wizard.html"));
+
+	_stprintf_s(szURL, _T("%S/html/network_wizard.html"), updateBaseUrl);
+	DownloadFile(szURL, _T(".\\html\\network_wizard.html"));
+#endif
+
+	return res;
 }
 
-VOID PullFile(TCHAR *szFilePath)
-{
-	TCHAR szURL[MAX_PATH] = {0};
-	_stprintf_s(szURL, _T("%S/%s"), settings.GetString(UpdateLocation), szFilePath);
-
-	// TODO: check return
-	TCHAR szTempPath[MAX_PATH] = {0};
-	_stprintf_s(szTempPath, _T("%s.tmp"), szFilePath);
-
-	if (DownloadFile(szURL, szTempPath))
-	{
-		MoveFileEx(szTempPath, szFilePath, MOVEFILE_REPLACE_EXISTING);
-	}
-	else
-	{
-		DeleteFile(szTempPath);
-	}
-}
-
-UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info)
+bool QueryPublicInfo(char *locationApiUrl, std::vector<std::string> * &info)
 {
 	bool bResult = false;
 	info = new std::vector<std::string>();
 
-	if (!settings.GetBoolean(NetLocationActive)) {
-		return bResult; // disabled
-	}
-
 	TCHAR szURL[MAX_PATH] = { 0 };
-	_stprintf_s(szURL, _T("%S"), settings.GetString(NetLocationApiUrl));
+	_stprintf_s(szURL, _T("%S"), locationApiUrl);
 
 	HINTERNET hConnect = NULL;
 	HINTERNET hFile = NULL;
@@ -284,14 +324,10 @@ UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info)
 	DWORD dwSize = _countof(szInfo);
 	DWORD dwRead = dwSize;
 
-	hConnect = InternetOpen(L"HostView", NULL, NULL, NULL, NULL);
+	hConnect = HttpConnect();
 	if (hConnect)
 	{
-		DWORD dwTimeout = 1000;
-		InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT,
-			&dwTimeout, sizeof(dwTimeout));
-
-		hFile = InternetOpenUrl(hConnect, szURL, NULL, NULL, INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE, NULL);
+		hFile = HttpGet(hConnect, szURL);
 		if (hFile)
 		{
 			TCHAR szResponseText[MAX_PATH] = { 0 };
@@ -301,10 +337,12 @@ UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info)
 			if (HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE, szResponseText, &dwSize, NULL))
 			{
 				DWORD dwStatusCode = _ttoi(szResponseText);
+				Debug("http get response code %S", szResponseText);
 				if (dwStatusCode == HTTP_STATUS_OK)
 				{
 					if (InternetReadFile(hFile, szInfo, dwSize, &dwRead))
 					{
+						Debug("http get response size %lu", dwRead);
 						bResult = dwRead > 0;
 					}
 				}
@@ -328,7 +366,7 @@ UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info)
 	return bResult;
 }
 
-UPDATEAPI void FreePublicInfo(std::vector<std::string> * &info)
+void FreePublicInfo(std::vector<std::string> * &info)
 {
 	if (info)
 	{

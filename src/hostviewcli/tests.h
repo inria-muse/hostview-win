@@ -1,6 +1,8 @@
 #ifndef __TESTS_H_
 #define __TESTS_H_
 
+#ifdef _DEBUG
+
 #include "stdafx.h"
 #include "comm.h"
 #include "proc.h"
@@ -387,8 +389,11 @@ void testLogs()
 
 int testDownload()
 {
-	PullFile(_T("settings"));
-	return 0;
+	TCHAR szURL[MAX_PATH] = { 0 };
+	_stprintf_s(szURL, _T("%S/settings"), settings.GetString(UpdateLocation));
+	BOOL res = DownloadFile(szURL, _T(".\\settings"));
+	return res;
 }
 
+#endif
 #endif

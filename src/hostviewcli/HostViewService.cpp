@@ -300,10 +300,18 @@ void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInter
 		// FIXME: this could be a bit more intelligent - not sure we need to query this stuff
 		// every time an interface goes up .. ?
 		std::vector<std::string> * pInfo = 0;
-		if (QueryPublicInfo(pInfo) && pInfo->size() > 7)
+		if (QueryPublicInfo(m_settings.GetString(NetLocationApiUrl), pInfo) && pInfo->size() > 7)
 		{
-			m_store.InsertLoc(networkInterface.strGuid.c_str(), (*pInfo)[0].c_str(), (*pInfo)[1].c_str(), (*pInfo)[2].c_str(), (*pInfo)[3].c_str(),
-				(*pInfo)[4].c_str(), (*pInfo)[5].c_str(), (*pInfo)[6].c_str(), (*pInfo)[7].c_str(), timestamp);
+			m_store.InsertLoc(networkInterface.strGuid.c_str(), 
+				(*pInfo)[0].c_str(), // public ip 
+				(*pInfo)[1].c_str(), // rev dns
+				(*pInfo)[2].c_str(), // as number
+				(*pInfo)[3].c_str(), // as name
+				(*pInfo)[4].c_str(), // country
+				(*pInfo)[5].c_str(), // city
+				(*pInfo)[6].c_str(), // lat
+				(*pInfo)[7].c_str(), // lon
+				timestamp);
 		}
 		FreePublicInfo(pInfo);
 	}
@@ -461,20 +469,22 @@ bool CHostViewService::RunAutoUpdate(DWORD now, BOOL force) {
 
 		// HostView update 
 		Trace("Hostview check update.");
-		if (CheckForUpdate())
+		if (CheckForUpdate(m_settings.GetString(UpdateLocation)))
 		{
 			Trace("Hostview update available.");
 			TCHAR szUpdate[MAX_PATH] = { 0 };
-			if (DownloadUpdate(szUpdate, _countof(szUpdate)))
+			if (DownloadUpdate(m_settings.GetString(UpdateLocation), szUpdate, _countof(szUpdate)))
 			{
-				Trace("Hostview going to update.");
+				Trace("Hostview going to update!!");
 				// TODO: will be as system; what happens to UI?
 				ShellExecute(NULL, L"open", szUpdate, 0, 0, SW_SHOW);
 				return TRUE;
 			}
 		}
-		// UI + settings updates
-		CheckForResourceUpdates();
+		else {
+			// UI + settings updates
+			CheckForResourceUpdates(m_settings.GetString(UpdateLocation));
+		}
 	}
 	return FALSE;
 }
@@ -598,6 +608,7 @@ Message CHostViewService::OnMessage(Message &message)
 			m_fUserStopped = FALSE; // so that everything is resumed OnResume
 			m_fIdle = FALSE;
 			m_fFullScreen = FALSE;
+			m_hasSeenUI = FALSE;
 		}
 		break;
 
@@ -623,6 +634,7 @@ Message CHostViewService::OnMessage(Message &message)
 			m_fUserStopped = TRUE;
 			m_fIdle = FALSE;
 			m_fFullScreen = FALSE;
+			m_hasSeenUI = FALSE;
 			StopCollect(SessionEvent::Pause, GetHiResTimestamp());
 		}
 		break;

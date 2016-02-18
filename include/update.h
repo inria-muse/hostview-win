@@ -34,18 +34,13 @@
 #   define UPDATEAPI   __declspec(dllimport)
 #endif  // UPDATELIBRARY_EXPORT
 
-UPDATEAPI BOOL CheckForUpdate();
-UPDATEAPI BOOL DownloadUpdate(TCHAR *szUpdatePath, DWORD dwSize);
+UPDATEAPI BOOL CheckForUpdate(char *updateBaseUrl);
+UPDATEAPI BOOL DownloadUpdate(char *updateBaseUrl, TCHAR *szUpdatePath, DWORD dwSize);
 UPDATEAPI BOOL GetProductVersion(char *szProductVersion, DWORD dwSize);
+UPDATEAPI BOOL GetProductVersionStr(char *szProductVersion, DWORD dwSize);
 
 UPDATEAPI BOOL DownloadFile(TCHAR *szUrl, TCHAR *szFile);
+UPDATEAPI BOOL CheckForResourceUpdates(char *updateBaseUrl);
 
-UPDATEAPI BOOL CheckForResourceUpdates();
-
-/**
- * Given a relative file path it pulls it from UpdateLocation
- **/
-UPDATEAPI VOID PullFile(TCHAR *szFilePath);
-
-extern "C" UPDATEAPI bool QueryPublicInfo(std::vector<std::string> * &info);
+extern "C" UPDATEAPI bool QueryPublicInfo(char *locationApiUrl, std::vector<std::string> * &info);
 extern "C" UPDATEAPI void FreePublicInfo(std::vector<std::string> * &info);
