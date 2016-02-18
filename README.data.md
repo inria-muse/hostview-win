@@ -240,7 +240,7 @@ Following settings control the upload behavior:
 
 * Upload server URL:
 
-	Setting: submitServer = https://muse.inria.fr/hostview2016/upload
+	Setting: submitServer = https://muse.inria.fr/hostviewupload
 
 * Upload interval in milliseconds, default 60min:
 

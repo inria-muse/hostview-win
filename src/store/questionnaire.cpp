@@ -91,24 +91,19 @@ bool IsBrowser(App &app)
 
 void SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize, ULONG applistHist)
 {
-	TCHAR szCurrDir[MAX_PATH] =  {0};
-	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-
-	_stprintf_s(szFilename, nSize, _T("%s\\%S\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
+	DWORD dwNow = GetTickCount();
+	_stprintf_s(szFilename, nSize, _T("%S\\%d_current.txt"), TEMP_PATH, dwNow);
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szFilename, _T("w"));
 	if (f)
 	{
 		std::vector<App> vApps = mUserApps[szUser];
-
-		DWORD dwNow = GetTickCount();
-
 		for (int i = (int) vApps.size() - 1; i >= 0; i --)
 		{
 			App app = vApps[i];
 
-			// FIXME: what is this 'only one' ????
+			// FIXME: what is this 'only one' ???? hostview ?
 			// if it's neither the only one nor in the last x ms
 			if (dwNow - app.time > applistHist && i != (int) vApps.size() - 1)
 				continue;
@@ -201,11 +196,8 @@ void ClearAppList(AppListT* &appList)
 
 void SubmitQuestionnaire(const TCHAR *szResult)
 {
-	TCHAR szCurrDir[MAX_PATH] =  {0};
 	TCHAR szTempFile[MAX_PATH] = {0};
-
-	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-	_stprintf_s(szTempFile, _T("%s\\%S\\%llu_questionnaire.json"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
+	_stprintf_s(szTempFile, _T("%S\\%llu_questionnaire.json"), TEMP_PATH, GetHiResTimestamp());
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));

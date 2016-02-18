@@ -106,9 +106,7 @@ void CKnownNetworks::LoadKnownNetworks()
 void CKnownNetworks::SaveKnownNetworks()
 {
 	FILE *f = NULL;
-
 	_tfopen_s(&f, _T(KNOWN_NETWORKS_FILE), _T("w"));
-
 	if (f)
 	{
 		for (size_t i = 0; i < knownBSSIDs.size(); i ++)
@@ -171,12 +169,10 @@ void LabelNetwork(const NetworkInterface &ni, TCHAR * szProfile)
 void NetworkInterfaceToCommand(const NetworkInterface &ni, TCHAR *szCmdLine, size_t nSize)
 {
 	TCHAR szTempFile[MAX_PATH] = {0};
-
-	_stprintf_s(szTempFile, _T("%S\\%d"), TEMP_PATH, GetTickCount());
+	_stprintf_s(szTempFile, _T("%S\\%d_iface.txt"), TEMP_PATH, GetTickCount());
 
 	FILE *f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));
-
 	if (f)
 	{
 		_ftprintf_s(f, _T("%s\n"), ni.strFriendlyName.c_str());
@@ -201,10 +197,8 @@ bool CommandToNetworkInterface(TCHAR szCmdLine[MAX_PATH], NetworkInterface * &pn
 		return false;
 
 	TCHAR *szTempFile = _tcsstr(szCmdLine, _T("/net:")) + _tcslen(_T("/net:"));
-
 	FILE * f = NULL;
 	_tfopen_s(&f, szTempFile, _T("r"));
-
 	if (f)
 	{
 		pni = new NetworkInterface();
@@ -231,10 +225,7 @@ bool CommandToNetworkInterface(TCHAR szCmdLine[MAX_PATH], NetworkInterface * &pn
 		bResult = true;
 	}
 
-#ifndef _DEBUG
 	DeleteFile(szTempFile);
-#endif
-
 	return bResult;
 }
 
