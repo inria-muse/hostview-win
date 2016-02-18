@@ -46,6 +46,103 @@
 #define SERVICE_ACCOUNT			NULL
 #define SERVICE_PASSWORD		NULL
 
+void CreateFolders() {
+	// for creating 
+	DWORD dwRes;
+	PSID pEveryoneSID = NULL;
+	SID_IDENTIFIER_AUTHORITY SIDAuthWorld = SECURITY_WORLD_SID_AUTHORITY;
+	PACL pACL = NULL;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+	EXPLICIT_ACCESS ea;
+	SECURITY_ATTRIBUTES sa;
+
+	// Create a well-known SID for the Everyone group.
+	if (!AllocateAndInitializeSid(&SIDAuthWorld, 1,
+		SECURITY_WORLD_RID,
+		0, 0, 0, 0, 0, 0, 0,
+		&pEveryoneSID))
+	{
+		fprintf(stderr, "AllocateAndInitializeSid Error %u\n", GetLastError());
+		goto Cleanup;
+	}
+
+	// Initialize an EXPLICIT_ACCESS structure for an ACE.
+	// The ACE will allow Everyone read access to the key.
+	ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+	ea.grfAccessPermissions = FILE_ALL_ACCESS;
+	ea.grfAccessMode = SET_ACCESS;
+	ea.grfInheritance = NO_INHERITANCE;
+	ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+	ea.Trustee.ptstrName = (LPTSTR)pEveryoneSID;
+
+	// Create a new ACL that contains the new ACEs.
+	dwRes = SetEntriesInAcl(1, &ea, NULL, &pACL);
+	if (ERROR_SUCCESS != dwRes)
+	{
+		fprintf(stderr, "SetEntriesInAcl Error %u\n", GetLastError());
+		goto Cleanup;
+	}
+
+	// Initialize a security descriptor.  
+	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR,
+		SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (NULL == pSD)
+	{
+		fprintf(stderr, "LocalAlloc Error %u\n", GetLastError());
+		goto Cleanup;
+	}
+
+	if (!InitializeSecurityDescriptor(pSD,
+		SECURITY_DESCRIPTOR_REVISION))
+	{
+		fprintf(stderr, "InitializeSecurityDescriptor Error %u\n", GetLastError());
+		goto Cleanup;
+	}
+
+	// Add the ACL to the security descriptor. 
+	if (!SetSecurityDescriptorDacl(pSD,
+		TRUE,     // bDaclPresent flag   
+		pACL,
+		FALSE))   // not a default DACL 
+	{
+		fprintf(stderr, "SetSecurityDescriptorDacl Error %u\n", GetLastError());
+		goto Cleanup;
+	}
+
+	// Initialize a security attributes structure.
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.lpSecurityDescriptor = pSD;
+	sa.bInheritHandle = FALSE;
+
+	// db, logs and temp files (Store.cpp, questionnaire.cpp, KnownNetworks.cpp)
+	if (!PathFileExistsA(".\\temp")) {
+		CreateDirectoryA(".\\temp", &sa);
+	}
+	// questionnaire tags (hostview\stdafx.cpp)
+	if (!PathFileExistsA(".\\tags")) {
+		CreateDirectoryA(".\\tags", &sa);
+	}
+	// pcaps (Capture.cpp)
+	if (!PathFileExistsA(".\\pcap")) {
+		CreateDirectoryA(".\\pcap", NULL);
+	}
+	// upload queue (Upload.cpp)
+	if (!PathFileExistsA(".\\submit")) {
+		CreateDirectoryA(".\\submit", NULL);
+	}
+
+Cleanup:
+	if (pEveryoneSID)
+		FreeSid(pEveryoneSID);
+	if (pACL)
+		LocalFree(pACL);
+	if (pSD)
+		LocalFree(pSD);
+
+	return;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	WSADATA ws;
@@ -53,38 +150,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	curl_global_init(CURL_GLOBAL_SSL);
 
 	EnableDebugPrivileges();
-
 	InitCurrentDirectory();
-
-	// pcaps (Capture.cpp)
-	if (!PathFileExistsA(".\\pcap")) {
-		CreateDirectoryA(".\\pcap", NULL);
-	}
-	// db, logs and temp files (Store.cpp, questionnaire.cpp, KnownNetworks.cpp)
-	if (!PathFileExistsA(".\\temp")) {
-		CreateDirectoryA(".\\temp", NULL);
-	}
-	// questionnaire tags (hostview\stdafx.cpp)
-	if (!PathFileExistsA(".\\tags")) {
-		CreateDirectoryA(".\\tags", NULL);
-	}
-	// upload queue (Upload.cpp)
-	if (!PathFileExistsA(".\\submit")) {
-		CreateDirectoryA(".\\submit", NULL);
-	}
-
-	Trace("Hostviewcli started.");
 
 	if ((argc > 1) && ((*argv[1] == L'-' || (*argv[1] == L'/'))))
 	{
 		if (_tcsicmp(L"install", argv[1] + 1) == 0)
 		{
-			Trace("Service install.");
+			CreateFolders();
+			Trace("Hostviewcli: service install.");
 			InstallService(SERVICE_NAME, SERVICE_DISPLAY_NAME, SERVICE_START_TYPE, SERVICE_DEPENDENCIES, SERVICE_ACCOUNT, SERVICE_PASSWORD);
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
-			Trace("Service uninstall.");
+			Trace("Hostviewcli: service uninstall.");
 
 			// stops captures if running
 			SendServiceMessage(Message(MessageSuspend));
@@ -108,30 +186,32 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"restart", argv[1] + 1)) 
 		{
-			Trace("Service request restart.");
+			Trace("Hostviewcli: request restart.");
 			SendServiceMessage(Message(MessageRestartSession));
 		}
 		else if (!_tcsicmp(L"upload", argv[1] + 1))
 		{
-			Trace("Service request upload.");
+			Trace("Hostviewcli: request upload.");
 			SendServiceMessage(Message(MessageUpload));
 		}
 		else if (!_tcsicmp(L"update", argv[1] + 1))
 		{
-			Trace("Service request update.");
+			Trace("Hostviewcli: request update.");
 			SendServiceMessage(Message(MessageCheckUpdate));
 		}
 #ifdef _DEBUG
 		else if (!_tcsicmp(L"debug", argv[1] + 1))
 		{
+			CreateFolders();
+
 			// run service on the foreground and stop on key stroke
 			CHostViewService service(SERVICE_NAME);
 			service.OnStart(NULL, NULL);
-			Trace("hostview service started");
+			Trace("Hostview service started");
 
 			system("pause");
 
-			Trace("hostview service stopping ...");
+			Trace("Hostview service stopping ...");
 			service.OnStop();
 		}
 		else if (!_tcsicmp(L"test", argv[1] + 1))
@@ -174,7 +254,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	else
 	{
 		// Default is to run the installed service
-		Trace("Hostviewcli run service.");
+		Trace("Hostviewcli: run service.");
 		CHostViewService service(SERVICE_NAME);
 		if (!CServiceBase::Run(service))
 		{
