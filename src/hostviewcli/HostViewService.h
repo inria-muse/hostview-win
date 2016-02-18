@@ -39,6 +39,7 @@
 #include "trace.h"
 #include "product.h"
 
+
 class CHostViewService :
 	public CServiceBase,
 	public CInterfacesCallback,

@@ -42,8 +42,12 @@
 #define TIMER_STATUS_TIME			5000
 
 #define TIMER_NOTIFICATION			300
-#define TIMER_NOTIFICATION_TIME		60 * 1000
-#define TIMER_NOTIFICATION_TIMEOUT	5 * 60 * 1000
+// esm notification: notif interval (1.5min)
+#define NOTIFICATION_INTERVAL		90 * 1000
+// esm notification: stop notifying after (5min)
+#define NOTIFICATION_TIMEOUT		5 * 60 * 1000
+// esm notification: show for (20s)
+#define NOTIFICATION_DISPLAY_TIMEOUT 20000
 
 INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -58,7 +62,13 @@ CLifetimeCtrl ltCtrl;
 TCHAR g_szUser[MAX_PATH] = {0};
 DWORD g_dwLastPid = -1;
 
+TCHAR g_szAppName[MAX_PATH] = { 0 };
+char g_szProdVer[MAX_PATH] = { 0 };
+
 HINSTANCE g_hInstance = NULL;
+
+// capture state
+bool g_isRunning = true;
 
 class CUserMonitor : public CMonitorCallback
 {
@@ -118,16 +128,11 @@ void InitNotificationResources(HINSTANCE hInstance)
 	g_hIcons[0] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PLAY));
 	g_hIcons[1] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
 
-	TCHAR szAppName[MAX_PATH] = {0};
-	char szProdVer[MAX_PATH] = {0};
+	LoadString(hInstance, IDS_APP_TITLE, g_szAppName, MAX_LOADSTRING);
 
-	LoadString(hInstance, IDS_APP_TITLE, szAppName, MAX_LOADSTRING);
-
-	GetProductVersion(szProdVer, sizeof(szProdVer));
-	char *s = szProdVer;
+	GetProductVersion(g_szProdVer, sizeof(g_szProdVer));
+	char *s = g_szProdVer;
 	while (*s ++) *s = *s == ',' ? '.' : *s;
-
-	_stprintf_s(g_nidApp.szTip, _T("%s %S"), szAppName, szProdVer);
 
 	LoadNotificationStrings(hInstance, FALSE);
 
@@ -225,8 +230,14 @@ void CloseHostViewUI()
 	}
 }
 
-// capture state
-bool g_isRunning = true;
+// toggle the UI state running/paused
+void RefreshSystrayIcon()
+{
+	g_nidApp.hIcon = g_hIcons[g_isRunning ? 0 : 1];
+	_stprintf_s(g_nidApp.szTip, _T("%s %S (%s)"), g_szAppName, g_szProdVer, (g_isRunning ? "running" : "paused"));
+	g_nidApp.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
+	Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
+}
 
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 {
@@ -294,13 +305,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int)
 	return TRUE;
 }
 
-void RefreshSystrayIcon()
-{
-	g_nidApp.hIcon = g_hIcons[g_isRunning ? 0 : 1];
-	g_nidApp.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID; 
-	Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
-}
-
 POINT lpClickPoint = {0, 0};
 HMENU hPopMenu = NULL;
 
@@ -356,7 +360,7 @@ INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
 			Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
 
-			SetTimer(hDlg, TIMER_NOTIFICATION, TIMER_NOTIFICATION_TIME, NULL);
+			SetTimer(hDlg, TIMER_NOTIFICATION, NOTIFICATION_INTERVAL, NULL);
 			dwNotificationStart = GetTickCount();
 
 			SetWindowPos(hDlg, 0, 0, 0, 0, 0, SWP_SHOWWINDOW);
@@ -372,7 +376,7 @@ INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	case WM_TIMER:
 		if (wParam == TIMER_NOTIFICATION)
 		{
-			if (GetTickCount() - dwNotificationStart >= TIMER_NOTIFICATION_TIMEOUT)
+			if (GetTickCount() - dwNotificationStart >= NOTIFICATION_TIMEOUT)
 			{
 				// expired
 				EndDialog(hDlg, FALSE);
@@ -381,7 +385,7 @@ INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			{
 				g_nidApp.uFlags |= NIF_INFO;
 				g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
-				g_nidApp.uTimeout = 15000;
+				g_nidApp.uTimeout = NOTIFICATION_DISPLAY_TIMEOUT; 
 				g_nidApp.uCallbackMessage = WM_USER_SHELLICON; 
 				Shell_NotifyIcon(NIM_MODIFY, &g_nidApp);
 			}
@@ -393,6 +397,7 @@ INT_PTR CALLBACK HiddenDlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			{
 			case WM_LBUTTONDOWN:
 			case NIN_BALLOONUSERCLICK:
+				// FIXME: should have an action that opens the questionnaire as well ??
 				EndDialog(hDlg, TRUE);
 				break;
 			}
@@ -422,11 +427,14 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		SendServiceMessage(Message(MessageStartCapture)); // make sure the service is capturing data
 		StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
 
+		RefreshSystrayIcon();
+
 		SetTimer(hDlg, TIMER_STATUS, TIMER_STATUS_TIME, NULL);
 		SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 
 		SetWindowPos(hDlg, 0, 0, 0, 0, 0, SWP_SHOWWINDOW);
 		break;
+
 	case WM_DESTROY:
 		// TODO: this gets called when the user logs out ? is that what we want 
 		// or should the service continue capture ?
@@ -441,9 +449,11 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		Shell_NotifyIcon(NIM_DELETE, &g_nidApp);
 		PostQuitMessage(0);
 		break;
+
 	case WM_CLOSE:
 		EndDialog(hDlg, LOWORD(wParam));
 		break;
+
 	case WM_TIMER:
 		if (wParam == TIMER_STATUS)
 		{
@@ -463,7 +473,7 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					StartUserMonitor(userMonitor, settings.GetULong(UserMonitorTimeout), settings.GetULong(UserIdleTimeout));
 					SetTimer(hDlg, TIMER_USER_IO, settings.GetULong(IoTimeout), NULL);
 
-					// show info popup
+					// show info popup (hostview started)
 					LoadNotificationStrings(g_hInstance, TRUE);
 					g_nidApp.uFlags |= NIF_INFO;
 					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
@@ -480,7 +490,7 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					StopUserMonitor();
 					KillTimer(hDlg, TIMER_USER_IO);
 
-					// show info popup
+					// show info popup (hostview paused)
 					LoadNotificationStrings(g_hInstance, FALSE);
 					g_nidApp.uFlags |= NIF_INFO;
 					g_nidApp.dwInfoFlags = NIIF_NOSOUND | NIIF_INFO;
@@ -504,6 +514,7 @@ INT_PTR CALLBACK DlgCallback(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		case WM_LBUTTONDOWN:
 			SendServiceMessage(Message(MessageQuestionnaireShow));
 			break;
+
 		case WM_RBUTTONDOWN:
 			ShowPopupMenu(hDlg);
 			break;

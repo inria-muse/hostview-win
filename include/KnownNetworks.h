@@ -40,7 +40,7 @@
 #define tstring wstring
 #endif
 
-#define KNOWN_NETWORKS_FILE "networks"
+#define KNOWN_NETWORKS_FILE ".\\temp\\networks"
 
 // sends a message to the service to label a network
 void KNOWNAPI LabelNetwork(const NetworkInterface &ni, TCHAR *szProfile);

@@ -34,7 +34,10 @@
 #include "ServiceInstaller.h"
 #include "HostViewService.h"
 #include "ServiceBase.h"
+
+#ifdef _DEBUG
 #include "tests.h"
+#endif
 
 #define SERVICE_NAME			L"HostViewService"
 #define SERVICE_DISPLAY_NAME	L"HostView Service"
@@ -53,8 +56,22 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	InitCurrentDirectory();
 
-	CreatePublicFolder(_T("tags"));
-	CreatePublicFolder(TEMP_PATH);
+	// pcaps (Capture.cpp)
+	if (!PathFileExistsA(".\\pcap")) {
+		CreateDirectoryA(".\\pcap", NULL);
+	}
+	// db, logs and temp files (Store.cpp, questionnaire.cpp, KnownNetworks.cpp)
+	if (!PathFileExistsA(".\\temp")) {
+		CreateDirectoryA(".\\temp", NULL);
+	}
+	// questionnaire tags (hostview\stdafx.cpp)
+	if (!PathFileExistsA(".\\tags")) {
+		CreateDirectoryA(".\\tags", NULL);
+	}
+	// upload queue (Upload.cpp)
+	if (!PathFileExistsA(".\\submit")) {
+		CreateDirectoryA(".\\submit", NULL);
+	}
 
 	Trace("Hostviewcli started.");
 
@@ -62,9 +79,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		if (_tcsicmp(L"install", argv[1] + 1) == 0)
 		{
-			InstallService(SERVICE_NAME, SERVICE_DISPLAY_NAME, SERVICE_START_TYPE, SERVICE_DEPENDENCIES, SERVICE_ACCOUNT, SERVICE_PASSWORD);
-
 			Trace("Service install.");
+			InstallService(SERVICE_NAME, SERVICE_DISPLAY_NAME, SERVICE_START_TYPE, SERVICE_DEPENDENCIES, SERVICE_ACCOUNT, SERVICE_PASSWORD);
 		}
 		else if (!_tcsicmp(L"remove", argv[1] + 1))
 		{
@@ -73,14 +89,17 @@ int _tmain(int argc, _TCHAR* argv[])
 			// stops captures if running
 			SendServiceMessage(Message(MessageSuspend));
 
+			// wait a little so that the service has time to stop
+			Sleep(500);
+
+			Trace(0); // moves to submit
+
+			// upload all files
 			SysInfo info;
 			QuerySystemInfo(info);
 			char szHdd[MAX_PATH] = { 0 };
 			sprintf_s(szHdd, "%S", info.hddSerial);
 
-			Trace(0); // moves to submit
-
-			// upload all files
 			CUpload upload;
 			upload.TrySubmit(szHdd);
 

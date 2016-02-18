@@ -23,6 +23,8 @@
 **/
 #pragma once
 
+#define TEMP_PATH ".\\temp"
+
 #if defined(TRACELIBRARY_EXPORT) // inside DLL
 #   define HOSTVIEWTRACEAPI   __declspec(dllexport)
 #else // outside DLL

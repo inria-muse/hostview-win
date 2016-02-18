@@ -127,7 +127,7 @@ bool CStore::Open(ULONGLONG session)
 	if (m_session > 0)
 		Close();
 
-	sprintf_s(dbFile, ".\\temp\\%llu_stats.db", session);
+	sprintf_s(dbFile, "%s\\%llu_stats.db", TEMP_PATH, session);
 	if (sqlite3_open_v2(dbFile, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
 	{
 		seterror(sqlite3_errmsg(db));

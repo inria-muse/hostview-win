@@ -40,7 +40,7 @@
 void ESMAPI UpdateQuestionnaireAppsList(TCHAR *szUser, TCHAR *szApp, TCHAR *szDescription);
 void ESMAPI UpdateQuestionnaireTabsList(TCHAR *szUser, TCHAR *szHost, TCHAR *szBrowser);
 
-void ESMAPI SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize);
+void ESMAPI SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize, ULONG applistHist);
 void ESMAPI GenerateQuestionnaireCommand(TCHAR *szUser, BOOL fOnDemand, TCHAR *szCmdLine, size_t nSize);
 
 size_t ESMAPI QueryQuestionnaireCounter();

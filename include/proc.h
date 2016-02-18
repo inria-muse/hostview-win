@@ -45,10 +45,6 @@ typedef unsigned char byte;
 #define tstring string
 #endif
 
-#ifndef TEMP_PATH
-#define TEMP_PATH L"temp"
-#endif
-
 struct IpRow
 {
 private:

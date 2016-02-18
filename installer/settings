@@ -15,6 +15,7 @@ esmActive = 1
 esmCoinFlipInterval = 3600000
 esmCoinFlipProb = 15
 esmMaxShows = 3
+esmAppListHistory = 60000
 submitServer = https://muse.inria.fr/hostviewupload-dev
 autoSubmitInterval = 3600000
 autoSubmitRetryCount = 3

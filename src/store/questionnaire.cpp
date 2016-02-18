@@ -89,12 +89,12 @@ bool IsBrowser(App &app)
 		|| app.app == _T("firefox.exe");
 }
 
-void SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize)
+void SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize, ULONG applistHist)
 {
 	TCHAR szCurrDir[MAX_PATH] =  {0};
 	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
 
-	_stprintf_s(szFilename, nSize, _T("%s\\%s\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
+	_stprintf_s(szFilename, nSize, _T("%s\\%S\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szFilename, _T("w"));
@@ -108,9 +108,9 @@ void SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize)
 		{
 			App app = vApps[i];
 
-			// if it's neither the only one nor in the last minute
-			// TODO: extract this: '1 minute' in the settings file
-			if (dwNow - app.time > 1 * 60 * 1000 && i != (int) vApps.size() - 1)
+			// FIXME: what is this 'only one' ????
+			// if it's neither the only one nor in the last x ms
+			if (dwNow - app.time > applistHist && i != (int) vApps.size() - 1)
 				continue;
 
 			bool bHasTabs = false;
@@ -205,7 +205,7 @@ void SubmitQuestionnaire(const TCHAR *szResult)
 	TCHAR szTempFile[MAX_PATH] = {0};
 
 	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
-	_stprintf_s(szTempFile, _T("%s\\%s\\%llu_questionnaire.json"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
+	_stprintf_s(szTempFile, _T("%s\\%S\\%llu_questionnaire.json"), szCurrDir, TEMP_PATH, GetHiResTimestamp());
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));

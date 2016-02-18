@@ -25,8 +25,6 @@
 
 #include "aclapi.h"
 
-#define TEMP_PATH L"temp"
-
 #if defined(COMMLIBRARY_EXPORT) // inside DLL
 #   define COMMAPI   __declspec(dllexport)
 #else // outside DLL

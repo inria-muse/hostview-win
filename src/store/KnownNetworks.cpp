@@ -24,6 +24,7 @@
 #include "StdAfx.h"
 
 #include "KnownNetworks.h"
+#include "trace.h"
 #include "Upload.h"
 
 std::vector<std::tstring> knownBSSIDs;
@@ -171,7 +172,7 @@ void NetworkInterfaceToCommand(const NetworkInterface &ni, TCHAR *szCmdLine, siz
 {
 	TCHAR szTempFile[MAX_PATH] = {0};
 
-	_stprintf_s(szTempFile, _T("%s\\%d"), TEMP_PATH, GetTickCount());
+	_stprintf_s(szTempFile, _T("%S\\%d"), TEMP_PATH, GetTickCount());
 
 	FILE *f = NULL;
 	_tfopen_s(&f, szTempFile, _T("w"));

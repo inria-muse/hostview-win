@@ -477,18 +477,12 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 
 PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLONG timestamp, ULONG maxPcapSize, bool debugMode, const char *adapterId)
 {
-	// ensure directory
-	if (!PathFileExistsA(DATA_DIRECTORY)) {
-		CreateDirectoryA(DATA_DIRECTORY, NULL);
-	}
-
 	struct Capture cap = captures[adapterId];
-	cap.debugMode = debugMode;
-	cap.maxPcapSize = maxPcapSize;
-	Debug("start capture on %s [%lu]", adapterId, maxPcapSize);
-
 	if (cap.thread == NULL)
 	{
+		Debug("start capture on %s [%lu]", adapterId, maxPcapSize);
+		cap.debugMode = debugMode;
+		cap.maxPcapSize = maxPcapSize;
 		cap.session = session;
 		cap.connection = timestamp;
 		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 

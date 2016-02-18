@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  * 
- * Copyright (c) 2015 Muse / INRIA
+ * Copyright (c) 2015-2016 MUSE / Inria
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ std::tstring GetTags(const TCHAR *szCategory)
 	FILE *f = NULL;
 
 	TCHAR szFilename[MAX_PATH] = {0};
-	_stprintf_s(szFilename, _T("tags\\%s"), szCategory);
+	_stprintf_s(szFilename, _T(".\\tags\\%s"), szCategory);
 	_tfopen_s(&f, szFilename, _T("r"));
 
 	if (f)
@@ -62,7 +62,7 @@ void SetTags(const TCHAR* szCategory, const TCHAR * szTags)
 {
 	FILE *f = NULL;
 	TCHAR szFilename[MAX_PATH] = {0};
-	_stprintf_s(szFilename, _T("tags\\%s"), szCategory);
+	_stprintf_s(szFilename, _T(".\\tags\\%s"), szCategory);
 	_tfopen_s(&f, szFilename, _T("w"));
 
 	if (f)

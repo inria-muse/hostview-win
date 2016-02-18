@@ -52,6 +52,7 @@
 #define EsmCoinFlipInterval "esmCoinFlipInterval"    // flip coin every x (ms)
 #define EsmCoinFlipProb "esmCoinFlipProb"            // coin flip success probability [0-100]
 #define EsmMaxShows "esmMaxShows"                    // max num of questionnaires per day
+#define EsmAppListHistory "esmAppListHistory"        // shows apps that have been active in the last x (ms)
 
 #define PcapSizeLimit "pcapSizeLimit"                // max pcap filesize (bytes)
 

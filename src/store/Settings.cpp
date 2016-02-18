@@ -47,6 +47,7 @@ void loadDefaults() {
 		mDefSettings[EsmCoinFlipInterval] = "3600000";
 		mDefSettings[EsmCoinFlipProb] = "10";
 		mDefSettings[EsmMaxShows] = "3";
+		mDefSettings[EsmAppListHistory] = "60000";
 		mDefSettings[SubmitServer] = "https://muse.inria.fr/hostviewupload-dev";
 		mDefSettings[AutoSubmitRetryCount] = "3";
 		mDefSettings[AutoSubmitRetryInterval] = "10000";

@@ -178,11 +178,6 @@ bool MoveFileToSubmit(const char *file, bool debug) {
 		return false;
 	}
 
-	// ensure directory
-	if (!PathFileExistsA(SUBMIT_DIRECTORY)) {
-		CreateDirectoryA(SUBMIT_DIRECTORY, NULL);
-	}
-
 	if (debug) {
 		// keep a local copy of all files
 		if (!PathFileExistsA(".\\debug")) {
@@ -221,7 +216,7 @@ bool CUpload::TrySubmit(const char *deviceId) {
 	}
 
 	// is it time yet ?
-	if (!lastRetry == 0 && (dwNow - lastRetry) < settings.GetULong(AutoSubmitInterval))
+	if (lastRetry > 0 && ((dwNow - lastRetry) < settings.GetULong(AutoSubmitInterval)))
 		return true; // try again later
 
 	// ok lets try

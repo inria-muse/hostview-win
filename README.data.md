@@ -209,6 +209,10 @@ The experience sample questionaire popups are controlled using the following par
 
 	Setting: esmActive = 1
 
+* Applist history (show apps that have been active in the last x milliseconds):
+
+	Setting: esmAppListHistory = 60000
+
 * Popup algorithm (see below):
 
 	Setting: esmCoinFlipInterval = 3600000

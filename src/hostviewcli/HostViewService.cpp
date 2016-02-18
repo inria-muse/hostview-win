@@ -350,7 +350,7 @@ bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
 	if (jsonbuf && len > 0 && !m_fUserStopped) {
 		char fn[MAX_PATH];
-		sprintf_s(fn, "%S\\%llu_%llu_browserupload.json", TEMP_PATH, m_startTime, GetHiResTimestamp());
+		sprintf_s(fn, "%s\\%llu_%llu_browserupload.json", TEMP_PATH, m_startTime, GetHiResTimestamp());
 		FILE * f = NULL;
 		fopen_s(&f, fn, "w");
 		if (f)
@@ -768,7 +768,7 @@ Message CHostViewService::OnMessage(Message &message)
 			TCHAR szFile[MAX_PATH] = {0};
 
 			ImpersonateCurrentUser();
-			SaveAppsList(message.szUser, szFile, _countof(szFile));
+			SaveAppsList(message.szUser, szFile, _countof(szFile), m_settings.GetULong(EsmAppListHistory));
 			ImpersonateRevert();
 
 			Message result(0, szFile, 0, true, true);

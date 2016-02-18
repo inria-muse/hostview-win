@@ -23,6 +23,7 @@
 **/
 #include "stdafx.h"
 #include "proc.h"
+#include "trace.h"
 
 // TODO: better use built-in MsiEnumProducts
 
@@ -151,7 +152,7 @@ PROCAPI void PullInstalledApps(TCHAR *szPath, DWORD dwSize)
 	GetCurrentDirectory(_countof(szCurrDir), szCurrDir);
 
 	TCHAR szOut[MAX_PATH] = { 0 };
-	_stprintf_s(szPath, dwSize, _T("%s\\%s\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
+	_stprintf_s(szPath, dwSize, _T("%s\\%S\\%d"), szCurrDir, TEMP_PATH, GetTickCount());
 
 	TCHAR ** pszApps = 0, ** pszDesc = 0;
 	int nCount = QueryApplicationsList(pszApps, pszDesc);

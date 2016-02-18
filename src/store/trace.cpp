@@ -120,7 +120,7 @@ void Trace(char *szFormat, ...) {
 #ifdef _DEBUG
 		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);
 #endif
-
+		// FIXME: keep tha handle open ?
 		FILE * f = NULL;
 		fopen_s(&f, ".\\temp\\hostview.log", "a+");
 		if (f)

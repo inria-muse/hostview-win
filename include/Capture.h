@@ -49,8 +49,7 @@
 #define tstring string
 #endif
 
-#define DATA_DIRECTORY ".\\data"
-#define DATA_DIRECTORY_GLOB ".\\data\\*.*"
+#define DATA_DIRECTORY ".\\pcap"
 
 /**
  *	Callback Interface.
