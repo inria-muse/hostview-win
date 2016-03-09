@@ -156,6 +156,18 @@ an UTC epoch timestamp with millisecond accuracy.
 	Table: io(timestamp, )
 
 
+The IO devices are identified as follows:
+
+enum IoDevice {
+        Camera = 0, 
+        Keyboard = 1, 
+        Microphone = 2,
+        Mouse = 3, 
+        Speaker = 4
+};
+
+
+
 ## Packet Capture ##
 
 HostView does packet capture on each active interface to record IP+TCP/UDP headers + complete DNS traffic. Captures are 
