@@ -11,6 +11,7 @@ The repository is organized as follows:
 * lib       - 3rd party libraries
 * src       - source code (HostView application, service, libraries + browser plugins)
 
+
 Native HostView
 ---------------
 
@@ -35,6 +36,7 @@ The client project can be compiled using Visual Studio 2015 (free Community edit
 choose from the menu Build -> Batch Build -> Select All -> Rebuild. The build will generate 'bin' folder which will include Win32 / x64 and 
 each of them Debug / Release binaries for each platform.
 
+
 Browser Plugins
 ---------------
 
@@ -42,22 +44,24 @@ Browser Plugins
 * Firefox - src/HostviewFirefox (see specific README for more info)
 * Chrome - src/HostviewChrom (see specific README for more info)
 
+
 Hostview Installer
 ------------------
 
 To generate a new installer one needs to do the following:
 
 * have NSIS installed
-* in installer\winpcap_bundle run 'makensis winpcap-nmap.nsi'
-* in installer\ run 'makensis hostview.nsi'
+* in installer\winpcap_bundle, run 'makensis winpcap-nmap.nsi'
+* in installer\, run 'makensis hostview.nsi'
 
 To generate a complete update / release of a new version of HostView:
 
 * increment the product version from include/product.h
 * rebuild the entire solution
-* go to installer\ and execute generate_update.cmd
+* go to installer\, run generate_update.cmd
 
 Afterwards we will have the latest folder populated which we can then move to the server side.
+
 
 Local Testing
 -------------
@@ -69,6 +73,7 @@ There is a simple node.js script that can receive raw data uploads from Hostview
 The script listens to uploads at http://localhost:3000 and stores received files to ./tmp/.
 
 Configure this url to hostview settings 'submitServer' (debug builds do this by default).
+
 
 Authors
 -------

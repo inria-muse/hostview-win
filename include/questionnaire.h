@@ -70,4 +70,8 @@ typedef std::vector<App> AppListT;
 
 void ESMAPI LoadAppList(TCHAR *szCmdLine, AppListT* &appList);
 void ESMAPI ClearAppList(AppListT* &appList);
-void ESMAPI SubmitQuestionnaire(const TCHAR *szResult);
+
+void ESMAPI SubmitQuestionnaire(const DWORD dur, const TCHAR *szResult);
+void ESMAPI SubmitQuestionnaireActivity(const TCHAR *szResult);
+void ESMAPI SubmitQuestionnaireProblem(const TCHAR *szResult);
+void ESMAPI SubmitQuestionnaireDone();

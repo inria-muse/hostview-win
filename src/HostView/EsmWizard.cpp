@@ -48,47 +48,39 @@ void CEsmWizard::OnDocumentComplete(LPDISPATCH pDisp, LPCTSTR szUrl)
 
 	if (bFirstTime && _tcsstr(szUrl, _T(".html")))
 	{
-		bFirstTime = false;
+		TCHAR szId[MAX_PATH] = { 0 };
 
-		int checkIdx = 0;
+		bFirstTime = false;
+		m_appCount = 0;
+
 		CallClientScript(_T("ClearContainers"), 0, 0);
 
 		for (AppListT::iterator it = m_apps.begin(); it != m_apps.end(); it ++)
 		{
-			TCHAR szId[MAX_PATH] = {0};
-			_tcscpy_s(szId, it->app.c_str());
-
-			// replace space with underscore; TODO: improove this
-			for (size_t i = 0; i < _tcslen(szId); i ++)
-			{
-				// some sort of formatting?
-				if (szId[i] == ' ' || szId[i] == '"')
-				{
-					szId[i] = '_';
-				}
-			}
-
 			CStringArray params;
+
+			_stprintf_s(szId, _T("%d"), m_appCount);
 			params.Add(szId);
 			params.Add(it->app.c_str());
 			params.Add(it->description.c_str());
 			params.Add(it->extra.c_str());
-			CallClientScript(_T("AppendAppCategories"), &params, 0);
-			CallClientScript(_T("AppendAppIssues"), &params, 0);
-			checkIdx ++;
+			CallClientScript(_T("AppendApp"), &params, 0);
+			m_appCount++;
 		}
 
 		for (AppListT::iterator it = m_installedApps.begin(); it != m_installedApps.end(); it ++)
 		{
 			CStringArray params;
+			_stprintf_s(szId, _T("%d"), m_appCount);
+			params.Add(szId);
 			params.Add(it->app.c_str());
 			params.Add(it->description.c_str());
 			CallClientScript(_T("AppendInstalledApp"), &params, 0);
+			m_appCount++;
 		}
 
 		TCHAR szText[MAX_PATH] = {0};
 		TCHAR szAppName[MAX_PATH] = {0};
-
 		TCHAR szTitle[MAX_PATH] = {0};
 
 		LoadString(NULL, IDS_ESM_TITLE, szText, _countof(szText));
@@ -98,8 +90,7 @@ void CEsmWizard::OnDocumentComplete(LPDISPATCH pDisp, LPCTSTR szUrl)
 
 		SetElementText(_T("WindowTitle"), szTitle);
 
-		CallClientScript(_T("SelectIssuesFirstTab"), 0, 0);
-		CallClientScript(_T("SelectCategoriesFirstTab"), 0, 0);
+		CallClientScript(_T("SelectFirst"), 0, 0);
 
 		LoadTags(AppIssue, _T("issues"));
 		LoadTags(AppPCIssue, _T("pcissues"));
@@ -123,29 +114,57 @@ void CEsmWizard::LoadTags(TCHAR *szCategory, TCHAR *szCtlId)
 
 HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 {
-	CComVariant varRes;
+	DWORD dur = GetTickCount() - m_dwStart;
+
+	CComVariant varRes, varResC;
 	CStringArray arrArgs;
-
-	TCHAR szDuration[64] = {0};
-	_stprintf_s(szDuration, _T("%ul"), GetTickCount() - m_dwStart);
-	arrArgs.Add(szDuration);
-
-	if(CallClientScript(L"BuildResult", &arrArgs, &varRes))
+	if (CallClientScript(L"GetQoeScore", &arrArgs, &varRes))
 	{
-		if(varRes.vt == VT_BSTR)
-		{
-			SubmitQuestionnaire(varRes.bstrVal);
+		// Create questionnaire
+		SubmitQuestionnaire(dur, varRes.bstrVal);
 
-			CComVariant vaCat, vaIss, vaPCIss;
-			CallClientScript(L"GetNewCategories", &arrArgs, &vaCat);
-			CallClientScript(L"GetNewPCIssues", &arrArgs, &vaPCIss);
-			CallClientScript(L"GetNewIssues", &arrArgs, &vaIss);
+		// Add activity + prob tags for all apps (pass appId as arg)
+		for (int appId = 0; appId < m_appCount; appId++) {
+			TCHAR szId[8] = { 0 };
+			CComVariant varResA, varResP;
 
-			SetTags(AppCategory, vaCat.bstrVal);
-			SetTags(AppIssue, vaIss.bstrVal);
-			SetTags(AppPCIssue, vaPCIss.bstrVal);
+			CStringArray arrArgsA;
+			_stprintf_s(szId, _T("%d"), appId);
+			arrArgsA.Add(szId);
+
+			if (CallClientScript(L"GetActivityTags", &arrArgsA, &varResA) && _tcslen(varResA.bstrVal)>1)
+			{
+				SubmitQuestionnaireActivity(varResA.bstrVal);
+			}
+
+			if (CallClientScript(L"GetProblemTags", &arrArgsA, &varResP) && _tcslen(varResP.bstrVal)>1)
+			{
+				SubmitQuestionnaireProblem(varResP.bstrVal);
+			}
 		}
+
+		// will return the computer wide prob tags (no appId arg)
+		if (CallClientScript(L"GetProblemTags", &arrArgs, &varResC) && _tcslen(varResC.bstrVal)>1)
+		{
+			SubmitQuestionnaireProblem(varResC.bstrVal);
+		}
+
+		// Signal that we're done
+		SubmitQuestionnaireDone();
+
+		// Save new user tags
+		CComVariant vaCat, vaIss, vaPCIss;
+		CallClientScript(L"GetNewCategories", &arrArgs, &vaCat);
+		CallClientScript(L"GetNewPCIssues", &arrArgs, &vaPCIss);
+		CallClientScript(L"GetNewIssues", &arrArgs, &vaIss);
+
+		SetTags(AppCategory, vaCat.bstrVal);
+		SetTags(AppIssue, vaIss.bstrVal);
+		SetTags(AppPCIssue, vaPCIss.bstrVal);
 	}
+
+	m_appCount = 0;
+	m_dwStart = 0;
 
 	return __super::OnClickClose(pElement);
 }

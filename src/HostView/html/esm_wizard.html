@@ -32,7 +32,7 @@
 		{
 			background:#cde69c !important;
 			border: 1px solid #a5d24a !important;
-			color: 638421 !important;
+			color: #638421 !important;
 		}
 		
 		div.tagsinput span.active a
@@ -256,927 +256,741 @@
 		}
 	 </style>
 	 
-  <link rel="stylesheet" type="text/css" href="css/jquery.tagsinput.css" />
+     <link rel="stylesheet" type="text/css" href="css/jquery.tagsinput.css" />
 
   
     </head>
 
     <body style="border:1px solid #424242;background-color:#f3f3f3;">
 	
-  <nav style="height:50px;padding:0">
+    <!-- Window title -->
+    <nav style="height:50px;padding:0">
     <div class="nav-wrapper titlebar grey darken-3" style="height:50px;padding:0">
-	  <img src="out\\HostView.exe.ico" style="width:20px;height:20px;margin-left:10px;position:absolute;top:15px;"/>
-      <span class="brand-logo titlebar" id="WindowTitle" style="margin-left:37px;width:100%;font-size:20px;line-height:50px;">Experience Questionnaire</span>
-	  
-	  <a href="#" class="waves-effect waves-light right" style="margin-right:5px;margin-top:5px;height:50px;"><i onclick="OpenModal();" class="small mdi-navigation-close valign-wrapper" style="height:40px;"></i></a>
+	    <img src="out\\HostView.exe.ico" style="width:20px;height:20px;margin-left:10px;position:absolute;top:15px;"/>
+        <span class="brand-logo titlebar" id="WindowTitle" style="margin-left:37px;width:100%;font-size:20px;line-height:50px;">
+            Experience Questionnaire
+        </span>	  
+	    <a href="#" class="waves-effect waves-light right" style="margin-right:5px;margin-top:5px;height:50px;">
+            <i onclick="OpenModal();" class="small mdi-navigation-close valign-wrapper" style="height:40px;"></i>
+        </a>
     </div>
-  </nav>
-  
+    </nav>  
 
-  <div id="ButtonClose"></div>
-  <!-- Modal Trigger -->
-  <a class="modal-trigger" href="#modal-confirm-close" id="open-modal"></a>
-  <!-- Modal Structure -->
-  <div id="modal-confirm-close" class="modal">
-    <div class="modal-content">
-      <h4>Confirm close</h4>
-      <p>Do you really want to close the questionnaire?</p>
+    <div id="ButtonClose"></div>
+        <!-- Modal Trigger -->
+        <a class="modal-trigger" href="#modal-confirm-close" id="open-modal"></a>
+        <!-- Modal Structure -->
+        <div id="modal-confirm-close" class="modal">
+        <div class="modal-content">
+            <h4>Confirm close</h4>
+            <p>Do you really want to close the questionnaire?</p>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class=" modal-action modal-close waves-effect waves-red btn-flat" onclick="document.getElementById('ButtonClose').click();">OK</a>
+	        <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Cancel</a>
+        </div>
     </div>
-    <div class="modal-footer">
-      <a href="#!" class=" modal-action modal-close waves-effect waves-red btn-flat" onclick="document.getElementById('ButtonClose').click();">OK</a>
-	  <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Cancel</a>
-    </div>
-  </div>
   
-  <a class="modal-trigger" href="#modal-add-app" id="open-add-app"></a>
-  <!-- Modal Structure -->
-  <div id="modal-add-app" class="modal">
-    <div class="modal-content">
-      <h4>Add application</h4>
-      <p>Specify the application name you want to add:</p>
-	  <div id="InstalledApps" style="height:170px;overflow-y:auto;"></div>
+    <a class="modal-trigger" href="#modal-add-app" id="open-add-app"></a>
+    <!-- Modal Structure -->
+    <div id="modal-add-app" class="modal">
+        <div class="modal-content">
+            <h4>Add application</h4>
+            <p>Select application:</p>
+	        <div id="InstalledApps" style="height:170px;overflow-y:auto;"></div>
+        </div>
+        <div class="modal-footer">
+	        <a href="#!" class=" modal-action modal-close waves-effect waves-red btn-flat" id="modal-add-app-cancel">Cancel</a>
+        </div>
     </div>
-    <div class="modal-footer">
-	  <a href="#!" class=" modal-action modal-close waves-effect waves-red btn-flat" id="modal-add-app-cancel">Cancel</a>
-    </div>
-  </div>
   
-  
-  <div class="row" id="allui">
-                    <div id="page1" class="hidden">
-                        <p class="wiztitle">For each of the applications below please report your activity.</p>
+    <div class="row" id="allui">
 
-                        <!-- TODO: Left - Right with categories -->
-                        <!-- Wizard Flow Logic Should Reside in Javascript Code -->
-                        <div>
-                            <div class="tab-container">
-                                <ul id="Categories">
-                                    <!-- App List -->
-									<li onclick="SelectCategoriesTab(this);" id="c_one.exe">
-										<img class="app-icon" src="out\chrome.exe.ico" />
-										<div class="app-info">
-											<p><strong>One</strong></p>
-											<p><i>one.exe</i></p>
-										</div>
-										<span style="display:none">Browser Spec</span>
-									</li>
-									<li onclick="SelectCategoriesTab(this);" id="c_two.exe">
-										<img class="app-icon" src="out\devenv.exe.ico" />
-										<div class="app-info">
-											<p><strong>Two</strong></p>
-											<p><i>two.exe</i></p>
-										</div>
-										<span></span>
-									</li>
-									<li onclick="SelectCategoriesTab(this);" id="c_three.exe">
-										<img class="app-icon" src="out\chrome.exe.ico" />
-										<div class="app-info">
-											<p><strong>Three</strong></p>
-											<p><i>three.exe</i></p>
-										</div>
-										<span style="display:none">Another Browser</span>
-									</li>
-                                </ul>
-								
-								
-								<ul>
-									<li onclick="OpenAddApplication();" style="text-align:center">
-										<i class="mdi-content-add tiny" style="line-height:27px;color:#bcbcbc"></i>
-									</li>
-								</ul>
-								
-                            </div>
+    <!-- Page 1: Activity Categories -->
+    <div id="page1" class="hidden">
 
-                            <div class="main-container" id="CategoriesContent">
-									<!-- Views -->
-									<div class="input-field col s12">
-										<p>What better describes your activity with <b id="currAppName">Google Chrome</b> <span id="currAppExtra"></span> at the moment?</p>
-									</div>
+    <p class="wiztitle">For each of the applications below please report your activity.</p>
+
+    <div>
+
+        <div class="tab-container">
+            <!-- App List -->
+            <ul id="Categories">
+            </ul>
+																
+            <ul>
+                <li onclick="OpenAddApplication();" style="text-align:center">
+                <i class="mdi-content-add tiny" style="line-height:27px;color:#bcbcbc"></i>
+                </li>
+            </ul>
+        		
+        </div> <!-- tab-container -->
+
+        <div class="main-container" id="CategoriesContent">
+            <!-- Views -->
+            <div class="input-field col s12">
+                <p>What better describes your activity with <b id="currAppName"></b> <span id="currAppExtra"></span> 
+                   at the moment?</p>
+            </div>
 									
-									<div class="input-field col s12">
-										<div style="padding:5px;">
-											<input type="text" name="othertext" id="othertext" maxlength="32"
-												onkeyup="updateSelections(event); addlabel(event, 'othertext', 'categoriesfour'); showForthLegend(event);"
-												onblur="addlabel_blur('othertext', 'categoriesfour')"
-												placeholder="please type your activity or click all that apply"/>
-										</div>
+            <div class="input-field col s12">
+
+                <div style="padding:5px;">
+                    <input type="text" name="othertext" id="othertext" maxlength="32"
+	                    onkeyup="addlabel(event, 'othertext', 'categoriesfour');"
+	                    placeholder="please type your activity or click all that apply"/>
+                </div>
 										
-										<div id="selections"></div>
-									</div>
+                <div id="selections"></div>
+
+            </div>
 									
-									<div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
-										<fieldset>
-											<legend>&nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Looking for information on: &nbsp;</legend>
-											<div class="content">
-												<div id="categoriesone"></div>
-											</div>
-										</fieldset>
-										
-										<fieldset>
-											<legend>&nbsp;<i class="mdi-content-add" style="position:relative;top:2px;"></i>&nbsp;Entertaining myself with: &nbsp;</legend>
-											<div class="content">
-												<div id="categoriestwo"></div>
-											</div>
-										</fieldset>
-										
-										<fieldset>
-											<legend>&nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Communicating with others through: &nbsp;</legend>
-											<div class="content">
-												<div id="categoriesthree"></div>
-											</div>
-										</fieldset>
-										
-										<fieldset>
-											<legend>&nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Other activities: &nbsp;</legend>
-											<div class="content">
-												<div id="categoriesfour"></div>
-											</div>
-										</fieldset>
-									</div>
-                            </div>
-                        </div>
+            <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+
+                <fieldset>
+                    <legend>
+                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Looking for information on: &nbsp;
+                    </legend>
+                    <div class="content">
+	                    <div id="categoriesone"></div>
                     </div>
-					<div id="page2" class="hidden">
-						<form style="position:absolute;top:60px;bottom:60px;right:10px;left:10px;">
-						
-							<p class="wiztitle">Please rate the performance of this computer at the moment.</p>
-                            <div class="input-field col s12" style="background:#ffffff;border:1px solid #e0e0e0;margin-top:0px;height:443px;text-align:center;">
-								<div style="height:180px;"></div>								
-                                <p class="range-field">
-                                  <input type="range" id="qoe" min="1" max="100" />
-                                </p>
-								
-								<div id="labels" class="col s12" style="margin-top:-20px;margin-bottom:5px;">
-									<div class="col s2" style="text-align:left">
-										Poor
-									</div>
-									
-									<div class="col s8" style="text-align:center">
-										Good
-									</div>
-									
-									<div class="col s2" style="text-align:right">
-										Excellent
-									</div>
-								</div>
-                            </div>
+                </fieldset>
+										
+                <fieldset>
+                    <legend>
+                        &nbsp;<i class="mdi-content-add" style="position:relative;top:2px;"></i>&nbsp;Entertaining myself with: &nbsp;
+                    </legend>
+                    <div class="content">
+	                    <div id="categoriestwo"></div>
+                    </div>
+                </fieldset>
+										
+                <fieldset>
+                    <legend>
+                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Communicating with others through: &nbsp;
+                    </legend>
+                    <div class="content">
+	                    <div id="categoriesthree"></div>
+                    </div>
+                </fieldset>
+			
+                <fieldset>
+                    <legend>
+                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Other activities: &nbsp;
+                    </legend>
+                    <div class="content">
+	                    <div id="categoriesfour"></div>
+                    </div>
+                </fieldset>
+            </div>
+        </div> <!-- main-container -->
+    </div>
+    </div> <!-- page1 -->
 
-						</form>
-					</div>
-                    <div id="page3" class="hidden">
-                        <div>
-							<p class="wiztitle">If you are experiencing problems with this computer at the moment, please report below. Use the application tabs if problems are specific to a single application.</p>
-                            <div class="tab-container" style="top:131px;">
-							
-							
-                                <ul id="Issues">								
-                                    <!-- App List -->
-									<li onclick="SelectIssuesTab(this);" id="i_one.exe">
-										<img class="app-icon" src="out\chrome.exe.ico" />
-										<div class="app-info">
-											<p><strong>One</strong></p>
-											<p><i>one.exe</i></p>
-										</div>
-										<span style="display:none">Browser Description</span>
-									</li>
-									<li onclick="SelectIssuesTab(this);" id="i_two.exe">
-										<img class="app-icon" src="out\devenv.exe.ico" />
-										<div class="app-info">
-											<p><strong>Two</strong></p>
-											<p><i>two.exe</i></p>
-										</div>
-										<span style="display:none"></span>
-									</li>
-									<li onclick="SelectIssuesTab(this);" id="i_three.exe">
-										<img class="app-icon" src="out\chrome.exe.ico" />
-										<div class="app-info">
-											<p><strong>Three</strong></p>
-											<p><i>three.exe</i></p>
-										</div>
-										<span style="display:none">Other Browser</span>
-									</li>
-                                </ul>
-                            </div>
+    <!-- Page 2: QoE Score -->
+	<div id="page2" class="hidden">
 
-                            <div class="main-container" style="top:130px;">
-                                <!-- Views -->
+	    <form style="position:absolute;top:60px;bottom:60px;right:10px;left:10px;">						
+	    <p class="wiztitle">Please rate the performance of this computer at the moment.</p>
+
+        <div class="input-field col s12" style="background:#ffffff;border:1px solid #e0e0e0;margin-top:0px;height:443px;text-align:center;">
+            <div style="height:180px;"></div>								
+            <p class="range-field">
+                <input type="range" id="qoe" min="1" max="100" />
+            </p>
 								
-								<div class="input-field col s12">
-									<p>Did you experience any of the following problems with <span id="currAppOptional">the application</span> <b id="currAppNameIssues">Google Chrome</b> <span id="currAppExtraIssues"></span> at the moment?</p>
-								</div>
+		    <div id="labels" class="col s12" style="margin-top:-20px;margin-bottom:5px;">
+			    <div class="col s2" style="text-align:left">
+				    Poor
+			    </div>									
+			    <div class="col s8" style="text-align:center">
+				    Good
+			    </div>									
+			    <div class="col s2" style="text-align:right">
+				    Excellent
+			    </div>
+		    </div>
+        </div>
+		</form>
+	</div> <!-- page2 -->
+
+
+    <!-- Page 3: Issues -->
+    <div id="page3" class="hidden">
+    <div>
+	    <p class="wiztitle">
+            If you are experiencing problems with this computer at the moment, please report below. 
+            Use the application tabs if problems are specific to a single application.
+        </p>
+
+        <div class="tab-container" style="top:131px;">
+            <!-- App List -->
+            <ul id="Issues">
+            </ul>
+        </div> <!-- tab-container -->
+
+        <div class="main-container" style="top:130px;">
+            <!-- Views -->
 								
-								<div  id="IssuesContent">
-									<div id="pc">
-										<!--
-											PC Part
-										-->
-											<div class="input-field col s12">
-												<div style="padding:5px;">
-													<input type="text" name="othertext" id="otherpcissue" maxlength="32" onkeyup="addlabel(event, 'otherpcissue', 'pcissues');" onblur="addlabel_blur('otherpcissue', 'pcissues')" placeholder="please enter your problem or click all that apply"/>
-												</div>
-											</div>
+		    <div class="input-field col s12">
+			    <p>
+                    Did you experience any of the following problems with <span id="currAppOptional">the application</span>
+                    <b id="currAppNameIssues"></b> <span id="currAppExtraIssues"></span> at the moment?
+                </p>
+		    </div>
+								
+		    <div  id="IssuesContent">
+			    <div id="pc">
+				    <!--
+					    PC Part
+				    -->
+				    <div class="input-field col s12">
+					    <div style="padding:5px;">
+						    <input type="text" name="othertext" id="otherpcissue" maxlength="32" 
+                                   onkeyup="addlabel(event, 'otherpcissue', 'pcissues');" 
+                                   placeholder="please enter your problem or click all that apply"/>
+					    </div>
+				    </div>
 											
-										<div class="input-field col s12">
-											<div id="pcissues">
-											</div>
-										</div>
-									</div>
+				    <div class="input-field col s12">
+					    <div id="pcissues">
+					    </div>
+				    </div>
+			    </div>
 									
-									<div id="apps">
-										<!--
-											Application Part
-										-->
-										<div class="input-field col s12">
-											<div style="padding:5px;">
-												<input type="text" name="othertext" id="otherissue" maxlength="32" onkeyup="addlabel(event, 'otherissue', 'issues');" onblur="addlabel_blur('otherissue', 'issues')" placeholder="please enter your problem or click all that apply"/>
-											</div>
-										</div>
+			    <div id="apps">
+				    <!--
+					    Application Part
+				    -->
+				    <div class="input-field col s12">
+					    <div style="padding:5px;">
+						    <input type="text" name="othertext" id="otherissue" maxlength="32" 
+                                   onkeyup="addlabel(event, 'otherissue', 'issues');" 
+                                   placeholder="please enter your problem or click all that apply"/>
+					    </div>
+				    </div>
 
-										<div class="input-field col s12">
-											<div id="issues">
-											</div>
-										</div>
-									</div>
-								</div>
+				    <div class="input-field col s12">
+					    <div id="issues">
+					    </div>
+				    </div>
+			    </div>
+		    </div>
+        </div> <!-- main-container -->
+    </div>						
+    </div> <!-- page3 -->
 
-                            </div>
-                        </div>
-						
-                    </div>
-
-                    <div style="text-align:right; position:absolute;bottom:0px;right:10px;">
-                        <a href="#" class="waves-effect waves-grey btn-flat" id="ButtonBack" style="display:none" onclick="showPrevPage();">Back</a>
-                        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonNext" onclick="showNextPage();">Next</a>
-                        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonDone" style="display:none;">Done</a>
-                    </div>
+    <!-- navigation -->
+    <div style="text-align:right; position:absolute;bottom:0px;right:10px;">
+        <a href="#" class="waves-effect waves-grey btn-flat" id="ButtonBack" style="display:none" onclick="showPrevPage();">Back</a>
+        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonNext" onclick="showNextPage();">Next</a>
+        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonDone" style="display:none;">Done</a>
+    </div>
   
-  </div>
+    </div> <!-- row -->
 	
-      <!--Import jQuery before materialize.js-->
-      <script type="text/javascript" src="js/jquery-2.1.1.min.js"></script>
-      <script type="text/javascript" src="js/materialize.min.js"></script>
-	  <script type="text/javascript" src="js/jquery.tagsinput.js"></script>
+    <!--Import jQuery before materialize.js-->
+    <script type="text/javascript" src="js/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="js/materialize.min.js"></script>
+    <script type="text/javascript" src="js/jquery.tagsinput.js"></script>
 
-        <script type="text/javascript">			
-			function showView(viewId, show) {
-				document.getElementById(viewId).style.display = show == true ? "inline-block" : "none";
+    <script type="text/javascript">			
+        //--- Globals -----
+
+        // navigation state
+        var currPage = 0;
+        var totalPages = 3;
+
+        var currCatTab = null;
+        var currIssueTab = null;
+
+        // appId -> { name : "asd" , desc = "asd"} 
+        var appInfo = { 'Computer': { name : 'computer', desc : 'computer' } };
+        // c_appId -> { name => true|false }
+        var appCats = {};
+        // i_appId -> { name => true|false }
+        var appIssues = { 'Computer': {} };
+
+		function showView(viewId, show) {
+			document.getElementById(viewId).style.display = show == true ? "inline-block" : "none";
+		}
+
+		function showPage(pageNumber, show) {
+			var page = document.getElementById('page' + pageNumber);
+			if (page != undefined) {
+				page.className = show ? 'visible' : 'hidden';
 			}
 
-			var currPage = 0;
-			var totalPages = 3;
+			showView('ButtonBack', currPage > 1);
+			showView('ButtonDone', currPage == totalPages);
+			showView('ButtonNext', currPage < totalPages);
+		}
 
-			function showPage(pageNumber, show) {
-				LoadOrSavePageStateAndReturnTabs('page' + pageNumber, show);
-				var page = document.getElementById('page' + pageNumber);
-				if (page != undefined) {
-					page.className = show ? 'visible' : 'hidden';
-				}
+		function showNextPage() {
+			showPage(currPage, false);
+			currPage++;
+			showPage(currPage, true);
+		}
 
-				showView('ButtonBack', currPage > 1);
-				showView('ButtonDone', currPage == totalPages);
-				showView('ButtonNext', currPage < totalPages);
-			}
+		function showPrevPage() {
+			showPage(currPage, false);
+			currPage--;
+			showPage(currPage, true);
+		}
 
-			function showNextPage() {
-				showPage(currPage, false);
-				currPage++;
-				showPage(currPage, true);
-			}
+		function GetSelectedIndex(tabs) {
+		    for (var i = 0; i < tabs.length; i++) {
+		        if (tabs[i].className == "selected") return i;
+		    }
+		    return -1;
+		}
 
-			function showPrevPage() {
-				showPage(currPage, false);
-				currPage--;
-				showPage(currPage, true);
-			}
+		function SelectTab(container, tab) {
+            // app tabs
+		    var tabs = document.getElementById(container).getElementsByTagName('li');
 
-			showNextPage();
+            // clear previous
+		    var prevIdx = GetSelectedIndex(tabs);
+		    if (prevIdx > -1) {
+		        tabs[prevIdx].className = "";
+		    }
 
-            function escape(str) {
-                return str.split('"').join('\\"').split('\r\n').join('\\n').split('\n').join('\\n');
+            // new selected app
+		    tab.className = "selected";
+		}
+
+		function GetTabExtra(tab, container) {
+		    document.getElementById(container).innerHTML = tab.getElementsByTagName("span")[0].innerHTML.length > 0 ? "(" + tab.getElementsByTagName("span")[0].innerHTML + ")" : "";
+		}
+
+		function SelectCategoriesTab(tab) {
+		    if (tab != undefined) {
+		        currCatTab = tab;
+		        SelectTab('Categories', tab);
+
+		        document.getElementById("currAppName").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtra");
+
+		        // restores the "selection" input content
+		        var selectionImport = "";
+		        for (var category in appCats[tab.id]) {
+		            if (appCats[tab.id][category] == true) {
+		                selectionImport += category + ", ";
+		            }
+		        }
+		        $('#selections').importTags(selectionImport);
+		        RestoreCatTags();
+		    }
+		}
+
+		function SelectIssuesTab(tab) {
+		    if (tab != undefined) {
+		        currIssueTab = tab;
+
+		        var computer = (tab.id == "Computer");
+
+		        document.getElementById("pc").style.display = computer ? "block" : "none";
+		        document.getElementById("apps").style.display = computer ? "none" : "block";
+
+		        showView("currAppOptional", !computer);
+
+		        SelectTab('Issues', tab);
+
+		        document.getElementById("currAppNameIssues").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtraIssues");
+
+		        RestoreIssueTags();
+		    }
+		}
+
+        // Called from EsmWizard.cpp on init
+        // Show first page + make first items selected
+		function SelectFirst() {
+		    SelectCategoriesTab(document.getElementById('Categories').getElementsByTagName('li')[0]);
+		    SelectIssuesTab(document.getElementById('Issues').getElementsByTagName('li')[0]);
+
+		    currPage = 1;
+		    showPage(currPage, true);
+		}
+
+        // called from EsmWizard.cpp
+        function GetQoeScore() {
+            return document.getElementById("qoe").value + "";
+        }
+
+        // called from EsmWizard.cpp
+        // returns a comma-separated list of tags or empty string 
+        // of the user activity tags for the given app
+        function GetActivityTags(appid) {
+            var app = appInfo[appid];
+            appid = 'c_' + appid;
+
+            var res = "";
+
+            if (appCats[appid] && app) {
+                var tmp = []
+                for (var k in appCats[appid])
+                    if (appCats[appid][k] == true) tmp.push(k);
+                if (tmp.length > 0)
+                    res = app.name + ';' + app.desc + ';' + tmp.join(',');
             }
 
-            // implement JSON.stringify serialization
-            function stringify(obj) {
+            return res;
+        }
 
-                var t = typeof (obj);
-                if (t != "object" || obj === null) {
-
-                    // simple data type
-                    if (t == "string") obj = '"' + obj + '"';
-                    return String(obj);
-
-                }
-                else {
-
-                    // recurse array or object
-                    var n, v, json = [], arr = (obj && obj.constructor == Array);
-
-                    for (n in obj) {
-                        v = obj[n]; t = typeof (v);
-
-                        if (t == "string") v = '"' + v + '"';
-                        else if (t == "object" && v !== null) v = stringify(v);
-
-                        json.push((arr ? "" : '"' + n + '":') + String(v));
-                    }
-
-                    return (arr ? "[" : "{") + String(json) + (arr ? "]" : "}");
-                }
+        // called from EsmWizard.cpp
+        // returns a comma-separated list of tags or empty string 
+        // of the user problem tags for the given app (if empty for the Computer)
+        function GetProblemTags(appid) {
+            var app = null;
+            if (!appid || appid == "" || appid == 'Computer') {
+                app = appInfo['Computer'];
+                appid = 'Computer';
+            } else {
+                app = appInfo[appid];
+                appid = 'i_' + appid;
             }
 
-            function BuildResult(durationMs) {
-                var result = {};
+            var res = "";
 
-                result['page1'] = GetPageResult('page1');
-                result['page3'] = GetPageResult('page3');
-				
-				
-				var page2 = {};
-				page2.QoE = document.getElementById("qoe").value;
-				result['page2'] = page2;
-				
-				result['duration'] = durationMs;
-				
-				// TODO: add range
-
-                return stringify(result);
+            if (appIssues[appid] && app) {
+                var tmp = []
+                for (var k in appIssues[appid])
+                    if (appIssues[appid][k] == true) tmp.push(k);
+                if (tmp.length>0)
+                    res = app.name + ';' + app.desc + ';' + tmp.join(',');
             }
 
-            function IsPageCompleted(pageId) {
-                var page = document.getElementById("page" + pageId);
-                if (page != undefined) {
-                    var inputs = page.getElementsByTagName("input");
-
-                    for (var i = 0; i < inputs.length; i++) {
-                        var elem = inputs[i];
-                        if (elem.checked) {
-                            var nextElem = elem.nextSibling;
-                            if (nextElem != undefined) {
-                                nextElem = nextElem.nextSibling;
-
-                                if (nextElem != undefined) {
-                                    nextElem = nextElem.nextSibling;
-
-                                    if (nextElem != undefined) {
-                                        nextElem = nextElem.nextSibling;
-                                        if (nextElem != undefined && nextElem.type == "text") {
-                                            if (nextElem.value.length == 0)
-                                                return false;
-                                        }
-                                    }
-                                }
-                            }
-                            return true;
-                        }
-                    }
-
-                    return false;
-                }
-
-                return true;
-            }
-
-            function GetSelectedIndex(tabs) {
-                for (var i = 0; i < tabs.length; i++) {
-                    if (tabs[i].className == "selected")
-                        return i;
-                }
-
-                return -1;
-            }
-
-            var states = {};
-			var categoriesStates = {};
-
-            function SaveState(tabId) {
-                var state = categoriesStates;
-
-                states[tabId] = state;
-				//console.log("SaveState " + tabId + " " + JSON.stringify(state));
-				//console.log("states: " + JSON.stringify(states));
-            }
-
-            function LoadState(tabId) {
-                var state = states[tabId];
-				
-				if (state == undefined) {
-					states[tabId] = {};
-					state = states[tabId];
-				}
-				categoriesStates = state;
-				//console.log("LoadState " + tabId + " " + JSON.stringify(state));
-				
-				RestoreTags();
-				//console.log("states: " + JSON.stringify(states));
-            }
+            return res;
+        }
 			
-			function LoadOrSavePageStateAndReturnTabs(pageId, load) {
-				//console.log("LoadOrSavePageStateAndReturnTabs " + pageId + " " + load);
-                var containerId = null;
-                if (pageId == 'page3') {
-                    containerId = 'Issues';
-				} else if (pageId == 'page1'){
-					containerId = 'Categories';
-				} else {
-					return null;
-				}
+        // called from EsmWizard.cpp
+        function GetNewLabels(containerId) {
+			var result = "";
 				
-                var tabs = document.getElementById(containerId).getElementsByTagName('li');
+            var spans = document.getElementById(containerId + "_tagsinput").getElementsByTagName('span');
+				
+            for (var i = 0; i < spans.length; i++) {
+				var span = spans[i];
+				if (span.className.indexOf("tag") == -1)
+					continue;
 
-                var selIdx = GetSelectedIndex(tabs);
-                if (selIdx > -1) {
-					if (load) {
-						if (pageId.replace('page', '') == currPage) {
-							LoadState(tabs[selIdx].id);
-							RestoreTags();
-						}
-					} else {
-						if (pageId.replace('page', '') == currPage) {
-							SaveState(tabs[selIdx].id);
-						} else {
-							// not current page, so should not save
-							//console.log("ERROR");
-						}
+				result += span.children[0].innerText.trim();
+				result += ",";
+			}
+			return result.substring(0, result.length - 1);
+		}
+			
+		// called from EsmWizard.cpp
+		function GetNewCategories() {
+			return GetNewLabels('categoriesone') + ", " + GetNewLabels('categoriestwo') + ", " + GetNewLabels('categoriesthree') + ", " + GetNewLabels('categoriesfour');
+		}
+
+		// called from EsmWizard.cpp
+		function GetNewIssues() {
+			return GetNewLabels('issues');
+		}
+
+		// called from EsmWizard.cpp
+		function GetNewPCIssues() {
+			return GetNewLabels('pcissues');
+		}
+			
+        // called from EsmWizard.cpp
+		function AppendLabel(type, label) {
+			var all = label.split(',');
+			if (type == 'categories') {
+				if (all.length > 16) {
+					var result = all[15]; // shopping
+					for (var i = 16; i < all.length; i ++) {
+						result += ", " + all[i];
 					}
+					
+					$("#categoriesfour").importTags(result);
+				}
+			} else if (all.length > 0 && label.length > 0) {
+				$("#" + type).importTags(label);
+			}
+		}
+
+		// Called from EsmWizard.cpp
+		function ClearContainers() {
+			var html = "";
+			html += "				<ul>";
+			html += "					<li id=\"Computer\" onclick=\"SelectIssuesTab(this);\">";
+			html += "						<img class=\"app-icon\" src=\"out\\thispc.ico\" />";
+			html += "						<div class=\"app-info\">";
+			html += "							<p><strong>This Computer</strong></p>";
+			html += "							<p><i></i></p>";
+			html += "						</div>";
+			html += "						<span></span>";
+			html += "					</li>";
+			html += "				</ul>";
+			document.getElementById("Issues").innerHTML = html;
+			document.getElementById("Categories").innerHTML = "";
+
+            // reset all previous state(s)
+			appInfo = { 'Computer': { name: 'computer', desc: 'computer' } };
+			appCats = {};
+			appIssues = { 'Computer': {} };
+		}
+			
+		function processName(app) {
+			var result = app.replace(".exe", "");
+			if (app.indexOf("www.") == 0) {
+				result = app.replace("www.", "");
+			}
+			return result;
+		}
+			
+		function RemoveElement(elemId) {
+			var elem = document.getElementById(elemId);
+			if (elem != undefined && elem != null) {
+				elem.parentNode.removeChild(elem);
+			}
+		}
+
+		function RemoveApplication(appId) {
+			RemoveElement("c_" + appId);
+			RemoveElement("i_" + appId);
+				
+			SelectCategoriesTab(document.getElementById('Categories').getElementsByTagName('li')[0]);
+			SelectIssuesTab(document.getElementById('Issues').getElementsByTagName('li')[0]);
+
+			appInfo[appId] = undefined;
+			appCats["c_" + appId] = undefined;
+			appIssues["i_" + appId] = undefined;
+        }
+
+        // Called from EsmWizard.cpp
+		function AppendApp(appId, appName, appDesc, appExtra) {
+		    appInfo[appId] = { name: appName, desc: appDesc };
+
+		    AppendAppCategories(appId, appName, appDesc, appExtra);
+		    AppendAppIssues(appId, appName, appDesc, appExtra);
+		}
+
+		function AppendAppCategories(appId, appName, appDesc, appExtra) {
+		    appCats['c_' + appId] = {};
+
+		    var content = "<li id=\"c_" + appId + "\" onclick=\"SelectCategoriesTab(this);\">";
+		    content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
+		    content += "<div class=\"app-info\"><p><strong>" + processName(appDesc != null && appDesc.length > 0 ? appDesc : appName) + "</strong></p></div>";
+		    content += "<i class=\"tiny mdi-navigation-close app-remove\" onClick='RemoveApplication(\"" + appId + "\")'></i>"
+		    content += "<span style=\"display:none\">" + appExtra + "</span>";
+		    content += "</li>";
+
+		    document.getElementById("Categories").innerHTML += content;
+		}
+
+		function AppendAppIssues(appId, appName, appDesc, appExtra) {
+		    appIssues['i_' + appId] = {};
+
+		    var content = "<li id=\"i_" + appId + "\" onclick=\"SelectIssuesTab(this);\">";
+			content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
+			content += "<div class=\"app-info\"><p><strong>" + processName(appDesc != null && appDesc.length > 0 ? appDesc : appName) + "</strong></p></div>";
+			content += "<span style=\"display:none;\">" + appExtra + "</span>";
+			content += "</li>";
+
+			document.getElementById("Issues").innerHTML += content;
+		}
+			
+		// Called from EsmWizard.cpp
+		function AppendInstalledApp(appId, appName, appDesc) {
+			var content = "<div class=\"app-installed\" onclick=\"AddInstalledApplication(" + appId + ",'" + appName + "','" + appDesc + "');\">";
+			content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
+			content += "<div class=\"app-info\"><p style=\"width:500px;\"><strong>" + appDesc + "</strong></p></div>";				
+			content += "</div>";
+				
+			document.getElementById("InstalledApps").innerHTML += content;
+		}
+			
+		function OpenAddApplication() {
+			document.getElementById('open-add-app').click();
+		}
+			
+		function AddInstalledApplication(appId, appName, appDesc) {
+		    AppendApp(appId, appName, appDesc, "");
+		    document.getElementById("modal-add-app-cancel").click();
+
+		    var applist = document.getElementById('Categories').getElementsByTagName('li');
+		    var isslist = document.getElementById('Issues').getElementsByTagName('li');
+		    SelectCategoriesTab(applist[applist.length - 1]);
+		    SelectIssuesTab(isslist[0]);
+		}
+
+		function escape(str) {
+		    return str.split('"').join('\\"').split('\r\n').join('\\n').split('\n').join('\\n');
+		}
+			
+		function OpenModal() {
+			document.getElementById("open-modal").click();
+		}			
+
+		function RestoreIssueTags() {
+		    $(".tag").each(function () {
+		        var text = $(this).children().first().text().trim();
+		        $(this).attr('class', appIssues[currIssueTab.id][text] == true ? 'tag active' : 'tag');
+		    });
+		}
+
+		function RestoreCatTags() {
+		    $(".tag").each(function () {
+		        var text = $(this).children().first().text().trim();
+		        $(this).attr('class', appCats[currCatTab.id][text] == true ? 'tag active' : 'tag');
+		    });
+		}
+
+        // handle predefined tag selection
+        function OnClickSpan(span)
+        {
+	        if (span.parent().attr('id').indexOf("selections") > -1)
+		        // ignore selections element
+		        return;
+		
+            // tag text
+	        var text = span.children().first().text().trim();
+		
+	        if (span.attr('class').indexOf("active") > -1) {
+                // tag deactivated
+	            span.attr('class', 'tag');
+	            if (span.parent().attr('id').indexOf("issues") > -1) {
+		            appIssues[currIssueTab.id][escape(text)] = undefined;
+		        } else {
+		            $('#selections').removeTag(text);
+		        }
+	        } else {
+                // activated
+	            span.attr('class', 'tag active');
+	            if (span.parent().attr('id').indexOf("issues") > -1) {
+		            appIssues[currIssueTab.id][escape(text)] = true;
+		        } else {
+		            $('#selections').addTag(text);
+		        }
+	        }
+        }
+	
+        // handle user defined tag addition
+	    function addlabel(e, inputid, container) {
+		    var charCode = (typeof e.which === "number") ? e.which : e.keyCode;		
+		    if (charCode == 13) {
+                // tag text
+		        var text = document.getElementById(inputid).value;
+		        document.getElementById(inputid).value = "";
+
+		        if (container.indexOf('issues') > 0) {
+		            // add new issue
+		            if (!$('#' + container).tagExist(text))
+    		            $('#' + container).addTag(text);
+		            appIssues[currIssueTab.id][escape(text)] = true;
+		            RestoreIssueTags();
+		        } else {
+                    // add new activity
+		            if (!$('#' + container).tagExist(text))
+		                $('#' + container).addTag(text);
+		            showCat($('#' + container).parent(), false);
+		            $('#selections').addTag(text);
                 }
-				
-				return tabs;
-			}
-			
-            function GetPageResult(pageId) {
-				// save state;
-				var tabs = LoadOrSavePageStateAndReturnTabs(pageId, false);
-
-                var result = {};
-
-                for (var i = 0; i < tabs.length; i++) {
-                    var state = states[tabs[i].id];
-                    if (state == undefined)
-                        continue;
-
-					result[tabs[i].id] = state;
-                }
-
-                return result;
-            }
-
-            function SelectTab(tabId, tab) {
-                var tabs = document.getElementById(tabId).getElementsByTagName('li');
-
-                var prevIdx = GetSelectedIndex(tabs);
-                if (prevIdx > -1) {
-                    tabs[prevIdx].className = "";
-
-                    //save the state of tabId + Content
-                    SaveState(tabs[prevIdx].id, tabId);
-                }
-
-                tab.className = "selected";
-
-				// TODO: refactor this
-				if (tab.offsetParent != null) {
-					// restore the state of tabId + Content
-					LoadState(tabs[GetSelectedIndex(tabs)].id, tabId);
-				}
-            }
-			
-			function GetTabExtra(tab, container) {
-				document.getElementById(container).innerHTML = tab.getElementsByTagName("span")[0].innerHTML.length > 0 ? "(" + tab.getElementsByTagName("span")[0].innerHTML + ")" : "";
-			}
-			
-            function SelectCategoriesTab(tab) {
-				if (tab != undefined) {
-					SelectTab('Categories', tab);
-					DisableAllInputs('notused', 'CategoriesSubContent');
-					
-					document.getElementById("currAppName").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
-					GetTabExtra(tab, "currAppExtra");
-					
-					
-					// restores the "selection" input content
-					var selectionImport = "";
-					for(var category in categoriesStates) {
-						if (categoriesStates[category] == true) {
-							selectionImport += category + ", ";
-						}
-					}
-					$('#selections').importTags(selectionImport);
-					RestoreTags();
-				}
-            }
-
-            function SelectCategoriesFirstTab() {
-                SelectCategoriesTab(document.getElementById('Categories').getElementsByTagName('li')[0]);
-            }
-
-            function SelectIssuesTab(tab) {
-				if (tab != undefined) {
-					var computer = tab.id == "Computer";
-					document.getElementById("pc").style.display = computer ? "block" : "none";
-					document.getElementById("apps").style.display = computer ? "none" : "block";
-					
-					showView("currAppOptional", !computer);
-					
-					SelectTab('Issues', tab);
-					
-					document.getElementById("currAppNameIssues").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
-					GetTabExtra(tab, "currAppExtraIssues");
-				}
-            }
-
-            function SelectIssuesFirstTab() {
-                SelectIssuesTab(document.getElementById('Issues').getElementsByTagName('li')[0]);
-            }
-			
-			function GetNewLabels(containerId) {
-				var result = "";
-				
-                var spans = document.getElementById(containerId + "_tagsinput").getElementsByTagName('span');
-				
-                for (var i = 0; i < spans.length; i++) {
-					var span = spans[i];
-					if (span.className.indexOf("tag") == -1)
-						continue;
-
-					result += span.children[0].innerText.trim();
-					result += ",";
-				}
-				return result.substring(0, result.length - 1);
-			}
-			
-			function GetNewCategories() {
-				return GetNewLabels('categoriesone') + ", " + GetNewLabels('categoriestwo') + ", " + GetNewLabels('categoriesthree') + ", " + GetNewLabels('categoriesfour');
-			}
-
-			function GetNewIssues() {
-				return GetNewLabels('issues');
-			}
-
-			function GetNewPCIssues() {
-				return GetNewLabels('pcissues');
-			}
-			
-			// userissues usercategories
-			// TODO: refactor this stuff!
-			function AppendLabel(type, label) {
-				var all = label.split(',');
-				if (type == 'categories') {
-					if (all.length > 16) {
-						var result = all[15]; // shopping
-						for (var i = 16; i < all.length; i ++) {
-							result += ", " + all[i];
-						}
-					
-						$("#categoriesfour").importTags(result);
-					}
-				} else if (all.length > 0 && label.length > 0) {
-					$("#" + type).importTags(label);
-				}
-			}
-
-            function autocheck(thisVal, checkId) {
-                document.getElementById(checkId).checked = thisVal.length > 0;
-            }
-			
-			function focusinput(checkId, inputId) {
-				var checked = document.getElementById(checkId).checked;
-				
-				setTimeout(function() {
-					if (checked) {
-						document.getElementById(inputId).focus();
-					} else {
-						document.getElementById(inputId).value = "";
-						document.getElementById(inputId).blur();
-					}
-				}, 10);
-			}
-			
-			function ClearContainers() {
-				var html = "";
-				html += "				<ul>";
-				html += "					<li id=\"Computer\" onclick=\"SelectIssuesTab(this);\">";
-				html += "						<img class=\"app-icon\" src=\"out\\thispc.ico\" />";
-				html += "						<div class=\"app-info\">";
-				html += "							<p><strong>This Computer</strong></p>";
-				html += "							<p><i></i></p>";
-				html += "						</div>";
-				html += "						<span></span>";
-				html += "					</li>";
-				html += "				</ul>";
-				document.getElementById("Issues").innerHTML = html;
-				document.getElementById("Categories").innerHTML = "";
-			}
-			
-			function processName(app) {
-				var result = app.replace(".exe", "");
-				if (app.indexOf("www.") == 0) {
-					result = app.replace("www.", "");
-				}
-				return result;
-			}
-			
-			function AppendAppCategories(appId, appName, appDesc, appExtra) {
-				var content = "<li id=\"c_" + appId + "\" onclick=\"SelectCategoriesTab(this);\">";
-				content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
-				content += "<div class=\"app-info\"><p><strong>" + processName(appDesc != null && appDesc.length > 0 ? appDesc : appName) + "</strong></p></div>";
-				content += "<i class=\"tiny mdi-navigation-close app-remove\" onClick='RemoveApplication(\"" + appId + "\")'></i>"
-				content += "<span style=\"display:none\">" + appExtra + "</span>";
-				content += "</li>";
-				document.getElementById("Categories").innerHTML += content;
-			}
-			
-			function RemoveElement(elemId) {
-				var elem = document.getElementById(elemId);
-				if (elem != undefined && elem != null) {
-					elem.parentNode.removeChild(elem);
-				}
-			}
-			function RemoveApplication(appId) {
-				console.log("Remove application " + appId);
-				RemoveElement("c_" + appId);
-				RemoveElement("i_" + appId);
-				
-				setTimeout(function() {
-					SelectCategoriesFirstTab();
-					SelectIssuesFirstTab();
-				}, 10);
-			}
-
-			function AppendAppIssues(appId, appName, appDesc, appExtra) {
-				var content = "<li id=\"i_" + appId + "\" onclick=\"SelectIssuesTab(this);\">";
-				content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
-				content += "<div class=\"app-info\"><p><strong>" + processName(appDesc != null && appDesc.length > 0 ? appDesc : appName) + "</strong></p></div>";
-				content += "<span style=\"display:none;\">" + appExtra + "</span>";
-				content += "</li>";
-				document.getElementById("Issues").innerHTML += content;
-			}
-			
-			function AppendInstalledApp(appName, appDesc) {
-				var content = "<div class=\"app-installed\" onclick=\"InternalAddApplication(this);\">";
-				content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
-				content += "<div class=\"app-info\"><p style=\"width:500px;\"><strong>" + appDesc + "</strong></p></div>";				
-				content += "</div>";
-				
-				document.getElementById("InstalledApps").innerHTML += content;
-			}
-			
-			function OpenAddApplication() {
-				document.getElementById('open-add-app').click();
-			}
-			
-			function isalpha(c) {
-				return (((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')));
-			}
-
-			function isdigit(c) {
-				return ((c >= '0') && (c <= '9'));
-			}
-
-			function isalnum(c) {
-				return (isalpha(c) || isdigit(c));
-			}
-			
-			function InternalAddApplication(object) {
-				var appDesc = object.getElementsByTagName("strong")[0].innerHTML;
-				
-				// messy, i know
-				var appName = object.getElementsByTagName("img")[0].src;
-				if (appName != undefined && appName != null) {
-					appName = appName.substring(appName.lastIndexOf("/") + 1);
-					
-					if (appName.indexOf(".ico") > -1) {
-						// remove trailing .ico
-						appName = appName.substring(0, appName.length - 4);
-					}
-				}
-				
-				AddApplication(appName, appDesc);
-			}
-			
-			function AddApplication(appName, appDesc) {
-				var d = new Date();
-				var n = d.getTime();
-				
-				AppendAppCategories(appName + "_" + n, appName, appDesc, "");
-				AppendAppIssues(appName + "_" + n, appName, appDesc, "");
-				
-				document.getElementById("modal-add-app-cancel").click();
-			}
-			
-			function DisableAllInputs(checkId, containerId) {
-				//console.log("disable all inputs");
-				return;
-				var checked = document.getElementById(checkId).checked;
-				
-				var container = document.getElementById(containerId);
-				var inputs = container.getElementsByTagName("input");
-				for (var i = 0; i < inputs.length; i ++) {
-					inputs[i].disabled = checked;
-				}
-				
-				var categoriesTabs = document.getElementById("Categories").getElementsByTagName('li');
-				var issuesTabs = document.getElementById("Issues").getElementsByTagName('li');
-				
-				var prevIdx = GetSelectedIndex(categoriesTabs);
-				if (prevIdx > -1) {
-					// // TODO: will be +/- 1 since we add my computer;
-					issuesTabs[prevIdx + 1].style.display = checked ? "none" : "block";
-				}
-			}
-			
-            $('#qoe').on("change mousemove", function () {
-            });
-			
-			$(document).ready(function(){
-				// the "href" attribute of .modal-trigger must specify the modal ID that wants to be triggered
-				$('.modal-trigger').leanModal();
-			});
-			
-			function OpenModal() {
-				document.getElementById("open-modal").click();
-			}
-			
+		    }
+	    }
 	
-	function OnClickSpan(span)
-	{
-		if (span.parent().attr('id').indexOf("selections") > -1)
-		{
-			// ignore selections element
-			return;
-		}
+	    $(function () {
+	        function initTagInput(inputId) {
+	            $("#" + inputId).tagsInput({
+	                width: 'auto',
+	                removeWithBackspace: false,
+	                defaultText: 'enter another activity',
+	                height: '0px',
+	                interactive: false,
+	                unique: true,
+	                onChange: function (elem, tag) {
+	                    $(".tag").unbind().click(function () {
+	                        OnClickSpan($(this));
+	                    });
+	                }
+	            });
+	        }
+
+		    initTagInput('categoriesone');
+		    initTagInput('categoriestwo');
+		    initTagInput('categoriesthree');
+		    initTagInput('categoriesfour');
+
+		    initTagInput('issues');
+		    initTagInput('pcissues');
 		
-		var text = span.children().first().text().trim();
-		
-		if (span.attr('class').indexOf("active") > -1)
-		{
-			span.attr('class', 'tag');
-			categoriesStates[escape(text)] = false;
-			
-			$('#selections').removeTag(text);
-			RestoreTags();
-		}
-		else
-		{
-			span.attr('class', 'tag active');
-			categoriesStates[escape(text)] = true;
-			
-			$('#selections').addTag(text);
-			RestoreTags();
-		}
-		
-		//console.log("onClick " + text + " [" + categoriesStates[text] + "]");
-    }
-	
-	function RestoreTags() {
-		$(".tag").each(function() {
-			var text = $(this).children().first().text().trim();
-			
-			$(this).attr('class', categoriesStates[text] == true ? 'tag active' : 'tag');
-		});
-	}
-	
-	function OnRemoveSelection(text)
-	{
-		categoriesStates[escape(text)] = false;
-		RestoreTags();
-	}
-	
-    function onAddTag(tag) {
-		// TODO?
-    }
-	
-	function updateSelections(e) {	
-		var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+            // This is the list of selected activities
+		    $("#selections").tagsInput({
+			    width: 'auto',
+			    removeWithBackspace:false,
+			    defaultText:'enter another activity',
+			    height: '0px',
+			    interactive:false,
+			    unique:true,
 
-		if (charCode == 13) {
-			var text = document.getElementById('othertext').value;
-			
-			$('#selections').addTag(text);
-			RestoreTags();
-		}
-	}
-	
-	function addlabel(e, inputid, container) {
-		var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
-		
-		if (charCode == 13) {
-			var text = document.getElementById(inputid).value;
-			categoriesStates[escape(text)] = true;
-			$('#' + container).addTag(text, {'unique': true});
-			
-			document.getElementById(inputid).value = "";
-		}
-	}
-	
-	function addlabel_blur(inputid, container) {
-		var text = document.getElementById(inputid).value;
-		categoriesStates[escape(text)] = true;
-		$('#' + container).addTag(text, {'unique': true});
-		
-		document.getElementById(inputid).value = "";
-	}
-	
-	function initTagInput(inputId) {
-		$("#" + inputId).tagsInput({
-			width: 'auto',
-			removeWithBackspace:false,
-			defaultText:'enter another activity',
-			height: '0px',
-			interactive:false,
-			unique:true,
-			onChange: function(elem, tag)
-			{
-				$(".tag").unbind().click(function() {
-					OnClickSpan($(this));
-				});
-				
-				if (tag == undefined) {
-					RestoreTags();
-				}
-			},
+			    onAddTag: function(tag) {
+			        appCats[currCatTab.id][tag] = true;
+			        RestoreCatTags();
+			    },
 
-			onAddTag: function(tag) {
-				// console.log("onAddTag " + tag);
-				result = tag;
-				
-				RestoreTags();
-			}
-		});
-	}
+			    onRemoveTag: function(tag) {
+                    appCats[currCatTab.id][tag] = undefined;
+                    RestoreCatTags();
+			    }
+		    });
+        });
+	
+	    function showCat(contentElem, toggle) {
+		    var visible = true;
+		    if (!contentElem.is(':visible')) {
+			    $('.content').hide();
+			    contentElem.slideToggle();
+		    } else if (toggle) {
+			    visible = false;
+			    contentElem.slideToggle();
+		    }
+		
+		    contentElem.parent().parent().parent().find('i').attr('class', 'mdi-content-add');
+		    contentElem.parent().find('i').attr('class', visible ? 'mdi-content-remove' : 'mdi-content-add');
+	    }
+	
+	    $(function(){
+		    $('legend').click(function(){			
+			    showCat($(this).parent().find('.content'), true);
+		    });
+	    });
+	
+	    function showForthLegend(e) {	
+		    var charCode = (typeof e.which === "number") ? e.which : e.keyCode;		
+		    if (charCode == 13) {
+		    }
+	    }
 
-	$(function() {
-		initTagInput('categoriesone');
-		initTagInput('categoriestwo');
-		initTagInput('categoriesthree');
-		initTagInput('categoriesfour');
-		initTagInput('issues');
-		initTagInput('pcissues');
-		
-		$("#selections").tagsInput({
-			width: 'auto',
-			removeWithBackspace:false,
-			defaultText:'enter another activity',
-			height: '0px',
-			interactive:false,
-			unique:true,
-			onChange: function(elem, tag)
-			{
-			},
+	    $(document).ready(function() {
+	        // the "href" attribute of .modal-trigger must specify the modal ID that wants to be triggered
+	        $('.modal-trigger').leanModal();
 
-			onAddTag: function(tag) {
-			},
-			
-			onRemoveTag: function(tag) {
-				OnRemoveSelection(tag);
-			}
-		});
-    });
-	
-	function showCat(contentElem, toggle) {
-		var visible = true;
-		if (!contentElem.is(':visible')) {
-			$('.content').hide();
-			contentElem.slideToggle();
-		} else if (toggle) {
-			visible = false;
-			contentElem.slideToggle();
-		}
-		
-		contentElem.parent().parent().parent().find('i').attr('class', 'mdi-content-add');
-		contentElem.parent().find('i').attr('class', visible ? 'mdi-content-remove' : 'mdi-content-add');
-	}
-	
-	$(function(){
-		$('legend').click(function(){			
-			showCat($(this).parent().find('.content'), true);
-		});
-	});
-	
-	function showForthLegend(e) {	
-		var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
-		
-		if (charCode == 13) {
-			showCat($('#categoriesfour').parent(), false);
-		}
-	}
-	
-	$(document).ready(function() {
-		$('#categoriesone').importTags("News & Weather, Education & Learning, Reviews & listings, Public & Commercial Services");
-		$('#categoriestwo').importTags("Video streaming, Music, Books & Magazines, Games, Images & Photos, Hobbies");
-		$('#categoriesthree').importTags("Email, Video & voice call, Social Media, Chat, Blogs");
-		$('#categoriesfour').importTags("Shopping & Selling, Banking & finance, Cloud storage, Computer management, Media downloads, Utilities, Calendars, Maps, Web searches");
-		$('#pcissues').importTags("No connection,Frequent disconnections, Slow connection, Slow computer");
-		$('#issues').importTags("Application can't connect, Application keeps disconnecting, Application is slow, Poor voice or audio quality,Poor video quality");
-		$(window).focus();
-	});
-	
-	ClearContainers();
-	AppendAppCategories("one.exe", "chrome.exe", "Chrome", "");
-	AppendAppCategories("www.google.com", "www.google.com", "www.google.com", "Extra");
-	AppendAppIssues("one.exe", "chrome.EXE", "Chrome");
-	AppendAppIssues("two.exe", "WinSCP.exe", "WinSCP");
-	SelectIssuesFirstTab();
-	SelectCategoriesFirstTab();
-        </script>
+            // Default activity tags
+	        $('#categoriesone').importTags("News & Weather, Education & Learning, Reviews & listings, Public & Commercial Services");
+		    $('#categoriestwo').importTags("Video streaming, Music, Books & Magazines, Games, Images & Photos, Hobbies");
+		    $('#categoriesthree').importTags("Email, Video & voice call, Social Media, Chat, Blogs");
+		    $('#categoriesfour').importTags("Shopping & Selling, Banking & finance, Cloud storage, Computer management, Media downloads, Utilities, Calendars, Maps, Web searches");
+
+            // Default 'Computer' issues
+		    $('#pcissues').importTags("No connection,Frequent disconnections, Slow connection, Slow computer");
+
+            // Default App issues
+		    $('#issues').importTags("Application can't connect, Application keeps disconnecting, Application is slow, Poor voice or audio quality,Poor video quality");
+
+		    $(window).focus();
+	    });
+
+        // some test content - just here if this html is opened in the browser for testing .. EsmWizard.cpp will reset all this
+	    ClearContainers();
+	    AppendApp("1", "chrome.exe", "Chrome", "");
+    	AppendApp("2", "www.google.com", "www.google.com", "Extra");
+    	SelectFirst();
+
+    </script>
     </body>
   </html>

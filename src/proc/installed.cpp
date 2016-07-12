@@ -149,7 +149,9 @@ PROCAPI void ReleaseApplicationsList(int nCount, TCHAR ** &pszPaths, TCHAR ** &p
 PROCAPI void PullInstalledApps(TCHAR *szPath, DWORD dwSize)
 {
 	TCHAR szOut[MAX_PATH] = { 0 };
-	_stprintf_s(szPath, dwSize, _T("%S\\%d_installed.txt"), TEMP_PATH, GetTickCount());
+	_stprintf_s(szOut, MAX_PATH, _T("%S\\%d_installed.txt"), TEMP_PATH, GetTickCount());
+	if (!_wfullpath(szPath, szOut, dwSize))
+		return;
 
 	TCHAR ** pszApps = 0, ** pszDesc = 0;
 	int nCount = QueryApplicationsList(pszApps, pszDesc);

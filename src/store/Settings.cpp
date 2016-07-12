@@ -60,11 +60,11 @@ void loadDefaults() {
 		mDefSettings[AutoSubmitRetryCount] = "1";
 		mDefSettings[AutoSubmitRetryInterval] = "1000";
 		mDefSettings[AutoSubmitInterval] = "300000";
-		mDefSettings[SubmitServer] = "http://localhost:3000";
-		mDefSettings[UpdateLocation] = "http://localhost:8000";
+		mDefSettings[SubmitServer] = "http://137.194.165.58:1337";
+		mDefSettings[UpdateLocation] = "http://137.194.165.58:1337";
 		mDefSettings[NetLocationActive] = "0";
 		mDefSettings[DebugMode] = "1";
-		mDefSettings[PcapSizeLimit] = "1000000"; // 1MB
+		mDefSettings[PcapSizeLimit] = "5000000"; // 5MB
 #endif
 	}
 }

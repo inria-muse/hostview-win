@@ -110,7 +110,7 @@ HostView tracks updates to system power state changes via power settings change 
 		user_precense - 0 (present) | 2 (not present)
 		monitor_power - 0 (off) | 1 (on)
 
-See MSDN documentation on ''Power Setting GUIDs' for more info on the above power states.
+See MSDN documentation on 'Power Setting GUIDs' for more info on the above power states.
 
 
 ### User Activity ###
@@ -190,7 +190,7 @@ The backend processing scripts should always first merge all pcaps with same ses
 before any processing. The number and the part|last flag can be used to track if all the pcaps are 
 available.
 
-HostView does some processing on the packet trace during the capture: it parses DNS packets and HTTP requests.
+HostView can do some processing on the packet trace during the capture: it parses DNS packets and HTTP requests.
 DNS packets are also fully recorded in the pcap. In contrast, HTTP headers are not included in the trace, only the parsed
 requests. The HTTP parsing is a bit redundant with the browser activity tracking extensions (which can also see HTTPS
 requests that we cannot parse from the pcap) but we'll keep it for now to capture non-browser HTTP traffic for example.
@@ -200,6 +200,13 @@ the raw pcap file corresponding to the rows.
 
 	Table: dns(timestamp, connstart, 5-tuple, ...)
 	Table: http(timestamp, connstart, 5-tuple, ...)
+
+* Enable trace parsing
+
+	Setting: enableDnsParsing = 1
+	Setting: enableHttpParsing = 0 
+
+TODO: we should probably remove the http parsing feature all together, browser plugins do better job here.
 
 
 ## Browser Data ##
@@ -239,6 +246,14 @@ The popup algorithm is roughly as follows:
 			if (esmShows < esmMaxShows && useractive && !fullscreen && flipCoin() < exmCoinFlipProb):
 				doESM()
 				esmShows++
+
+
+The results are stored in the session db (rows with the same timestamp belong to the same questionnaire, timestamp
+is the time it was shown to the user):
+
+	Table: esm(timestamp, ..)
+	Table: esm_activity_tags(timestamp, ...)
+	Table: esm_problem_tags(timestamp, ...)
 
 
 ## Data Uploads ##
@@ -426,8 +441,24 @@ CREATE TABLE IF NOT EXISTS powerstate(
 	event VARCHAR(32), 
 	value INT);
 
-netlabel(
+CREATE TABLE IF NOT EXISTS netlabel(
 	timestamp INT8, 
 	guid VARCHAR(260), 
 	gateway VARCHAR(64), 
 	label VARCHAR(260));
+
+CREATE TABLE IF NOT EXISTS esm(
+	timestamp INT8, 
+	ondemand TINYINT, 
+	duration INT8, 
+	qoe_score INTEGER);
+
+CREATE TABLE IF NOT EXISTS esm_activity_tags(
+	timestamp INT8, 
+	appname VARCHAR(260), 
+	tags VARCHAR(1024));
+	
+CREATE TABLE IF NOT EXISTS esm_problem_tags(
+	timestamp INT8, 
+	appname VARCHAR(260), 
+	tags VARCHAR(1024));

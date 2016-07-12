@@ -93,7 +93,7 @@ private:
 	SysInfo m_sysInfo;
 	char szHdd[MAX_PATH] = { 0 };
 
-	BOOL m_fUdpdatePending;
+	BOOL m_fUpdatePending;
 
 	BOOL m_fStopping;
 	HANDLE m_hStoppedEvent;
@@ -119,6 +119,11 @@ private:
 
 	void LogNetwork(const NetworkInterface &ni, ULONGLONG timestamp, bool connected);
 	bool ShowQuestionnaireUI(BOOL fOnDemand = TRUE);
+
+	// current active questionnaire info
+	ULONGLONG m_qStartTime;
+	BOOL m_qOnDemand;
+	size_t m_qCounter;
 
 	// Updates the in-memory app usage info for the questionnaire
 	void UpdateQuestionnaireAppUsageInfo(DWORD dwPid, TCHAR *szUser, TCHAR *szApp);

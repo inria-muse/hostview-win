@@ -184,7 +184,10 @@ void OnEsmCommand(BOOL fOnDemand)
 			}
 
 			ClearAppList(runningApps);
-		} // else the service is not reachable ..
+		}
+		else {
+			// else the service is not reachable .. don't show ?
+		}
 	}
 	CoUninitialize();
 }

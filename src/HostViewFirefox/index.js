@@ -132,7 +132,7 @@ pageMod.PageMod({
 				let e = obj.restiming[i];
 				e.name = stripUrl(e.name);
 				if (e.name.hostname)
-					e.ip = resolveIp(e.name.hostname);
+						e.ip = resolveIp(e.name.hostname);
 			}
 
 			// add some addon + browser metadata

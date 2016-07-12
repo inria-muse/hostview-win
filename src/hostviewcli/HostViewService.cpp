@@ -41,7 +41,7 @@ CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCa
 	m_startTime = 0;
 	m_hasSeenUI = FALSE;
 	m_upload = NULL;
-	m_fUdpdatePending = FALSE;
+	m_fUpdatePending = FALSE;
 
 	// Create a manual-reset event that is not signaled at first to indicate 
 	// the stopped signal of the service.
@@ -94,14 +94,14 @@ void CHostViewService::ServiceWorkerThread(void)
 		Sleep(500);
 		dwNow = GetTickCount();
 
-		if (m_fUdpdatePending)
+		if (m_fUpdatePending)
 			continue; // will stop soon
 
 		if (m_fUserStopped)
 		{
 			if (dwNow - m_dwUserStoppedTime >= m_settings.GetULong(AutoRestartTimeout))
 			{
-				// send self message to re-start capture
+				// autorestart
 				SendServiceMessage(Message(MessageStartCapture));
 			}
 
@@ -115,7 +115,7 @@ void CHostViewService::ServiceWorkerThread(void)
 		RunQuestionnaireIfCase(dwNow);
 		RunAutoSubmit(dwNow);
 		if (RunAutoUpdate(dwNow)) {
-			m_fUdpdatePending = TRUE;
+			m_fUpdatePending = TRUE;
 			continue; // going to update
 		}
 
@@ -128,7 +128,8 @@ void CHostViewService::ServiceWorkerThread(void)
 			// at night (e.g. a pc that is on all the time), we except sessions 
 			// mostly to follow computer sleep cycles (see suspend+resume). This
 			// is here just to ensure some hard limit on the duration of a single session.
-			if (st.wHour >= 2 && st.wHour <= 5 && (dwNow - m_startTime >= 21*3600*1000)) {
+			if (st.wHour >= 2 && st.wHour <= 3 && lastRotateDay < st.wDay) {
+				lastRotateDay = st.wDay;
 				SendServiceMessage(Message(MessageRestartSession));
 			}
 
@@ -182,12 +183,14 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 		if (_tcslen(m_sysInfo.hddSerial) <= 0)
 		{
 			Debug("[SRV] fatal : we don't know the hddSerial");
+			m_startTime = 0;
 			return;
 		}
 		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
 
 		if (!m_store.Open(m_startTime)) {
 			Debug("[SRV] fatal : failed to open the data store");
+			m_startTime = 0;
 			return;
 		}
 
@@ -219,7 +222,7 @@ void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 
 void CHostViewService::OnPowerEvent(PPOWERBROADCAST_SETTING event)
 {
-	if (!m_fUserStopped) {
+	if (!m_fUserStopped && m_startTime!=0) {
 		if (IsEqualGUID(event->PowerSetting, GUID_BATTERY_PERCENTAGE_REMAINING)) {
 			m_store.InsertPowerState(GetHiResTimestamp(), "battery", event->Data[0]);
 		}
@@ -290,9 +293,14 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 
 void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInterface)
 {
+	if (m_startTime == 0) {
+		return; // no session
+	}
+
 	ULONGLONG timestamp = GetHiResTimestamp(); // connection id
 
 	LogNetwork(networkInterface, timestamp, true);
+
 	StartCapture(*this, m_startTime, timestamp, m_settings.GetULong(PcapSizeLimit), m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
 
 	// resolve network location
@@ -319,6 +327,10 @@ void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInter
 
 void CHostViewService::OnInterfaceDisconnected(const NetworkInterface &networkInterface)
 {
+	if (m_startTime == 0) {
+		return; // no session
+	}
+
 	ULONGLONG timestamp = GetHiResTimestamp();
 	StopCapture(networkInterface.strGuid.c_str());
 	LogNetwork(networkInterface, timestamp, false);
@@ -326,12 +338,20 @@ void CHostViewService::OnInterfaceDisconnected(const NetworkInterface &networkIn
 
 void CHostViewService::OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state)
 {
+	if (m_startTime == 0) {
+		return; // no session
+	}
+
 	ULONGLONG timestamp = GetHiResTimestamp();
 	m_store.InsertWifi(szGuid, tSpeed, rSpeed, signal, rssi, state, timestamp);
 }
 
 void CHostViewService::OnDNSAnswer(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost)
 {
+	if (m_startTime == 0) {
+		return; // no session
+	}
+
 	ULONGLONG timestamp = GetHiResTimestamp();
 	m_store.InsertDns(connection, type, szIp, szHost, protocol, szSrc, szDest, srcport, destport, timestamp);
 }
@@ -339,6 +359,10 @@ void CHostViewService::OnDNSAnswer(ULONGLONG connection, int protocol, char *szS
 void CHostViewService::OnHttpHeaders(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,
 	char *szStatusCode, char *szHost, char *szReferer, char *szContentType, char *szContentLength)
 {
+	if (m_startTime == 0) {
+		return; // no session
+	}
+
 	ULONGLONG timestamp = GetHiResTimestamp();
 	m_store.InsertHttp(connection, szVerb, szVerbParam, szStatusCode, szHost, szReferer, szContentType, szContentLength, protocol, szSrc, szDest,
 		srcport, destport, timestamp);
@@ -346,7 +370,7 @@ void CHostViewService::OnHttpHeaders(ULONGLONG connection, int protocol, char *s
 
 bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 {
-	if (location && browser && !m_fUserStopped)
+	if (location && browser && !m_fUserStopped && m_startTime!=0)
 	{
 		m_store.InsertBrowser(browser, location, GetHiResTimestamp());
 		UpdateQuestionnaireSiteUsageInfo(location, browser);
@@ -356,7 +380,7 @@ bool CHostViewService::OnBrowserLocationUpdate(TCHAR *location, TCHAR *browser)
 }
 
 bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
-	if (jsonbuf && len > 0 && !m_fUserStopped) {
+	if (jsonbuf && len > 0 && !m_fUserStopped && m_startTime != 0) {
 		char fn[MAX_PATH];
 		sprintf_s(fn, "%s\\%llu_%llu_browserupload.json", TEMP_PATH, m_startTime, GetHiResTimestamp());
 		FILE * f = NULL;
@@ -375,6 +399,9 @@ bool CHostViewService::OnJsonUpload(char **jsonbuf, size_t len) {
 bool CHostViewService::ReadIpTable(DWORD now)
 {
 	static DWORD dwIpLastWrite = 0;
+	if (m_startTime == 0) {
+		return false; // no session
+	}
 
 	if (now - dwIpLastWrite >= m_settings.GetULong(SocketStatsTimeout))
 	{
@@ -397,6 +424,9 @@ bool CHostViewService::ReadIpTable(DWORD now)
 bool CHostViewService::ReadPerfTable(DWORD now)
 {
 	static DWORD dwPerfLastWrite = 0;
+	if (m_startTime == 0) {
+		return false; // no session
+	}
 
 	if (now - dwPerfLastWrite >= m_settings.GetULong(SystemStatsTimeout))
 	{
@@ -419,7 +449,7 @@ bool CHostViewService::ReadPerfTable(DWORD now)
 void CHostViewService::RunNetworkLabeling() {
 	if (m_settings.GetBoolean(NetLabellingActive) &&
 		m_hasSeenUI && !m_fUserStopped && !m_fIdle && !m_fFullScreen &&
-		m_interfacesQueue.size() > 0) 
+		m_interfacesQueue.size() > 0 && m_startTime != 0) 
 	{
 		NetworkInterface ni = m_interfacesQueue[0];
 		TCHAR szCmdLine[MAX_PATH] = { 0 };
@@ -495,7 +525,7 @@ bool CHostViewService::RunQuestionnaireIfCase(DWORD now)
 
 	if (m_settings.GetBoolean(EsmActive) && 
 		now - sdwLastCheck >= m_settings.GetULong(EsmCoinFlipInterval) && 
-		!m_fUserStopped && !m_fIdle && !m_fFullScreen && m_hasSeenUI)
+		!m_fUserStopped && !m_fIdle && !m_fFullScreen && m_hasSeenUI && m_startTime!=0)
 	{
 		sdwLastCheck = now;
 
@@ -523,6 +553,10 @@ bool CHostViewService::ShowQuestionnaireUI(BOOL fOnDemand /*= TRUE*/)
 		ImpersonateCurrentUser();
 		GenerateQuestionnaireCommand(szUser, fOnDemand, szCmdLine, _countof(szCmdLine));
 		ImpersonateRevert();
+
+		m_qOnDemand = fOnDemand;
+		m_qCounter = QueryQuestionnaireCounter();
+		m_qStartTime = GetHiResTimestamp();
 
 		RunAsCurrentUser(szCmdLine);
 
@@ -751,21 +785,86 @@ Message CHostViewService::OnMessage(Message &message)
 		}
 		break;
 
-	case MessageQuestionnaireDone:
+	case MessageQuest:
 		{
-			Trace("Questionnaire done.");
-			SetQuestionnaireCounter(QueryQuestionnaireCounter() + 1);
+			if (m_qStartTime > 0) {
+				Trace("Questionnaire [%u]: took %llu ms qoe %d", m_qCounter, message.dwPid, _wtoi(message.szUser));
+				m_store.InsertEsm(m_qStartTime, m_qOnDemand, message.dwPid, _wtoi(message.szUser));
+			}
+		}
+		break;
 
-			char tempfile[MAX_PATH] = { 0 };
-			sprintf_s(tempfile, "%S", message.szUser);
+	case MessageQuestActitivyTags:
+		{
+			if (m_qStartTime > 0) {
+				Trace("Questionnaire activity tags [%u]: %S", m_qCounter, message.szUser);
 
-			// FIXME: would be nicer if the questionnaire module knows this already ...
-			// rename with session id
-			char uploadfile[MAX_PATH] = { 0 };
-			sprintf_s(uploadfile, ".\\temp\\%llu_%s", m_startTime, PathFindFileNameA(tempfile));
-			MoveFileA(tempfile, uploadfile);
+				// FIXME: the messages should really have a more versatile format, this is ugly ...
+				TCHAR szName[MAX_PATH] = { 0 };
+				TCHAR szDesc[MAX_PATH] = { 0 };
+				TCHAR szTags[MAX_PATH] = { 0 };
+				TCHAR *szCtx = NULL;
+				TCHAR *szToken = _tcstok_s(message.szUser, _T(";"), &szCtx);
+				if (szToken)
+				{
+					_tcscpy_s(szName, szToken);
+					szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+					if (szToken)
+					{
+						_tcscpy_s(szDesc, szToken);
+						szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+						if (szToken)
+						{
+							_tcscpy_s(szTags, szToken);
 
-			MoveFileToSubmit(uploadfile, m_settings.GetBoolean(DebugMode));
+							m_store.InsertEsmActivity(m_qStartTime, szName, szDesc, szTags);
+						}
+					}
+				}
+			}
+		}
+		break;
+
+	case MessageQuestProblemTags:
+		{
+			if (m_qStartTime > 0) {
+				Trace("Questionnaire problem tags [%u]: %S", m_qCounter, message.szUser);
+
+				// FIXME: the messages should really have a more versatile format, this is ugly ...
+				TCHAR szName[MAX_PATH] = { 0 };
+				TCHAR szDesc[MAX_PATH] = { 0 };
+				TCHAR szTags[MAX_PATH] = { 0 };
+				TCHAR *szCtx = NULL;
+				TCHAR *szToken = _tcstok_s(message.szUser, _T(";"), &szCtx);
+				if (szToken)
+				{
+					_tcscpy_s(szName, szToken);
+					szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+					if (szToken)
+					{
+						_tcscpy_s(szDesc, szToken);
+						szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+						if (szToken)
+						{
+							_tcscpy_s(szTags, szToken);
+
+							m_store.InsertEsmProblems(m_qStartTime, szName, szDesc, szTags);
+						}
+					}
+				}
+			}
+		}
+		break;
+
+	case MessageQuestDone:
+		{
+			if (m_qStartTime > 0) {
+				Trace("Questionnaire done [%u].", m_qCounter);
+				SetQuestionnaireCounter(m_qCounter + 1);
+				m_qCounter = 0;
+				m_qStartTime = 0;
+				m_qOnDemand = false;
+			}
 		}
 		break;
 

@@ -45,18 +45,22 @@
 #define MessageQueryStatus			4
 #define MessageNetworkLabel			5
 #define	MessageQuestionnaireShow	6
-#define MessageQuestionnaireDone	7
-#define MessageSpeakerUsage			8
-#define MessageMicrophoneUsage		9
-#define MessageMouseKeyUsage		10
-#define MessageCameraUsage			11
-#define MessageQueryLastApps		12
-#define MessageQueryInstalledApps	13
-#define MessageSuspend				14
-#define MessageResume				15
-#define MessageRestartSession       16
-#define MessageCheckUpdate          17
-#define MessageUpload               18
+#define MessageSpeakerUsage			7
+#define MessageMicrophoneUsage		8
+#define MessageMouseKeyUsage		9
+#define MessageCameraUsage			10
+#define MessageQueryLastApps		11
+#define MessageQueryInstalledApps	12
+#define MessageSuspend				13
+#define MessageResume				14
+#define MessageRestartSession       15
+#define MessageCheckUpdate          16
+#define MessageUpload               17
+#define MessageQuest     			18
+#define MessageQuestActitivyTags	19
+#define MessageQuestProblemTags		20
+#define MessageQuestDone   			21
+
 
 struct Message
 {

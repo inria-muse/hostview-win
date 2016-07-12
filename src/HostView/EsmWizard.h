@@ -28,5 +28,6 @@ private:
 	AppListT m_apps;
 	AppListT m_installedApps;
 	DWORD m_dwStart;
+	int m_appCount;
 };
 

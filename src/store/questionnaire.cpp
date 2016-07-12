@@ -92,7 +92,10 @@ bool IsBrowser(App &app)
 void SaveAppsList(TCHAR *szUser, TCHAR *szFilename, size_t nSize, ULONG applistHist)
 {
 	DWORD dwNow = GetTickCount();
-	_stprintf_s(szFilename, nSize, _T("%S\\%d_current.txt"), TEMP_PATH, dwNow);
+	TCHAR szOut[MAX_PATH] = { 0 };
+	_stprintf_s(szOut, MAX_PATH, _T("%S\\%d_current.txt"), TEMP_PATH, dwNow);
+	if (!_wfullpath(szFilename, szOut, nSize))
+		return;
 
 	FILE * f = NULL;
 	_tfopen_s(&f, szFilename, _T("w"));
@@ -194,22 +197,29 @@ void ClearAppList(AppListT* &appList)
 	}
 }
 
-void SubmitQuestionnaire(const TCHAR *szResult)
+void SubmitQuestionnaire(const DWORD dur, const TCHAR *szResult)
 {
-	TCHAR szTempFile[MAX_PATH] = {0};
-	_stprintf_s(szTempFile, _T("%S\\%llu_questionnaire.json"), TEMP_PATH, GetHiResTimestamp());
+	Message message(MessageQuest);
+	_tcscpy_s(message.szUser, szResult);
+	message.dwPid = dur;
+	SendServiceMessage(message);
+}
 
-	FILE * f = NULL;
-	_tfopen_s(&f, szTempFile, _T("w"));
-	if (f)
-	{
-		_ftprintf_s(f, _T("%s"), szResult);
-		fclose(f);
-		
-		Message message(MessageQuestionnaireDone);
-		_tcscpy_s(message.szUser, szTempFile);
-		SendServiceMessage(message);
-	}
+void SubmitQuestionnaireActivity(const TCHAR *szResult) {
+	Message message(MessageQuestActitivyTags);
+	_tcscpy_s(message.szUser, szResult);
+	SendServiceMessage(message);
+}
+
+void SubmitQuestionnaireProblem(const TCHAR *szResult) {
+	Message message(MessageQuestProblemTags);
+	_tcscpy_s(message.szUser, szResult);
+	SendServiceMessage(message);
+}
+
+void SubmitQuestionnaireDone() {
+	Message message(MessageQuestDone);
+	SendServiceMessage(message);
 }
 
 size_t QueryQuestionnaireCounter()

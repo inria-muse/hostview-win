@@ -72,6 +72,11 @@ public:
 	bool Open(ULONGLONG session);
 	void Close();
 
+	// insert a ESM questionnaire results (basic info, activity tags + problem tags)
+	void CStore::InsertEsm(__int64 timestamp, bool ondemand, __int64 duration, int score);
+	void CStore::InsertEsmActivity(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags);
+	void CStore::InsertEsmProblems(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags);
+
 	// inserts a process pid mapping
 	void InsertPort(int pid, char *name, int protocol, char *srcIp, char *destIp, int srcPort, int destPort, DWORD state, __int64 timestamp);
 
