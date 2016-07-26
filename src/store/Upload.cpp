@@ -41,13 +41,13 @@ size_t read_file(char *bufptr, size_t size, size_t nitems, void *userp) {
 	return nRead;
 }
 
-// assumues src is already in .\submit !
+// assumes src is already in .\submit !
 bool createzip(char *src)
 {
 	char dest[MAX_PATH] = { 0 };
 	sprintf_s(dest, "%s.zip", src);
 
-	// FIXME: there's no library interfac we could use ?!? this is quite horrible ...
+	// FIXME: there's no library interface we could use ?!? this is quite horrible ...
 	TCHAR szCmdLine[1024] = { 0 };
 	_stprintf_s(szCmdLine, _T("7za.exe a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on %S %S"), dest, src);
 
@@ -161,8 +161,22 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 		result = false;
 	}
 	else {
-		Debug("[upload] curl_easy_perform success");
-		result = true;
+		long http_status = 0;
+		res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_status);
+		if (res != CURLE_OK) {
+			Debug("[upload] curl_easy_getinfo failed: %s", curl_easy_strerror(res));
+			result = false;
+		}
+		else {
+			if (http_status == 200) {
+				Debug("[upload] curl_easy_perform success");
+				result = true;
+			}
+			else {
+				Debug("[upload] curl_easy_perform failed: HTTP STATUS %d", http_status);
+				result = false;
+			}
+		}
 	}
 
 	curl_slist_free_all(headers);
@@ -172,7 +186,7 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 	return result;
 }
 
-// static helper used by all data collectors to add new files to '\submit'.
+// static helper used by all data collectors to add new files to '.\submit'.
 bool MoveFileToSubmit(const char *file, bool debug) {
 	if (!PathFileExistsA(file)) {
 		return false;

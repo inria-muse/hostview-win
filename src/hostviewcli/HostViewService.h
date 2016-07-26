@@ -105,6 +105,8 @@ private:
 	CStore m_store;
 	CUpload *m_upload;
 
+	void Cleanup();
+
 	// start/stop sessions
 	void StartCollect(SessionEvent e, ULONGLONG ts);
 	void StopCollect(SessionEvent e, ULONGLONG ts);

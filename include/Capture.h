@@ -50,6 +50,7 @@
 #endif
 
 #define DATA_DIRECTORY ".\\pcap"
+#define DATA_DIRECTORY_GLOB ".\\pcap\\*.pcap"
 
 /**
  *	Callback Interface.

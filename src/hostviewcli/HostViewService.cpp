@@ -167,9 +167,43 @@ void CHostViewService::OnShutdown()
 	OnStop();
 }
 
+void CHostViewService::Cleanup() {
+	WIN32_FIND_DATAA wfd;
+	HANDLE hFind;
+		
+	hFind = FindFirstFileA(DATA_DIRECTORY_GLOB, &wfd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.') 
+				continue;
+			Trace("Cleanup pcap file %s.", wfd.cFileName);
+			MoveFileToSubmit(wfd.cFileName, m_settings.GetBoolean(DebugMode));
+		} while (FindNextFileA(hFind, &wfd));
+		FindClose(hFind);
+	}
+
+	hFind = FindFirstFileA(TEMP_PATH_DB_GLOB, &wfd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (wfd.cFileName[0] == '.')
+				continue;
+			Trace("Cleanup db file %s.", wfd.cFileName);
+			MoveFileToSubmit(wfd.cFileName, m_settings.GetBoolean(DebugMode));
+		} while (FindNextFileA(hFind, &wfd));
+		FindClose(hFind);
+	}
+}
+
 void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 {
 	if (m_startTime == 0) {
+		// cleanup any pending files from previous close (pcap + temp)
+		Cleanup();
+
 		// new session id
 		m_startTime = ts;
 

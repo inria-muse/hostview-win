@@ -455,12 +455,17 @@ DWORD WINAPI CaptureThreadProc(LPVOID lpParameter)
 			{
 				pcap_dump_flush(cap.dumper);
 				pcap_dump_close(cap.dumper);
-				Trace("pcap rotate %s [%lu]", cap.capture_file, size);
 
-				MoveFileToSubmit(cap.capture_file, cap.debugMode);
+				// rename the file to indicate this is a part
+				char tmpName[MAX_PATH] = { 0 };
+				sprintf_s(tmpName, "%s\\%llu_%llu_%lu_%s_part.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
+				Trace("pcap rotate %s [%lu]", tmpName, size);
+
+				MoveFileA(cap.capture_file, tmpName);
+				MoveFileToSubmit(tmpName, cap.debugMode);
 
 				cap.number += 1;
-				sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap",
+				sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_last.pcap",
 					DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
 
 				cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
@@ -485,7 +490,7 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 		cap.maxPcapSize = maxPcapSize;
 		cap.session = session;
 		cap.connection = timestamp;
-		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_part.pcap", 
+		sprintf_s(cap.capture_file, "%s\\%llu_%llu_%lu_%s_last.pcap", 
 			DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
 
 		cap.pcap = GetLiveSource(adapterId);
@@ -537,13 +542,8 @@ PCAPAPI bool StopCapture(const char *adapterId)
 		pcap_close(cap.pcap);
 		cap.pcap = NULL;
 
-		// rename the file to indicate this is the last for this connection
-		char tmpName[MAX_PATH] = { 0 };
-		sprintf_s(tmpName, "%s\\%llu_%llu_%lu_%s_last.pcap", DATA_DIRECTORY, cap.session, cap.connection, cap.number, adapterId);
-		MoveFileA(cap.capture_file, tmpName);
-
 		// move pcap to upload folder
-		MoveFileToSubmit(tmpName, cap.debugMode);
+		MoveFileToSubmit(cap.capture_file, cap.debugMode);
 
 		captures.erase(adapterId);
 		return true;
