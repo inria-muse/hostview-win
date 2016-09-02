@@ -81,8 +81,8 @@ TODO
 Unfinished stuff roughly in priority order:
 
 * Add password prompt to the installer (store to registry + upload with sysinfo or so to the backend)
-* Add a link to web ui to the Hostview menu at task bar (include device id the URL so no need to display it elsewhere)
-* Encrypt sensitive data (windows user, wifi ssid, local IPs, ...)
+* Add a link to web ui to the Hostview menu at task bar (include deviceid the URL so no need to display it elsewhere)
+* Encrypt sensitive data (windows login name, wifi ssid, local IPs, mac address, harddrive id)
 * Finish Chrome plugin
 * Add browser plugins (Firefox+Chrome) to the (un)installer scripts
 
