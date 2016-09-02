@@ -75,11 +75,26 @@ The script listens to uploads at http://localhost:3000 and stores received files
 Configure this url to hostview settings 'submitServer' (debug builds do this by default).
 
 
+TODO
+----
+
+Unfinished stuff roughly in priority order:
+
+* Add password prompt to the installer (store to registry + upload with sysinfo or so to the backend)
+* Add a link to web ui to the Hostview menu at task bar (include device id the URL so no need to display it elsewhere)
+* Encrypt sensitive data (windows user, wifi ssid, local IPs, ...)
+* Finish Chrome plugin
+* Add browser plugins (Firefox+Chrome) to the (un)installer scripts
+
+
 Authors
 -------
 
 George Rosca <george.rosca@inria.fr>
 Anna-Kaisa Petilainen <anna-kaisa.pietilainen@inria.fr>
+
+License
+-------
 
 The MIT License (MIT)
 Copyright (c) 2015-2016 MUSE / Inria
