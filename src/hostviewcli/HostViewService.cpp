@@ -214,6 +214,7 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 
 		// get sysinfo (data that wont change during the session)
 		QuerySystemInfo(m_sysInfo);
+		//TODO who cares anymore about the hddserial, I'm going to use a random id
 		if (_tcslen(m_sysInfo.hddSerial) <= 0)
 		{
 			Debug("[SRV] fatal : we don't know the hddSerial");
@@ -287,6 +288,8 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 			LeaveCriticalSection(&m_cs);
 		}
 	}
+
+	//TODO clean up all the sensitive information
 
 	TCHAR szGateways[MAX_PATH] = { 0 };
 	for (size_t i = 0; i < ni.gateways.size(); i++)
@@ -444,6 +447,7 @@ bool CHostViewService::ReadIpTable(DWORD now)
 
 		for (size_t i = 0; i < table->size; i++)
 		{
+			//TODO anonymize srcIP. Catch: here is a string while normally I'm treating 4 bytes (I need to convert back and forth)
 			IpRow it = table->get(i);
 			m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
 		}

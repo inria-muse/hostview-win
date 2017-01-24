@@ -111,6 +111,7 @@ bool load(char *src, std::hash_map<std::string, std::string> &map)
 					trim(szValue);
 
 					map[szKey] = szValue;
+					//TODO: if a number load into the ulong settings
 				}
 			}
 		}
@@ -152,6 +153,8 @@ CSettings::~CSettings()
 bool CSettings::ReloadSettings()
 {
 	bool res = false;
+	mSettings->clear();
+	mLongSettings->clear();
 	if (load(filename, *mSettings) && HasKey(SettingsVersion)) {
 		version = GetULong(SettingsVersion);
 		res = true;

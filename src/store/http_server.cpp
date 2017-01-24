@@ -272,7 +272,8 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					else {
 						// recv error
 						if (!data.complete) {
-							Debug("[SRV] recv failed with error: %d[%d]", nRecv, WSAGetLastError());
+							//FIXME: this triggers all the time
+							//Debug("[SRV] recv failed with error: %d[%d]", nRecv, WSAGetLastError());
 							send_http_err(cliSocket);
 						}
 					}
@@ -406,6 +407,6 @@ void SendHttpMessage(ParamsT &params)
 		}
 		strcat_s(szResult, szBuffer);
 	}
-
+	Debug("[FRA] sending a message to server with content: %s", szResult);
 	AsyncSendMessage(szResult);
 }

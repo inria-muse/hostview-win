@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HostView", "src\HostView\HostView.vcxproj", "{24CCABB3-065D-4F91-A59A-4A3FAFC9048C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{BDBD5DC5-8B95-4365-A5F6-D8E71F0FFA6B} = {BDBD5DC5-8B95-4365-A5F6-D8E71F0FFA6B}
@@ -8,8 +10,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HostView", "src\HostView\Ho
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pcap", "src\pcap\pcap.vcxproj", "{5DBF7EDE-D187-4A4E-B8EA-BDF615C4B8F5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{92795CCA-2912-4443-9ECA-703218956364} = {92795CCA-2912-4443-9ECA-703218956364}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "proc", "src\proc\proc.vcxproj", "{BDBD5DC5-8B95-4365-A5F6-D8E71F0FFA6B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{92795CCA-2912-4443-9ECA-703218956364} = {92795CCA-2912-4443-9ECA-703218956364}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hostviewcli", "src\hostviewcli\hostviewcli.vcxproj", "{6F73841A-05DF-44BD-B5CA-03FA1C86A4AD}"
 	ProjectSection(ProjectDependencies) = postProject

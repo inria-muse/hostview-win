@@ -36,6 +36,8 @@ std::set<std::string> adapterIds;
 // adapterId -> capture data
 std::map<std::string, struct Capture> captures;
 
+//TODO: add a hashedValuesTable to store hashed values
+
 const char * inet_ntop2(int af, const void *src, char *dst, int cnt)
 {
 	struct sockaddr_in srcaddr;
@@ -331,9 +333,14 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 {
 	ETHER_HDR *pEthernet = (ETHER_HDR *) pkt_data;
 	int nType = ntohs(pEthernet->type);
+	/*
+	 *TODO here the mac addresses will have to be anonymized.
+	 *     check whether there is any following place where it's used 
+	 *     same applies for the IP addresses
+	 */
 	if (nType != 0x0800 && nType != 0x86DD)
 	{
-		// not worth processing
+		// not IPv4 or IPv6 so not worth processing
 		return;
 	}
 

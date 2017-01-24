@@ -91,6 +91,7 @@ private:
 	ULONGLONG m_startTime;
 
 	SysInfo m_sysInfo;
+	//TODO replace szHdd with proper random id
 	char szHdd[MAX_PATH] = { 0 };
 
 	BOOL m_fUpdatePending;

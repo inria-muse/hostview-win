@@ -27,10 +27,12 @@
 #include "Upload.h"
 #include "Settings.h"
 
+//FIXME: initially the g_settings variable is still used before being initialized 
+
 // 10 megabytes
 #define TRACE_MAX_LOGSIZE 10000000
 
-static CSettings g_settings;
+static CSettings *g_settings;
 
 ULONGLONG GetSizeInBytes(const char* fileName) {
 	WIN32_FILE_ATTRIBUTE_DATA fad;
@@ -60,11 +62,15 @@ ULONGLONG GetHiResTimestamp()
 	return ts.QuadPart / 10000;
 }
 
+void InitTrace() {
+	g_settings = new CSettings();
+}
+
 void Debug(char *szFormat, ...) {
-	bool dodebug = g_settings.GetBoolean(DebugMode);
+	bool dodebug = g_settings->GetBoolean(DebugMode);
 #ifndef _DEBUG
 	// early out in non-debug versions
-	if (!dodebug)
+	if (!dodebug) 
 		return;
 #endif
 
@@ -90,8 +96,36 @@ void Debug(char *szFormat, ...) {
 	va_end(vArgs);
 }
 
+void RawWrite(char *szFormat, ...) {
+	if (szFormat)
+	{
+		char szMessage[2048] = { 0 };
+		__int64 ts = GetHiResTimestamp();
+
+		va_list vArgs;
+		va_start(vArgs, szFormat);
+
+		vsprintf_s(szMessage, 2048, szFormat, vArgs);
+
+#ifdef _DEBUG
+		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);
+#endif
+		// FIXME: keep the handle open ? Highly costly but I guess that we can afford it
+		FILE * f = NULL;
+		fopen_s(&f, ".\\temp\\hostview.log", "a+");
+		if (f)
+		{
+			fprintf(f, "[%llu] %s\n", ts, szMessage);
+			fclose(f);
+		}
+
+		va_end(vArgs);
+	}
+}
+
 void Trace(char *szFormat, ...) {
-	bool dodebug = g_settings.GetBoolean(DebugMode);
+	
+	bool dodebug = g_settings->GetBoolean(DebugMode);
 
 	// max log size
 	if (!szFormat || GetSizeInBytes(".\\temp\\hostview.log") >= TRACE_MAX_LOGSIZE)
@@ -104,7 +138,7 @@ void Trace(char *szFormat, ...) {
 		MoveFileToSubmit(szFile, dodebug);
 
 		// log files is usually rotated upon session end, so good time to reload
-		g_settings.ReloadSettings();
+		g_settings->ReloadSettings();
 	}
 
 	if (szFormat)
@@ -120,7 +154,7 @@ void Trace(char *szFormat, ...) {
 #ifdef _DEBUG
 		fprintf(stderr, "[%llu] [trace] %s\n", ts, szMessage);
 #endif
-		// FIXME: keep tha handle open ?
+		// FIXME: keep the handle open ? Highly costly but I guess that we can afford it
 		FILE * f = NULL;
 		fopen_s(&f, ".\\temp\\hostview.log", "a+");
 		if (f)

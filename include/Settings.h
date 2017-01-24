@@ -25,6 +25,7 @@
 
 #include <string>
 #include <hash_map>
+#include "trace.h"
 
 #if defined(SETTINGSLIBRARY_EXPORT) // inside DLL
 #   define SETTINGSAPI   __declspec(dllexport)

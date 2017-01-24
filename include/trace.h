@@ -37,5 +37,7 @@ extern "C" HOSTVIEWTRACEAPI ULONGLONG GetSizeInBytes(const char* fileName);
 extern "C" HOSTVIEWTRACEAPI ULONGLONG GetHiResTimestamp();
 
 // Trace interface
+extern "C" HOSTVIEWTRACEAPI void InitTrace();
 extern "C" HOSTVIEWTRACEAPI void Debug(char *szFormat, ...);
 extern "C" HOSTVIEWTRACEAPI void Trace(char *szFormat, ...);
+extern "C" HOSTVIEWTRACEAPI void RawWrite(char *szFormat, ...);
