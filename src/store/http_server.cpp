@@ -272,7 +272,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 					else {
 						// recv error
 						if (!data.complete) {
-							//FIXME: this triggers all the time
+							//TODO: fix as this triggers all the time
 							//Debug("[SRV] recv failed with error: %d[%d]", nRecv, WSAGetLastError());
 							send_http_err(cliSocket);
 						}

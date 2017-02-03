@@ -24,11 +24,13 @@
 #include "StdAfx.h"
 #include <windows.h>
 #include <shlwapi.h>
+#include <array>
 
 #include "Capture.h"
 #include "Upload.h"
 #include "iphdr.h"
 #include "trace.h"
+#include "HashedValuesTable.h"
 
  // currently tracked adapters
 std::set<std::string> adapterIds;
@@ -37,6 +39,10 @@ std::set<std::string> adapterIds;
 std::map<std::string, struct Capture> captures;
 
 //TODO: add a hashedValuesTable to store hashed values
+HashedValuesTable<unsigned int> hashedIPv4s;
+HashedValuesTable< std::array<byte, 16> > hashedIPv6s;
+HashedValuesTable< std::array<byte,6> > hashedMACs;
+
 
 const char * inet_ntop2(int af, const void *src, char *dst, int cnt)
 {
@@ -338,9 +344,23 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	 *     check whether there is any following place where it's used 
 	 *     same applies for the IP addresses
 	 */
+	//TODO check whether this works or not
+	BYTE *hash;
+	unsigned long hashLen;
+	std::array<byte, 6> MACBuffer;
+	Trace("Starting to capture packet");
+	/*std::copy(std::begin(pEthernet->source), std::end(pEthernet->source), std::begin(MACBuffer));
+	hashedMACs.getHash(MACBuffer, &hash, &hashLen);
+	memcpy(pEthernet->source, (void*)hash[hashLen - 5], 4);
+	std::copy(std::begin(pEthernet->dest), std::end(pEthernet->dest), std::begin(MACBuffer));
+	hashedMACs.getHash(MACBuffer, &hash, &hashLen);
+	memcpy(pEthernet->dest, (void*)hash[hashLen - 5], 4);*/
+	Trace("Hashed MAC addresses");
+	
 	if (nType != 0x0800 && nType != 0x86DD)
 	{
 		// not IPv4 or IPv6 so not worth processing
+		Debug("Not an IP packet");
 		return;
 	}
 
@@ -351,6 +371,7 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	int nIPLength = 0;
 	int nCapLength = sizeof(ETHER_HDR);
 
+	//TODO hash source IP addresses
 	if (nType == 0x0800)
 	{
 		// ipv4
@@ -358,6 +379,10 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 
 		if (pIPv4->ip_version == 4)
 		{
+			hash = NULL;
+			/*hashedIPv4s.get32Hash(pIPv4->ip_srcaddr, &pIPv4->ip_srcaddr);
+			Debug("Hashed IPv4 addresses");*/
+
 			inet_ntop2(AF_INET, &pIPv4->ip_srcaddr, szSrc, _countof(szSrc));
 			inet_ntop2(AF_INET, &pIPv4->ip_destaddr, szDest, _countof(szDest));
 
@@ -369,6 +394,15 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	{
 		// ipv6
 		IPV6_HDR *pIPv6 = (IPV6_HDR *) (pkt_data + sizeof(ETHER_HDR));
+
+		hash = NULL;
+		std::array<byte, 16> IPv6Buffer;
+		//TODO check whether this whole thing works
+		/*memcpy(IPv6Buffer.data(), &pIPv6->ipv6_srcaddr.u.Byte, 16);
+		hashedIPv6s.getHash(IPv6Buffer, &hash, &hashLen);
+		memcpy(&pIPv6->ipv6_srcaddr.u.Byte, (void*)hash[hashLen - 17], 16);
+		memcpy(&pIPv6->ipv6_srcaddr.u.Word, (void*)hash[hashLen - 17], 16);
+		Debug("Hashed IPv6 addresses");*/
 
 		inet_ntop2(AF_INET6, &pIPv6->ipv6_srcaddr, szSrc, _countof(szSrc));
 		inet_ntop2(AF_INET6, &pIPv6->ipv6_destaddr, szDest, _countof(szDest));
