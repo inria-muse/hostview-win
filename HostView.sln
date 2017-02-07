@@ -30,6 +30,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "store", "src\store\store.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hostviewbho", "src\HostViewBHO\HostViewBHO.vcxproj", "{723DEBE6-DEEF-426C-9F5B-2612EDA25DC0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HostViewUniteTests", "HostViewUniteTests\HostViewUniteTests.vcxproj", "{FA990C01-7C36-4109-A8BA-C4A77A4886E0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -86,6 +88,14 @@ Global
 		{723DEBE6-DEEF-426C-9F5B-2612EDA25DC0}.Release|Win32.Build.0 = Release|Win32
 		{723DEBE6-DEEF-426C-9F5B-2612EDA25DC0}.Release|x64.ActiveCfg = Release|x64
 		{723DEBE6-DEEF-426C-9F5B-2612EDA25DC0}.Release|x64.Build.0 = Release|x64
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Debug|Win32.Build.0 = Debug|Win32
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Debug|x64.ActiveCfg = Debug|x64
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Debug|x64.Build.0 = Debug|x64
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Release|Win32.ActiveCfg = Release|Win32
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Release|Win32.Build.0 = Release|Win32
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Release|x64.ActiveCfg = Release|x64
+		{FA990C01-7C36-4109-A8BA-C4A77A4886E0}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

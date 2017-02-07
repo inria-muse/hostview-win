@@ -79,10 +79,6 @@ public:
 
 	}
 
-	/*unsigned char* getStringHash(const std::string &value, unsigned char* = NULL) {
-
-	}*/
-
 	template<std::size_t SIZE>
 	int getHash(const std::array<byte, SIZE> &value, BYTE **output, unsigned long *outLen) {
 		BYTE *hash, *data;
@@ -113,7 +109,7 @@ public:
 					return err;
 				}
 			}
-			_hashedValues.insert(std:make_pair(value, hash));
+			_hashedValues.insert(std::make_pair(value, hash));
 		}
 		else {
 			*output = storedValue->second;
@@ -122,7 +118,7 @@ public:
 		}
 	}
 
-	int getHash(const std::string &value, BYTE **output, unsigned long *outLen) {
+	int getHashString(const std::string &value, BYTE **output, unsigned long *outLen) {
 		BYTE *hash, *data;
 		long len;
 		int err = 0;
@@ -131,7 +127,7 @@ public:
 			data = (BYTE*)value.c_str();
 			//Create data
 			if (hasSalt()) {
-				if (!(err = hashValueWithSalt(data, &hash))) {
+				if (!(err = hashValueWithSalt(data, value.length(), &hash))) {
 					*output = hash;
 					*outLen = _hashSize;
 					return 0;
@@ -142,7 +138,7 @@ public:
 
 			}
 			else {
-				if (!(err = hashValueWithSalt(data, &hash))) {
+				if (!(err = hashValueWithSalt(data, value.length(), &hash))) {
 					*output = hash;
 					*outLen = _hashSize;
 					return 0;
@@ -151,7 +147,7 @@ public:
 					return err;
 				}
 			}
-			_hashedValues.insert(std:make_pair(value, hash));
+			_hashedValues.insert(std::make_pair(value, hash));
 		}
 		else {
 			*output = storedValue->second;
@@ -167,6 +163,8 @@ public:
 		if (!(err = getHash(value, &hash, &len))) {
 			//Copies the last 4 bytes of the hash to the int output
 			memcpy((void *)output, &(hash[_hashSize - 5]), 4);
+			free(hash);
+			return 0;
 		}
 		else {
 			return err;
@@ -179,10 +177,58 @@ public:
 		BYTE *hash = NULL;
 		if (!(err = getHash(value, &hash, &len))) {
 			//Copies the last 4 bytes of the hash to the int output
-			memcpy((void *)output, &(hash[_hashSize - 9], 8))
+			memcpy((void *)output, &(hash[_hashSize - 9], 8));
+			free(hash);
+			return 0;
 		}
 		else {
 			return err;
+		}
+	}
+
+	int getHexHash(const T &value, char** output, unsigned long *outLen) {
+		BYTE *hash;
+		long len;
+		int err = 0;
+		auto storedValue = _hashedValues.find(value);
+		if (storedValue == _hashedValues.end()) {
+			std::array< BYTE, sizeof(T) > data = to_bytes(value);
+			//Create data
+			if (hasSalt()) {
+				if (!(err = hashValueWithSalt(data.data(), sizeof(T), &hash))) {
+					//*output = hash;
+					*output = (char*)malloc(_hashSize * 2);
+					for (int j = 0; j < _hashSize; j++)
+						sprintf(&((*output)[2 * j]), "%02X", hash[j]);
+					*outLen = _hashSize;
+					return 0;
+				}
+				else {
+					return err;
+				}
+
+			}
+			else {
+				if (!(err = hashValue(data.data(), sizeof(T), &hash))) {
+					//*output = hash;
+					*output = (char*)malloc(_hashSize * 2);
+					for (int j = 0; j < _hashSize; j++)
+						sprintf(&((*output)[2 * j]), "%02X", hash[j]);
+					return 0;
+				}
+				else {
+					return err;
+				}
+			}
+			_hashedValues.insert(std::make_pair(value, hash));
+		}
+		else {
+			*output = (char*)malloc(_hashSize * 2);
+			for (int j = 0; j < _hashSize; j++)
+				sprintf(&((*output)[2 * j]), "%02X", hash[j]);
+			return 0;
+			*outLen = _hashSize;
+			return 0;
 		}
 	}
 
@@ -205,8 +251,8 @@ private:
 		DWORD i;
 		unsigned long bufLen = 0;
 
-		//Create context and hash object
-		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, 0)) {
+		//Create context and hash object for SHA256
+		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
 			return GetLastError();
 		}
 		if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
@@ -277,11 +323,19 @@ private:
 		DWORD i;
 		unsigned long bufLen = 0;
 
-		//Create context and hash object
-		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+		//Create context and hash object for SHA1
+		/*if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
 			return GetLastError();
 		}
 		if (!CryptCreateHash(hProv, CALG_SHA1, 0, 0, &hHash)) {
+			return GetLastError();
+		}*/
+
+		//Create context and hash object for SHA256
+		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+			return GetLastError();
+		}
+		if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
 			return GetLastError();
 		}
 

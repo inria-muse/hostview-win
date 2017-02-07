@@ -28,6 +28,12 @@ Function un.is64bit
   System::Call "kernel32::IsWow64Process(i s, *i .r0)"
 FunctionEnd
 
+Function isFirefoxInstalled
+  ;HKEY_LOCAL_MACHINE\SOFTWARE\Mozilla\Mozilla Firefox
+  ReadRegStr $R8 HKLM "SOFTWARE\Mozilla\Mozilla Firefox" "CurrentVersion"
+  ReadRegStr $R9 HKLM "SOFTWARE\Mozilla\Mozilla Firefox\$R8\Main" "PathToExe"
+FunctionEnd
+
 VIProductVersion "1.0.0.1"
 VIAddVersionKey /LANG=1033 "FileVersion" "1.0.0.1"
 VIAddVersionKey /LANG=1033 "ProductName" "HostView"
@@ -76,8 +82,11 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" ""
 ;Pages
 
 !insertmacro MUI_PAGE_LICENSE "LICENSE"
-; Don't let user choose where to install the files. WinPcap doesn't let people, and it's one less thing for us to worry about.
+; Don't let user choose where to install the files. WinPcap doesn't let people,
+; and it's one less thing for us to worry about.
 ;Page custom optionsPage doOptions
+; Page to get a users' password
+Page custom PasswordPageShow PasswordPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -85,7 +94,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" ""
 ;--------------------------------
 ;Languages
 
-  !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "English"
 
 ;--------------------------------
 ;Reserves
@@ -135,11 +144,49 @@ FunctionEnd
 ;	Goto install_continue
 ;install_64bit:
 ;	SetRegView 64
-;	
+;
 ;install_continue:
 ;  ReadINIStr $0 "$PLUGINSDIR\options.ini" "Field 2" "State"
 ;  WriteRegStr HKLM "Software\HostView" "enduser" "$0"
 ;FunctionEnd
+
+
+## Password is
+!define Password "No password"
+
+Function PasswordPageShow
+  !insertmacro MUI_HEADER_TEXT "Enter Password" "Enter your password to continue."
+  PassDialog::InitDialog Password /HEADINGTEXT \
+  "Please input a password that will be used to retrieve your data from the online application.\
+  Do not forget this password as otherwise you will not be able to retrieve it."
+  Pop $R0 # Page HWND
+  PassDialog::Show
+
+FunctionEnd
+
+## Validate password
+Function PasswordPageLeave
+  ## Pop password from stack
+  Pop $R0
+  ## A bit of validation
+  StrCmp $R0 '${Password}' 0 +3
+    MessageBox MB_OK|MB_ICONEXCLAMATION "You need to input a password}"
+    Abort
+  ## Display the password
+  MessageBox MB_OK|MB_ICONINFORMATION "Password correctly stored"
+FunctionEnd
+
+;Function ComponentsPageShow
+;
+;  ## Disable the Back button
+;  GetDlgItem $R0 $HWNDPARENT 3
+;  EnableWindow $R0 0
+;
+;FunctionEnd
+
+## Just a dummy section. Do I need this?
+;Section 'A section'
+;SectionEnd
 
 ;--------------------------------
 ; The stuff to install
@@ -148,10 +195,10 @@ Section "WinPcap" SecWinPcap
 	SetAutoClose true
 
 	SetRegView 32
-	WriteRegDWORD HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe" 10001	
+	WriteRegDWORD HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe" 10001
 	SetRegView 64
-	WriteRegDWORD HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe" 10001	
-	
+	WriteRegDWORD HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe" 10001
+
 	Call is64bit
 	StrCmp $0 "0" install_32bit install_64bit
 
@@ -173,29 +220,29 @@ install_64bit:
 	File "..\bin\x64\Release\proc.dll"
 	File "..\bin\x64\Release\store.dll"
 	SetRegView 64
-	
+
 npfdone:
 	; install winpcap if case
     IfFileExists "$SYSDIR\wpcap.dll" WinPcapExists WinPcapDoesNotExist
-	
+
 	WinPcapDoesNotExist:
 	WriteRegStr HKLM "Software\HostView" "InstalledWinpcap" "Yes"
 	SetOutPath $TEMP
 	File ".\winpcap_bundle\winpcap-4.13.exe"
 	nsExec::Exec "$TEMP\winpcap-4.13.exe /S /NPFSTARTUP=YES"
-	
+
 	WinPcapExists:
 	; do nothing else
-	
+
 	SetOutPath $INSTDIR
 	File "7za.exe"
-	
+
 	SetOutPath "$INSTDIR\html\"
 	File /r "..\src\HostView\html\*"
-				 
+
 	nsExec::Exec "$INSTDIR\hostviewcli.exe /install"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "HostView" "$\"$INSTDIR\HostView.exe$\""
-	
+
 	; write uninstaller
 	WriteUninstaller "$INSTDIR\uninstall.exe"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HostView" \
@@ -206,21 +253,39 @@ npfdone:
 					"Publisher" "Muse, INRIA"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\HostView" \
 					"UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-	
+
 	; write settings
 	SetOutPath $INSTDIR
 	File "settings"
-	
+
+  ; Use previously given password to store for identification
+  ; (hased from input)
+  Pop $R0
+  Crypto::HashData "SHA2" $R0
+  Pop $0
+  FileOpen $4 "$INSTDIR\pass.txt" w
+  FileWrite $4 $0
+  FileClose $4
+
+  ; create a random value and save it to a file at the destination
+  ; (used as a hash salt)
+  Crypto::RNG
+  Pop $0 ; $0 now contains 100 bytes of random data in hex format
+  FileOpen $4 "$INSTDIR\salt.txt" w
+  FileWrite $4 $0
+  FileClose $4
+
+  ; TODO move this to a final page that starts the app once the installation looks complete
+  ; TODO re-activate the explorer extension
 	SetOutPath $INSTDIR
-	File "..\bin\Win32\Release\hostviewbho.dll"
-	Exec "regsvr32 /s $\"$INSTDIR\hostviewbho.dll$\""
-	
+	;File "..\bin\Win32\Release\hostviewbho.dll"
+	;Exec "regsvr32 /s $\"$INSTDIR\hostviewbho.dll$\""
+
 	; start everything
 	nsExec::Exec "net start $\"HostView Service$\""
 	Exec "$\"$INSTDIR\HostView.exe$\""
 
 SectionEnd ; end the section
-
 
 ;--------------------------------
 ;Uninstaller Section
@@ -231,24 +296,24 @@ Section "Uninstall"
 	nsExec::Exec "$INSTDIR\HostView.exe /stop"
 	nsExec::Exec "net stop $\"HostView Service$\""
 	nsExec::Exec "$INSTDIR\hostviewcli.exe /remove"
-	
+
 	; delete from both hives
 	SetRegView 32
 	DeleteRegValue HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe"
 	SetRegView 64
 	DeleteRegValue HKLM "Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION" "HostView.exe"
-	
+
 	Call un.is64bit
 	StrCmp $0 "0" rmEmulation32 rmEmulation64
-	
+
 rmEmulation64:
 	SetRegView 64
 	Goto emulationContinue
-	
+
 rmEmulation32:
 	SetRegView 32
-	
-emulationContinue:	
+
+emulationContinue:
 	DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "HostView"
 
 	RMDir /r "$INSTDIR\"
