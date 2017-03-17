@@ -25,6 +25,8 @@
 #include "Settings.h"
 #include "comm.h"
 
+#include <fstream>      // std::ifstream
+
 // Hardcoded defaults in case the settings file is not available
 // for what ever reason. Should not really happen in prod.
 std::hash_map<std::string, std::string> mDefSettings;
@@ -124,7 +126,9 @@ bool load(char *src, std::hash_map<std::string, std::string> &map)
 
 CSettings::CSettings() :
 	version(0),
-	filename("settings")
+	filename("settings"),
+	salt("XXXXXXXXX"),
+	identifier("XXXXXXXXXX")
 {
 	mSettings = new std::hash_map<std::string, std::string>();
 	mLongSettings = new std::hash_map<std::string, ULONG>();
@@ -134,7 +138,9 @@ CSettings::CSettings() :
 }
 
 CSettings::CSettings(char *file) :
-	version(0)
+	version(0),
+	salt("XXXXXXXXX"),
+	identifier("XXXXXXXXXX")
 {
 	sprintf_s(filename, "%s", file);
 	mSettings = new std::hash_map<std::string, std::string>();
@@ -160,6 +166,74 @@ bool CSettings::ReloadSettings()
 		res = true;
 	}
 	return res;
+}
+
+bool CSettings::readSalt() {
+	std::ifstream infile("salt");
+
+	if (infile.good())
+	{
+		std::string sLine;
+		getline(infile, sLine);
+		salt.assign(sLine);
+	}
+	else {
+		return false;
+	}
+
+	infile.close();
+	return true;
+}
+
+bool CSettings::readSalt(char *file) {
+	std::ifstream infile(file);
+
+	if (infile.good())
+	{
+		std::string sLine;
+		getline(infile, sLine);
+		salt.assign(sLine);
+	}
+	else {
+		return false;
+	}
+
+	infile.close();
+	return true;
+}
+
+bool CSettings::readIdentifier() {
+	std::ifstream infile("pass");
+
+	if (infile.good())
+	{
+		std::string sLine;
+		getline(infile, sLine);
+		identifier.assign(sLine);
+	}
+	else {
+		return false;
+	}
+
+	infile.close();
+	return true;
+}
+
+bool CSettings::readIdentifier(char *file) {
+	std::ifstream infile(file);
+
+	if (infile.good())
+	{
+		std::string sLine;
+		getline(infile, sLine);
+		identifier.assign(sLine);
+	}
+	else {
+		return false;
+	}
+
+	infile.close();
+	return true;
 }
 
 bool CSettings::HasKey(char *szKey) {

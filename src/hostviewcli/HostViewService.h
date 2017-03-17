@@ -38,6 +38,7 @@
 #include "http_server.h"
 #include "trace.h"
 #include "product.h"
+#include "HashedValuesTable.h"
 
 
 class CHostViewService :
@@ -106,6 +107,10 @@ private:
 	CStore m_store;
 	CUpload *m_upload;
 
+	HashedValuesTable<std::wstring> hashedWStrings;
+	HashedValuesTable<std::string> hashedStrings;
+	HashedValuesTable<unsigned int> hashedIPs;
+
 	void Cleanup();
 
 	// start/stop sessions
@@ -131,6 +136,9 @@ private:
 	// Updates the in-memory app usage info for the questionnaire
 	void UpdateQuestionnaireAppUsageInfo(DWORD dwPid, TCHAR *szUser, TCHAR *szApp);
 	void UpdateQuestionnaireSiteUsageInfo(TCHAR *szLocation, TCHAR *szBrowser);
+
+	std::string getHashedIPFromString(std::string &strIp);
+	char *getHashedIPFromCharPtr(char *strIp);
 
 	// networks are added to this queue to be displayed
 	// when a user is ready

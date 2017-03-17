@@ -1,5 +1,5 @@
 version = 1
-debugMode = 1
+debugMode = 0
 autoRestartTimeout = 1800000
 pcapSizeLimit = 10000000
 wirelessMonitorTimeout = 10000

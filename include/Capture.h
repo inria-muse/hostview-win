@@ -52,6 +52,12 @@
 #define DATA_DIRECTORY ".\\pcap"
 #define DATA_DIRECTORY_GLOB ".\\pcap\\*.pcap"
 
+#define MASK8 0xFF000000 // /8 mask
+#define MASK16 0xFFFF0000 // /16 mask
+#define PRIVATE10 0x0A000000//10.0.0.0/8
+#define PRIVATE127 0x7F000000//127.0.0.0/8
+#define PRIVATE192168 0xC0A80000//192.168.0.0/16
+
 /**
  *	Callback Interface.
  *	Through this we can save date into tables, compute statistics, etc.

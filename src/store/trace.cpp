@@ -32,7 +32,7 @@
 // 10 megabytes
 #define TRACE_MAX_LOGSIZE 10000000
 
-static CSettings *g_settings;
+static CSettings g_settings;
 
 ULONGLONG GetSizeInBytes(const char* fileName) {
 	WIN32_FILE_ATTRIBUTE_DATA fad;
@@ -63,11 +63,11 @@ ULONGLONG GetHiResTimestamp()
 }
 
 void InitTrace() {
-	g_settings = new CSettings();
+	g_settings.ReloadSettings();
 }
 
 void Debug(char *szFormat, ...) {
-	bool dodebug = g_settings->GetBoolean(DebugMode);
+	bool dodebug = g_settings.GetBoolean(DebugMode);
 #ifndef _DEBUG
 	// early out in non-debug versions
 	if (!dodebug) 
@@ -125,7 +125,7 @@ void RawWrite(char *szFormat, ...) {
 
 void Trace(char *szFormat, ...) {
 	
-	bool dodebug = g_settings->GetBoolean(DebugMode);
+	bool dodebug = g_settings.GetBoolean(DebugMode);
 
 	// max log size
 	if (!szFormat || GetSizeInBytes(".\\temp\\hostview.log") >= TRACE_MAX_LOGSIZE)
@@ -138,7 +138,7 @@ void Trace(char *szFormat, ...) {
 		MoveFileToSubmit(szFile, dodebug);
 
 		// log files is usually rotated upon session end, so good time to reload
-		g_settings->ReloadSettings();
+		g_settings.ReloadSettings();
 	}
 
 	if (szFormat)

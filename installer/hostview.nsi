@@ -152,7 +152,7 @@ FunctionEnd
 
 
 ## Password is
-!define Password "No password"
+!define Password ""
 
 Function PasswordPageShow
   !insertmacro MUI_HEADER_TEXT "Enter Password" "Enter your password to continue."
@@ -170,7 +170,7 @@ Function PasswordPageLeave
   Pop $R0
   ## A bit of validation
   StrCmp $R0 '${Password}' 0 +3
-    MessageBox MB_OK|MB_ICONEXCLAMATION "You need to input a password}"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "You need to input a password"
     Abort
   ## Display the password
   MessageBox MB_OK|MB_ICONINFORMATION "Password correctly stored"
@@ -258,12 +258,15 @@ npfdone:
 	SetOutPath $INSTDIR
 	File "settings"
 
+  ; write certificate
+  File "ca-bundle.crt"
+
   ; Use previously given password to store for identification
   ; (hased from input)
   Pop $R0
   Crypto::HashData "SHA2" $R0
   Pop $0
-  FileOpen $4 "$INSTDIR\pass.txt" w
+  FileOpen $4 "$INSTDIR\pass" w
   FileWrite $4 $0
   FileClose $4
 
@@ -271,15 +274,15 @@ npfdone:
   ; (used as a hash salt)
   Crypto::RNG
   Pop $0 ; $0 now contains 100 bytes of random data in hex format
-  FileOpen $4 "$INSTDIR\salt.txt" w
+  FileOpen $4 "$INSTDIR\salt" w
   FileWrite $4 $0
   FileClose $4
 
   ; TODO move this to a final page that starts the app once the installation looks complete
   ; TODO re-activate the explorer extension
 	SetOutPath $INSTDIR
-	;File "..\bin\Win32\Release\hostviewbho.dll"
-	;Exec "regsvr32 /s $\"$INSTDIR\hostviewbho.dll$\""
+	File "..\bin\Win32\Release\hostviewbho.dll"
+	Exec "regsvr32 /s $\"$INSTDIR\hostviewbho.dll$\""
 
 	; start everything
 	nsExec::Exec "net start $\"HostView Service$\""

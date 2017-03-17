@@ -70,6 +70,9 @@
 #define AutoUpdateInterval "autoUpdateInterval"   // check for updates (ms)
 #define UpdateLocation "updateLocation"           // update url
 
+#define DefaultSalt "defaultSalt"                // salt used for hashing
+#define DefaultIdentifier "defaultIdentifier"          // identifier used for 
+
 class SETTINGSAPI CSettings
 {
 public:
@@ -83,6 +86,17 @@ public:
 
 	/** Current settings version. */
 	ULONG GetVersion() { return version; };
+
+	std::string GetSalt() {
+		return salt;
+	}
+	bool readSalt();
+	bool readSalt(char *file);
+	std::string GetIdentifier() {
+		return identifier;
+	}
+	bool readIdentifier();
+	bool readIdentifier(char *file);
 
 	bool HasKey(char *szKey);
 
@@ -98,5 +112,7 @@ private:
 	std::hash_map<std::string, ULONG> *mLongSettings;
 	std::hash_map<std::string, std::string> *mSettings;
 	char filename[MAX_PATH];
+	std::string salt;
+	std::string identifier;
 	ULONG version;
 };

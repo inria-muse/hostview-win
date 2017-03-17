@@ -94,8 +94,10 @@ CUpload::CUpload()
 	// common options
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
 
-	if (settings.HasKey(UploadVerifyPeer))
+	if (settings.HasKey(UploadVerifyPeer)) {
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, settings.GetULong(UploadVerifyPeer));
+		curl_easy_setopt(curl, CURLOPT_CAINFO, "ca-bundle.crt");
+	}
 
 	if (settings.HasKey(UploadLowSpeedLimit))
 		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, settings.GetULong(UploadLowSpeedLimit));
@@ -128,13 +130,13 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 	bool result = false;
 
 	if (!curl) {
-		fprintf(stderr, "[upload] curl not initialized\n");
+		Debug("[upload] curl not initialized\n");
 		return result;
 	}
 
 	fopen_s(&f, fileName, "rb");
 	if (!f) {
-		fprintf(stderr, "[upload] failed to open file %s\n", fileName);
+		Debug("[upload] failed to open file %s\n", fileName);
 		return result;
 	}
 
@@ -144,7 +146,7 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 
 	sprintf_s(url, 1024, "%s/%s/%s/%s", settings.GetString(SubmitServer), ProductVersionStr, deviceId, PathFindFileNameA(fileName));
 
-	fprintf(stderr, "[upload] submit %s to %s %zd bytes\n", fileName, url, nTotalFileSize);
+	Debug("[upload] submit %s to %s %zd bytes\n", fileName, url, nTotalFileSize);
 
 	headers = curl_slist_append(headers, "Expect:"); // remove default Expect header
 
@@ -154,6 +156,8 @@ bool CUpload::SubmitFile(const char *fileName, const char *deviceId)
 	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 	curl_easy_setopt(curl, CURLOPT_READDATA, f);
 	curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)nTotalFileSize);
+	//Added certificate to solve issue posting with ssl
+	//curl_easy_setopt(curl, CURLOPT_CAINFO, "2015-cert-26532-muse.inria.fr.pem");
 
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {

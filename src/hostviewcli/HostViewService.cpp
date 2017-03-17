@@ -27,6 +27,7 @@
 #include "ThreadPool.h"
 #pragma endregion
 
+#include <atlconv.h>
 
 CHostViewService::CHostViewService(PWSTR pszServiceName, BOOL fCanStop, BOOL fCanShutdown, BOOL fCanPauseContinue)
 	: CServiceBase(pszServiceName, fCanStop, fCanShutdown, fCanPauseContinue)
@@ -209,10 +210,17 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 
 		// make sure we are using the latest settings
 		m_settings.ReloadSettings();
+		if (!m_settings.readSalt()) {
+			Trace("[SRC] error: failed reading the salt");
+		}
+		if(!m_settings.readIdentifier()) {
+			Trace("[SRC] error: failed reading the identifier");
+		}
 
 		Trace("Hostview service session %llu start [reason=%d].", ts, e);
 
 		// get sysinfo (data that wont change during the session)
+		//TODO system info contains sensitive data that should be hashed
 		QuerySystemInfo(m_sysInfo);
 		//TODO who cares anymore about the hddserial, I'm going to use a random id
 		if (_tcslen(m_sysInfo.hddSerial) <= 0)
@@ -221,7 +229,30 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 			m_startTime = 0;
 			return;
 		}
-		sprintf_s(szHdd, "%S", m_sysInfo.hddSerial);
+		//get valueas from settings
+		std::string salt = m_settings.GetSalt();
+		std::string identifier = m_settings.GetIdentifier();
+		//hashedWStrings.addSalt((unsigned char*)salt.c_str(), salt.length());
+		//hashedStrings.addSalt((unsigned char*)salt.c_str(), salt.length());
+		//hashedIPs.addSalt((unsigned char*)salt.c_str(), salt.length());
+
+		//Hash password for additional security
+		DWORD errNumber;
+		char hexHash[65];
+		BYTE *hash;
+		unsigned long hashLen;
+
+		if ((errNumber = hashedStrings.getHashString(identifier, &hash, &hashLen))|| hashLen == 0 || hash == NULL) {
+			Trace("[SRV] Error hashing the user id from %s", identifier.c_str());
+			sprintf_s(szHdd, "%s", identifier.c_str());
+		}
+		else {
+			for (int j = 0; j < hashLen; j++)
+				sprintf(&hexHash[2 * j], "%02X", hash[j]);
+			hexHash[64] = 0;
+			sprintf_s(szHdd, "%s", hexHash);
+			Trace("[SRV] Using id %s from identifier %s", szHdd, identifier.c_str());
+		}
 
 		if (!m_store.Open(m_startTime)) {
 			Debug("[SRV] fatal : failed to open the data store");
@@ -447,9 +478,12 @@ bool CHostViewService::ReadIpTable(DWORD now)
 
 		for (size_t i = 0; i < table->size; i++)
 		{
-			//TODO anonymize srcIP. Catch: here is a string while normally I'm treating 4 bytes (I need to convert back and forth)
 			IpRow it = table->get(i);
-			m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
+			char *hexHash = getHashedIPFromCharPtr(it.srcIp);
+			if(hexHash!=NULL) 
+				m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, hexHash, it.destIp, it.srcport, it.destport, it.state, timestamp);
+			else
+				m_store.InsertPort(it.pid, it.name, it.IsUDP() ? IPPROTO_UDP : IPPROTO_TCP, it.srcIp, it.destIp, it.srcport, it.destport, it.state, timestamp);
 		}
 
 		ReleaseIpTable(table);
@@ -511,6 +545,7 @@ bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
 	if (force || (now - sdwLastSubmit >= m_settings.GetULong(AutoSubmitInterval) &&
 				  !m_fFullScreen && m_fIdle))
 	{
+		if (force)Debug("[SRV] Forcing the upload of the files to submit");
 		if (m_upload == NULL) {
 			// new upload session
 			m_upload = new CUpload();
@@ -518,6 +553,7 @@ bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
 
 		if (!m_upload->TrySubmit(szHdd)) {
 			// no need to retry - either this was a success or then max retries was reached
+			Debug("[SRV] Succesfully uploaded all files");
 			delete m_upload;
 			m_upload = NULL;
 			sdwLastSubmit = now;
@@ -645,6 +681,28 @@ void CHostViewService::UpdateQuestionnaireSiteUsageInfo(TCHAR *szLocation, TCHAR
 			DownloadFile(szRemote, szLocal);
 		}
 	}
+}
+
+char *CHostViewService::getHashedIPFromCharPtr(char *strIp) {
+	//TODO do not use pre fixed size
+	char hexHash[65];
+	unsigned int ipToHash, newIp;
+	DWORD errNumber;
+
+	ipToHash = inet_addr(strIp);
+	if (ipToHash == INADDR_NONE) return NULL;
+
+	if ((errNumber = hashedIPs.get32Hash(ipToHash, &newIp))) {
+		Debug("Error hashing the SRC IP from the IP table: %x \n", errNumber);
+	}
+
+	struct in_addr in;
+	in.S_un.S_addr = newIp;
+	return inet_ntoa(in);
+}
+
+std::string CHostViewService::getHashedIPFromString(std::string &strIp) {
+	return std::string(getHashedIPFromCharPtr((char *)strIp.c_str()));
 }
 
 Message CHostViewService::OnMessage(Message &message)
@@ -815,11 +873,26 @@ Message CHostViewService::OnMessage(Message &message)
 					}
 				}
 			}
+			//TODO check for correctness
 			// remember labeled networks
 			m_networks.OnNetworkLabel(szGUID, szBSSID, szLabel);
 
 			// store for upload
-			m_store.InsertNetLabel(GetHiResTimestamp(), szGUID, szBSSID, szLabel);
+			TCHAR hexHash[65];
+			std::wstring toHash(szBSSID);
+			BYTE *hash;
+			unsigned long hashLen;
+			DWORD errNumber;
+
+			if ((errNumber = hashedWStrings.getHashWString(toHash, &hash, &hashLen))) {
+				Debug("Error hashing the SRC IP from the IP table: %x \n", errNumber);
+			}
+
+			for (int j = 0; j < hashLen; j++)
+				swprintf(&hexHash[2 * j], 2,  L"%02X", hash[j]);
+			hexHash[hashLen] = 0;
+
+			m_store.InsertNetLabel(GetHiResTimestamp(), szGUID, hexHash, szLabel);
 		}
 		break;
 
