@@ -43,20 +43,6 @@ HashedValuesTable<unsigned int> hashedIPv4s;
 HashedValuesTable< std::array<byte, 16> > hashedIPv6s;
 HashedValuesTable< std::array<byte,6> > hashedMACs;
 
-//TODOThis is a partial information
-int isIPv4Private(unsigned int ipAddress) {
-	unsigned int mask8 = ipAddress & MASK8;
-	unsigned int mask16 = ipAddress & MASK16;
-	if (mask8 == PRIVATE10 || mask8 == PRIVATE127 || mask16 == PRIVATE192168)
-		return 1;
-	return 0;
-}
-
-//TODO implement
-int isIPv6Private(unsigned int ipAddress) {
-	return 0;
-}
-
 const char * inet_ntop2(int af, const void *src, char *dst, int cnt)
 {
 	struct sockaddr_in srcaddr;
@@ -167,6 +153,67 @@ pcap_t* GetLiveSource(const char *adapterId = "interactive")
 	pcap_freealldevs(alldevs);
 
 	return adhandle;
+}
+
+void GetIfAddresses(const char *adapterId, struct in_addr **addrs, USHORT *nInterfaces) {
+	pcap_if_t *alldevs = NULL, *d = NULL;
+	int i = 0, inum = 0, tot = 0, j = 0;
+	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
+
+	/* Retrieve the device list on the local machine */
+	if (pcap_findalldevs(&alldevs, errbuf) == -1)
+	{
+		*nInterfaces = 0;
+		return;
+	}
+
+	/* Print the list */
+	for (d = alldevs; d; d = d->next)
+	{
+		i++;
+
+		if (strstr(d->name, adapterId))
+		{
+			inum = i;
+		}
+	}
+
+	if (i == 0)
+	{
+		*nInterfaces = 0;
+		return;
+	}
+	
+	if (inum < 1 || inum > i)
+	{
+		/* Free the device list */
+		pcap_freealldevs(alldevs);
+		return;
+	}
+
+	/* Jump to the selected adapter */
+	for (d = alldevs, i = 0; i < inum - 1; d = d->next, i++);
+
+	/* Write the addresses */
+	for (pcap_addr_t *a = d->addresses; a != NULL; a = a->next) {
+		if (a->addr->sa_family == AF_INET) {
+			tot++;
+			Debug("Device %s has address %s", d->name, inet_ntoa(((struct sockaddr_in*)a->addr)->sin_addr));
+		}
+		else if (a->addr->sa_family == AF_INET6) {
+			Debug("Device %s has an IPv6 address");
+		}
+	}
+	*nInterfaces = tot;
+	*addrs = (struct in_addr *)calloc(tot, sizeof(struct in_addr));
+	for (pcap_addr_t *a = d->addresses; a != NULL; a = a->next) {
+		if (a->addr->sa_family == AF_INET) {
+			memcpy(&(*addrs[j]), &((struct sockaddr_in*)a->addr)->sin_addr, sizeof(struct in_addr));
+			j++;
+		}
+	}
+
+	pcap_freealldevs(alldevs);
 }
 
 unsigned char* ReadDnsName(unsigned char* reader, unsigned char* buffer, int* count)
@@ -332,6 +379,8 @@ struct Capture {
 	CCaptureCallback *cb;
 	bool debugMode;
 	ULONG maxPcapSize;
+	USHORT nInterfaces;
+	struct in_addr *addrs;
 
 	// dummy default constuctor
 	Capture() :
@@ -343,10 +392,35 @@ struct Capture {
 		dumper(NULL),
 		cb(NULL),
 		debugMode(FALSE),
-		maxPcapSize(0)
+		maxPcapSize(0),
+		nInterfaces(0),
+		addrs(NULL)
 	{
 	}
 };
+
+//This is a partial information based only on whether the address belongs to a private space
+int isIPv4PrivateByMask(unsigned int ipAddress) {
+	unsigned int mask8 = ipAddress & MASK8;
+	unsigned int mask16 = ipAddress & MASK16;
+	if (mask8 == PRIVATE10 || mask8 == PRIVATE127 || mask16 == PRIVATE192168)
+		return 1;
+	return 0;
+}
+
+int isIPv4Private(struct Capture cap, unsigned int ipAddress) {
+	for (int i = 0; i < cap.nInterfaces; i++) {
+		if (cap.addrs[i].S_un.S_addr == ipAddress) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+//TODO implement this information
+int isIPv6Private(unsigned int ipAddress) {
+	return 0;
+}
 
 void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
@@ -366,10 +440,10 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	std::array<byte, 6> MACBuffer;
 	std::copy(std::begin(pEthernet->source), std::end(pEthernet->source), std::begin(MACBuffer));
 	if ((err = hashedMACs.getHash(MACBuffer, &hash, &hashLen))) {
-		Debug("Error while hashing source MAC address with error: %x", err);
+		Trace("Error while hashing source MAC address with error: %x", err);
 	}
 	else if (hash == NULL || hashLen <= 0) {
-		Debug("Something went wrong while hashing source MAC address as output has lenght %lu", hashLen);
+		Trace("Something went wrong while hashing source MAC address as output has lenght %lu", hashLen);
 	}
 	else {
 		memcpy(pEthernet->source, (void*)&hash[hashLen - 7], 6);
@@ -377,10 +451,10 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 	}
 	hash = NULL;
 	if ((err = hashedMACs.getHash(MACBuffer, &hash, &hashLen))) {
-		Debug("Error while hashing destination MAC address with error: %x", err);
+		Trace("Error while hashing destination MAC address with error: %x", err);
 	}
 	else if (hash == NULL || hashLen <= 0) {
-		Debug("Something when wrong while hashing destination MAC address as output has lenght %lu", hashLen);
+		Trace("Something when wrong while hashing destination MAC address as output has lenght %lu", hashLen);
 	}
 	else {
 		memcpy(pEthernet->dest, (void*)&hash[hashLen - 7], 6);
@@ -402,20 +476,15 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 		if (pIPv4->ip_version == 4)
 		{
 			hash = NULL;
-			if (isIPv4Private(pIPv4->ip_srcaddr)) {
+			//TODO needs quick check based on whether ipAddress should be switched back from network order 
+			if (isIPv4Private(cap, pIPv4->ip_srcaddr)) {
 				if ((err = hashedIPv4s.get32Hash(pIPv4->ip_srcaddr, &pIPv4->ip_srcaddr))) {
-					Debug("Error while hashing a MAC address: %d", err);
-				}
-				else if (hash == NULL || hashLen <= 0) {
-					Debug("Something when wrong while hashing a MAC address");
+					Trace("Error while hashing the source IPv4 address: %d", err);
 				}
 			}
-			if (isIPv4Private(pIPv4->ip_destaddr)) {
+			if (isIPv4Private(cap, pIPv4->ip_destaddr)) {
 				if ((err = hashedIPv4s.get32Hash(pIPv4->ip_destaddr, &pIPv4->ip_destaddr))) {
-					Debug("Error while hashing a MAC address: %d", err);
-				}
-				else if (hash == NULL || hashLen <= 0) {
-					Debug("Something when wrong while hashing a MAC address");
+					Trace("Error while hashing the destination IPv4 address: %d", err);
 				}
 			}
 
@@ -433,14 +502,19 @@ void OnPacketCallback(u_char *p, const struct pcap_pkthdr *header, const u_char 
 
 		hash = NULL;
 		std::array<byte, 16> IPv6Buffer;
-		//TODO check whether this whole thing works
-		//For the time being all IPv6 addresses are hashed. Until we find a way to anonymize only the source
+		//INFO: IPv6 addresses are tricky because they might just be derived from the MAC address.
+		//For the time being all IPv6 addresses are hashed. Until we implement a smarter way to profile whether the
+		// address should be considered sensitive information
 		memcpy(IPv6Buffer.data(), &pIPv6->ipv6_srcaddr.u.Byte, 16);
-		hashedIPv6s.getHash(IPv6Buffer, &hash, &hashLen);
+		if ((err = hashedIPv6s.getHash(IPv6Buffer, &hash, &hashLen))) {
+			Trace("Error while hashing the source IPv6 address: %d", err);
+		}
 		memcpy(&pIPv6->ipv6_srcaddr.u.Byte, (void*)&hash[hashLen - 17], 16);
 		memcpy(&pIPv6->ipv6_srcaddr.u.Word, (void*)&hash[hashLen - 17], 16);
 		memcpy(IPv6Buffer.data(), &pIPv6->ipv6_destaddr.u.Byte, 16);
-		hashedIPv6s.getHash(IPv6Buffer, &hash, &hashLen);
+		if ((err = hashedIPv6s.getHash(IPv6Buffer, &hash, &hashLen))) {
+			Trace("Error while hashing the destination IPv6 address: %d", err);
+		}
 		memcpy(&pIPv6->ipv6_destaddr.u.Byte, (void*)&hash[hashLen - 17], 16);
 		memcpy(&pIPv6->ipv6_destaddr.u.Word, (void*)&hash[hashLen - 17], 16);
 
@@ -577,6 +651,7 @@ PCAPAPI bool StartCapture(CCaptureCallback &callback, ULONGLONG session, ULONGLO
 		cap.pcap = GetLiveSource(adapterId);
 		if (cap.pcap)
 		{
+			GetIfAddresses(adapterId, &cap.addrs, &cap.nInterfaces);
 			cap.dumper = pcap_dump_open(cap.pcap, cap.capture_file);
 			if (cap.dumper)
 			{
@@ -609,6 +684,11 @@ PCAPAPI bool StopCapture(const char *adapterId)
 		{
 			pcap_dump_close(cap.dumper);
 			cap.dumper = NULL;
+		}
+
+		if (cap.nInterfaces > 0) {
+			cap.nInterfaces = 0;
+			free(cap.addrs);
 		}
 
 		struct pcap_stat stats;
