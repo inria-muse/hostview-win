@@ -885,7 +885,7 @@ Message CHostViewService::OnMessage(Message &message)
 			DWORD errNumber;
 
 			if ((errNumber = hashedWStrings.getHashWString(toHash, &hash, &hashLen))) {
-				Debug("Error hashing the SRC IP from the IP table: %x \n", errNumber);
+				Debug("Error hashing the BSSID: %x \n", errNumber);
 			}
 
 			for (int j = 0; j < hashLen; j++)

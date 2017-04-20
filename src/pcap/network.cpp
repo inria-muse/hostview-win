@@ -157,6 +157,10 @@ void QueryAdapterInfo(PIP_ADAPTER_ADDRESSES pCurrAddresses, NetworkInterface &ne
 	networkInterface.strGuid = pCurrAddresses->AdapterName;
 	networkInterface.strDnsSuffix = pCurrAddresses->DnsSuffix;
 
+	//TODO keep track of the M AC address as a unique way to distinguish incoming packets
+	// BYTE PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH];
+
+
 	std::string &str = networkInterface.strGuid;
 	str.erase(std::remove(str.begin(), str.end(), '{'), str.end());
 	str.erase(std::remove(str.begin(), str.end(), '}'), str.end());
