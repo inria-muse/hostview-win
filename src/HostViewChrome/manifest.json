@@ -15,6 +15,10 @@
 	  "activeTab",
     "http://localhost:40123/"    
   ],
+  "browser_action": {
+    "default_icon": "data/icon.png",
+    "default_popup": "popup.html"
+  },
   "background": {
     "scripts": ["index.js"]
   }

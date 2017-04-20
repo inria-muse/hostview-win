@@ -4,7 +4,13 @@ var http = require('http');
 var fs = require('fs');
 var url = require('url');
 
-const PORT = 3000;
+var PORT;
+
+if(process.argv.length > 2){
+	PORT = parseInt(process.argv[2]);
+} else {
+	PORT = 3000;
+}
 
 var server = http.createServer(function(req, res) {
 	console.log("req from " + req.socket.remoteAddress + ":" + req.socket.remotePort);
