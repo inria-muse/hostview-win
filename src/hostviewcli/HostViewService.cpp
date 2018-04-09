@@ -133,7 +133,7 @@ void CHostViewService::ServiceWorkerThread(void)
 				lastRotateDay = st.wDay;
 				SendServiceMessage(Message(MessageRestartSession));
 			}
-
+			
 			lastSessionCheck = dwNow;
 		}
 
@@ -278,12 +278,13 @@ void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 
 		m_store.InsertSession(ts, e);
 		m_store.Close();
-		m_startTime = 0;
 	}
 
 	StopHttpDispatcher();
 	StopWifiMonitor();
 	StopInterfacesMonitor(*this);
+
+	m_startTime = 0;  
 }
 
 void CHostViewService::OnPowerEvent(PPOWERBROADCAST_SETTING event)
@@ -543,7 +544,7 @@ bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
 	static DWORD sdwLastSubmit = GetTickCount();
 
 	if (force || (now - sdwLastSubmit >= m_settings.GetULong(AutoSubmitInterval) &&
-				  !m_fFullScreen && m_fIdle))
+		!m_fFullScreen && m_fIdle))
 	{
 		if (force)Debug("[SRV] Forcing the upload of the files to submit");
 		if (m_upload == NULL) {
@@ -760,11 +761,14 @@ Message CHostViewService::OnMessage(Message &message)
 	case MessageStopCapture:
 		if (!m_fUserStopped)
 		{
+			Trace("MessageStopCapture");
 			m_dwUserStoppedTime = GetTickCount();
 			m_fUserStopped = TRUE;
 			m_fIdle = FALSE;
 			m_fFullScreen = FALSE;
 			m_hasSeenUI = FALSE;
+
+			//todo_GG: this should be called in the case of user pausing or stopping Hostview (I believe). The SessionEvent should differentiate between these 2 cases and not be always PAUSE  
 			StopCollect(SessionEvent::Pause, GetHiResTimestamp());
 		}
 		break;
