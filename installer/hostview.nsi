@@ -5,6 +5,9 @@ SetCompressor /SOLID /FINAL lzma
 
   !include "MUI.nsh"
   !include "FileFunc.nsh"
+  !include "LogicLib.nsh"
+  !include nsDialogs.nsh
+
 
 ;--------------------------------
 ;General
@@ -86,6 +89,10 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" ""
 ; and it's one less thing for us to worry about.
 ;Page custom optionsPage doOptions
 ; Page to get a users' password
+
+Page custom ExtensionPageShow
+
+
 Page custom PasswordPageShow PasswordPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -153,28 +160,89 @@ FunctionEnd
 
 ## Password is
 !define Password ""
-
+Var Dialog
+Var Label
+Var Pass
 Function PasswordPageShow
-  !insertmacro MUI_HEADER_TEXT "Enter Password" "Enter your password to continue."
-  PassDialog::InitDialog Password /HEADINGTEXT \
-  "Please input a password that will be used to retrieve your data from the online application.\
-  Do not forget this password as otherwise you will not be able to retrieve it."
-  Pop $R0 # Page HWND
-  PassDialog::Show
+	!insertmacro MUI_HEADER_TEXT "Password" "Setting up your password"
+
+	nsDialogs::Create 1018
+	Pop $Dialog
+
+	${If} $Dialog == error
+		Abort
+	${EndIf}
+
+	${NSD_CreateLabel} 0 0 90% 74u "Please choose a password that will let you retrieve your data from the online application.\
+ $\nThe data we collect is anonymized (we process the data but CANNOT identify you from it and \
+  CANNOT retrieve the data nor the password for you). \
+  $\nThis password is the only way you (and ONLY YOU) can access and decide to visualize or delete your personal data. \
+  $\nToghether with the machine you are using at the moment, this password will allow you to manage your data from this URL:"  
+
+  ${NSD_CreateLink} 10 120 100% 12 "http://muse.inria.fr/ucnstudydemo/"
+Var /GLOBAL LINK 
+Pop $LINK 
+${NSD_OnClick} $LINK onClickMyLink  
+
+ Pop $Label
+ 
+  ${NSD_CreatePassword} 0 150 100% 14u "Please type your desired password"  #if you change this message, change accordingly also the string check in the return function
+	Pop $Pass # Page HWND
+    SendMessage $Pass ${EM_SETPASSWORDCHAR} 0 0
+ 
+ nsDialogs::Show
 
 FunctionEnd
 
 ## Validate password
 Function PasswordPageLeave
-  ## Pop password from stack
-  Pop $R0
-  ## A bit of validation
-  StrCmp $R0 '${Password}' 0 +3
+  ${NSD_GetText} $Pass $R0 ##todo check what we need to store, $Pass or the text version
+
+  ${If} $R0 ==  "Please type your desired password"  
+  ${OrIf} $R0 ==  ""
     MessageBox MB_OK|MB_ICONEXCLAMATION "You need to input a password"
     Abort
-  ## Display the password
-  MessageBox MB_OK|MB_ICONINFORMATION "Password correctly stored"
+  ${Else}
+    MessageBox MB_OK|MB_ICONINFORMATION "Password correctly stored"
+  ${EndIf}
 FunctionEnd
+
+Function onClickMyLink
+	Pop $0 ; don't forget to pop HWND of the stack
+	ExecShell "open" "http://muse.inria.fr/ucnstudydemo/"
+FunctionEnd
+
+
+Function onClickExtensionLink
+	Pop $0 ; don't forget to pop HWND of the stack
+	ExecShell "open" "https://project.inria.fr/bottlenet/"
+FunctionEnd
+
+Function ExtensionPageShow
+	!insertmacro MUI_HEADER_TEXT "Browser extension" "Installing additional plugin for your browser"
+
+
+	nsDialogs::Create 1018
+	Pop $Dialog
+
+	${If} $Dialog == error
+		Abort
+	${EndIf}
+
+	${NSD_CreateLabel} 0 0 90% 74u "Please, if you use Chrome or Firefox as browser, install this addditional plugin. $\n\
+	It won't require more than one click.$\n\
+	This browser extension will help us getting some information about the quality of the communication when you are watching videos from \
+	Youtube, Netflix, etc. TODO more info??"  
+
+	${NSD_CreateLink} 10 120 100% 12 "Browser extension plugin"
+	Var /GLOBAL EXTENSION_LINK 
+	Pop $EXTENSION_LINK 
+	${NSD_OnClick} $EXTENSION_LINK onClickExtensionLink  
+
+	Pop $Label
+	nsDialogs::Show
+  
+  FunctionEnd
 
 ;Function ComponentsPageShow
 ;
