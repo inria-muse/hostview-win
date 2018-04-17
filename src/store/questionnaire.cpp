@@ -217,6 +217,18 @@ void SubmitQuestionnaireProblem(const TCHAR *szResult) {
 	SendServiceMessage(message);
 }
 
+void SubmitQuestionnaireAppImportance(const TCHAR *szResult) {
+	Message message(MessageQuestAppImportance);
+	_tcscpy_s(message.szUser, szResult);
+	SendServiceMessage(message);
+}
+
+void SubmitQuestionnaireAppPerformance(const TCHAR *szResult) {
+	Message message(MessageQuestAppPerformance);
+	_tcscpy_s(message.szUser, szResult);
+	SendServiceMessage(message);
+}
+
 void SubmitQuestionnaireDone() {
 	Message message(MessageQuestDone);
 	SendServiceMessage(message);

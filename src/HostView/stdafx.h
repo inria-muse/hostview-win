@@ -107,6 +107,9 @@ typedef std::set<std::tstring> TagSetT;
 #define AppIssue			L"app.issues.tag"
 #define AppPCIssue			L"pc.issues.tag"
 #define AppCategory			L"app.activities.tag"
+#define AppImportance		L"app.importance.tag"
+#define AppPerformance		L"app.performance.tag"
+#define AppPCPerformance	L"pc.performance.tag"
 
 std::tstring GetTags(const TCHAR *szCategory);
 void SetTags(const TCHAR* szCategory, const TCHAR * szTags);

@@ -94,7 +94,10 @@ void CEsmWizard::OnDocumentComplete(LPDISPATCH pDisp, LPCTSTR szUrl)
 
 		LoadTags(AppIssue, _T("issues"));
 		LoadTags(AppPCIssue, _T("pcissues"));
-		LoadTags(AppCategory, _T("categories"));
+		LoadTags(AppCategory, _T("appusefor"));
+		LoadTags(AppImportance, _T("appimportance"));
+		LoadTags(AppPerformance, _T("appperformance"));
+		LoadTags(AppPCPerformance, _T("pcperformance"));
 
 		// user sees it
 		m_dwStart = GetTickCount();
@@ -116,7 +119,7 @@ HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 {
 	DWORD dur = GetTickCount() - m_dwStart;
 
-	CComVariant varRes, varResC;
+	CComVariant varRes, varResC, varResPcPer;
 	CStringArray arrArgs;
 	if (CallClientScript(L"GetQoeScore", &arrArgs, &varRes))
 	{
@@ -126,8 +129,7 @@ HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 		// Add activity + prob tags for all apps (pass appId as arg)
 		for (int appId = 0; appId < m_appCount; appId++) {
 			TCHAR szId[8] = { 0 };
-			CComVariant varResA, varResP;
-
+			CComVariant varResA, varResP, varResI, varResPer;
 			CStringArray arrArgsA;
 			_stprintf_s(szId, _T("%d"), appId);
 			arrArgsA.Add(szId);
@@ -141,26 +143,48 @@ HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 			{
 				SubmitQuestionnaireProblem(varResP.bstrVal);
 			}
+
+			if (CallClientScript(L"GetAppImportanceTags", &arrArgsA, &varResI) && _tcslen(varResI.bstrVal)>1)
+			{
+				SubmitQuestionnaireAppImportance(varResI.bstrVal);
+			}
+
+			if (CallClientScript(L"GetAppPerformanceTags", &arrArgsA, &varResPer) && _tcslen(varResPer.bstrVal)>1)
+			{
+				SubmitQuestionnaireAppPerformance(varResPer.bstrVal);
+			}
+			
 		}
 
 		// will return the computer wide prob tags (no appId arg)
-		if (CallClientScript(L"GetProblemTags", &arrArgs, &varResC) && _tcslen(varResC.bstrVal)>1)
+		if (CallClientScript(L"GetProblemTags", NULL, &varResC) && _tcslen(varResC.bstrVal)>1)
 		{
 			SubmitQuestionnaireProblem(varResC.bstrVal);
+		}
+		if (CallClientScript(L"GetPCPerformanceTags", &arrArgs, &varResPcPer) && _tcslen(varResPcPer.bstrVal)>1)
+		{
+			SubmitQuestionnaireAppPerformance(varResPcPer.bstrVal);
 		}
 
 		// Signal that we're done
 		SubmitQuestionnaireDone();
 
 		// Save new user tags
-		CComVariant vaCat, vaIss, vaPCIss;
+		CComVariant vaCat, vaIss, vaPCIss, vaAppImp, vaAppPer, vaPCPer;
 		CallClientScript(L"GetNewCategories", &arrArgs, &vaCat);
 		CallClientScript(L"GetNewPCIssues", &arrArgs, &vaPCIss);
 		CallClientScript(L"GetNewIssues", &arrArgs, &vaIss);
+		CallClientScript(L"GetAppImportance", &arrArgs, &vaAppImp);
+		CallClientScript(L"GetAppPerformance", &arrArgs, &vaAppPer);
+		CallClientScript(L"GetPCPerformance", &arrArgs, &vaPCPer);
+
 
 		SetTags(AppCategory, vaCat.bstrVal);
 		SetTags(AppIssue, vaIss.bstrVal);
 		SetTags(AppPCIssue, vaPCIss.bstrVal);
+		SetTags(AppImportance, vaAppImp.bstrVal);
+		SetTags(AppPerformance, vaAppPer.bstrVal);
+		SetTags(AppPCPerformance, vaPCPer.bstrVal);
 	}
 
 	m_appCount = 0;

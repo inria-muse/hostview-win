@@ -308,84 +308,150 @@
 
     <!-- Page 1: Activity Categories -->
     <div id="page1" class="hidden">
+        <form class="col s12" style="height:100%;display:block;">
 
-    <p class="wiztitle">For each of the applications below please report your activity.</p>
+            <p class="wiztitle">For each of the applications below please report your activity.</p>
 
-    <div>
+            <div>
 
-        <div class="tab-container">
-            <!-- App List -->
-            <ul id="Categories">
-            </ul>
-																
-            <ul>
-                <li onclick="OpenAddApplication();" style="text-align:center">
-                <i class="mdi-content-add tiny" style="line-height:27px;color:#bcbcbc"></i>
-                </li>
-            </ul>
-        		
-        </div> <!-- tab-container -->
+                <div class="tab-container">
+                    <!-- App List -->
+                    <ul id="Categories"></ul>
 
-        <div class="main-container" id="CategoriesContent">
-            <!-- Views -->
-            <div class="input-field col s12">
-                <p>What better describes your activity with <b id="currAppName"></b> <span id="currAppExtra"></span> 
-                   at the moment?</p>
+                    <ul>
+                        <li onclick="OpenAddApplication();" style="text-align:center">
+                            <i class="mdi-content-add tiny" style="line-height:27px;color:#bcbcbc"></i>
+                        </li>
+                    </ul>
+
+                </div> <!-- tab-container -->
+
+                <div class="main-container" id="CategoriesContent">
+
+                    <!-- Application specific section -->
+                    <div class="input-field col s12">
+                        <p>
+                            What better describes the importance level of the activity you are doing at the moment with <b id="currAppName"></b> <span id="currAppExtra"></span>
+                        </p>
+                        <!--<p>What better describes your activity with <b id="currAppName"></b> <span id="currAppExtra"></span>
+                    at the moment?</p> -->
+                    </div>
+
+                    <!--<div class="input-field col s12">
+
+                    <div style="padding:5px;">
+                        <input type="text" name="othertext" id="othertext" maxlength="32"
+                            onkeyup="addlabel(event, 'othertext', 'categoriesfour');"
+                            placeholder="please type your activity or click all that apply"/>
+                    </div>
+
+                    <div id="selections"></div>
+
+                </div>-->
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+
+                        <fieldset>
+                            <!-- <legend>
+                            &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Importance Level &nbsp;
+                        </legend>-->
+                            <div id="appimportance"></div>
+                        </fieldset>
+                    </div>
+
+                    <div class="input-field col s12">
+                        <p>
+                            What better describes your activity with <b id="currAppNameActivity"></b> <span id="currAppExtra"></span> (click all that apply)
+                        </p>
+                    </div>
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+                        <fieldset>
+                            <!--<legend>
+            &nbsp;<i class="mdi-content-add" style="position:relative;top:2px;"></i>&nbsp;Activity Type &nbsp;
+        </legend>-->
+                            <div id="appusefor"></div>
+                            <div style="padding:2px;">
+                                <!--onblur="InsertUserActivityTypeLabel()"-->
+                                <input type="text" name="othertextuseractivity" id="othertextuseractivity" maxlength="32" onkeyup="InsertUserActivityTypeLabel(event)"  placeholder="If no category matches, manually type here a new one" />
+                            </div>
+                            <fieldset>
+                                <legend>&nbsp;Other&nbsp;</legend>
+                                <div id="appuseforuser"></div>
+                            </fieldset>
+                        </fieldset>
+
+                    </div>
+
+                    <div class="input-field col s12">
+                        <p>
+                            How would you rate the general performance of  <b id="currAppNameAppRate"></b> <span id="currAppExtra"></span> at the moment
+                        </p>
+                    </div>
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+                        <fieldset>
+                            <div id="appperformance"></div>
+                        </fieldset>
+                    </div>
+
+
+                    <div class="input-field col s12">
+                        <p>
+                            Did you experience any of the following problems with <b id="currAppNameSpecificIssue"></b> <span id="currAppExtra"></span> at the moment
+                        </p>
+                    </div>
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+                        <fieldset>
+                            <div id="issues"></div>
+                            <div style="padding:2px;">
+                                <!--onblur="InsertUserActivityTypeLabel()"-->
+                                <input type="text" name="othertextapissues" id="othertextapissues" maxlength="32" onkeyup="InsertUserAppIssuesLabel(event)" placeholder="If no category matches, manually type here a new one" />
+                            </div>
+                            <fieldset>
+                                <legend>&nbsp;Other&nbsp;</legend>
+                                <div id="issues_user"></div>
+                            </fieldset>
+                        </fieldset>
+                    </div>
+
+
+
+
+                    <!-- General - Computer-->
+                    <div class="input-field col s12">
+                        <p>
+                            How would you rate the general performance of <b id="currAppNamePCPerf"></b> <span id="currAppExtra"></span> at the moment
+                        </p>
+                    </div>
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+                        <fieldset>
+                            <div id="pcperformance"></div>
+                        </fieldset>
+                    </div>
+
+                    <div class="input-field col s12">
+                        <p>
+                            Did you experience any of the following problems with <b id="currAppNameIssues"></b> <span id="currAppExtra"></span> at the moment
+                        </p>
+                    </div>
+                    <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
+                        <fieldset>
+                            <div id="pcissues"></div>
+                            <div style="padding:2px;">
+                                <!--onblur="InsertUserActivityTypeLabel()"-->
+                                <input type="text" name="othertextpcissues" id="othertextpcissues" maxlength="32" onkeyup="InsertUserPcIssuesLabel(event)" placeholder="If no category matches, manually type here a new one" />
+                            </div>
+                            <fieldset>
+                                <legend>&nbsp;Other&nbsp;</legend>
+                                <div id="pcissues_user"></div>
+                            </fieldset>
+
+                        </fieldset>
+                    </div>
+
+
+                </div> <!-- main-container -->
             </div>
-									
-            <div class="input-field col s12">
-
-                <div style="padding:5px;">
-                    <input type="text" name="othertext" id="othertext" maxlength="32"
-	                    onkeyup="addlabel(event, 'othertext', 'categoriesfour');"
-	                    placeholder="please type your activity or click all that apply"/>
-                </div>
-										
-                <div id="selections"></div>
-
-            </div>
-									
-            <div class="input-field col s12" style="padding-bottom:15px;margin-top:-5px;">
-
-                <fieldset>
-                    <legend>
-                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Looking for information on: &nbsp;
-                    </legend>
-                    <div class="content">
-	                    <div id="categoriesone"></div>
-                    </div>
-                </fieldset>
-										
-                <fieldset>
-                    <legend>
-                        &nbsp;<i class="mdi-content-add" style="position:relative;top:2px;"></i>&nbsp;Entertaining myself with: &nbsp;
-                    </legend>
-                    <div class="content">
-	                    <div id="categoriestwo"></div>
-                    </div>
-                </fieldset>
-										
-                <fieldset>
-                    <legend>
-                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Communicating with others through: &nbsp;
-                    </legend>
-                    <div class="content">
-	                    <div id="categoriesthree"></div>
-                    </div>
-                </fieldset>
-			
-                <fieldset>
-                    <legend>
-                        &nbsp;<i class="mdi-content-add" style="position:relative;top:1px;"></i>Other activities: &nbsp;
-                    </legend>
-                    <div class="content">
-	                    <div id="categoriesfour"></div>
-                    </div>
-                </fieldset>
-            </div>
-        </div> <!-- main-container -->
-    </div>
-    </div> <!-- page1 -->
+            </form>
+</div> <!-- page1 -->
 
     <!-- Page 2: QoE Score -->
 	<div id="page2" class="hidden">
@@ -484,7 +550,7 @@
     <div style="text-align:right; position:absolute;bottom:0px;right:10px;">
         <a href="#" class="waves-effect waves-grey btn-flat" id="ButtonBack" style="display:none" onclick="showPrevPage();">Back</a>
         <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonNext" onclick="showNextPage();">Next</a>
-        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonDone" style="display:none;">Done</a>
+        <a href="#" class="waves-effect waves-light btn blue darken-1" id="ButtonDone" style="display:none;">Submit</a>
     </div>
   
     </div> <!-- row -->
@@ -499,7 +565,7 @@
 
         // navigation state
         var currPage = 0;
-        var totalPages = 3;
+        var totalPages = 1;
 
         var currCatTab = null;
         var currIssueTab = null;
@@ -508,8 +574,12 @@
         var appInfo = { 'Computer': { name : 'computer', desc : 'computer' } };
         // c_appId -> { name => true|false }
         var appCats = {};
-        // i_appId -> { name => true|false }
+        // c_appId -> { name => true|false }
         var appIssues = { 'Computer': {} };
+        // appId -> { name => true|false }
+        var appPerformance = {};
+        // appId -> { name => true|false }
+        var appImportance = {};
 
 		function showView(viewId, show) {
 			document.getElementById(viewId).style.display = show == true ? "inline-block" : "none";
@@ -571,6 +641,15 @@
 		        document.getElementById("currAppName").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
 		        GetTabExtra(tab, "currAppExtra");
 
+		        document.getElementById("currAppNameActivity").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtra");
+
+		        document.getElementById("currAppNameSpecificIssue").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtra");
+
+		        document.getElementById("currAppNameAppRate").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtra");
+		        
 		        // restores the "selection" input content
 		        var selectionImport = "";
 		        for (var category in appCats[tab.id]) {
@@ -586,7 +665,6 @@
 		function SelectIssuesTab(tab) {
 		    if (tab != undefined) {
 		        currIssueTab = tab;
-
 		        var computer = (tab.id == "Computer");
 
 		        document.getElementById("pc").style.display = computer ? "block" : "none";
@@ -599,7 +677,10 @@
 		        document.getElementById("currAppNameIssues").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
 		        GetTabExtra(tab, "currAppExtraIssues");
 
-		        RestoreIssueTags();
+		        document.getElementById("currAppNamePCPerf").innerHTML = tab.getElementsByTagName("strong")[0].innerHTML;
+		        GetTabExtra(tab, "currAppExtra");
+
+		        RestoreAppIssueTags();
 		    }
 		}
 
@@ -619,6 +700,60 @@
         }
 
         // called from EsmWizard.cpp
+        function GetAppImportanceTags(appid) {
+            var app = appInfo[appid];
+            appid = 'c_' + appid;
+            if (appImportance[appid]) {
+                var tmp = []
+                for (var k in appImportance[appid]) {
+                    if (appImportance[appid][k] == true) tmp.push(k);
+                }
+                if (tmp.length > 0)
+                    res = app.name + ';' + app.desc + ';' + tmp.join(',');
+
+                return res;
+            }
+            return "";
+        }
+
+        function GetAppPerformanceTags(appid) {
+            var app = appInfo[appid];
+            appid = 'c_' + appid;
+            if (appPerformance[appid]) {
+                var tmp = []
+                for (var k in appPerformance[appid]) {
+                    if (appPerformance[appid][k] == true) tmp.push(k);
+                }
+                if (tmp.length > 0)
+                    res = app.name + ';' + app.desc + ';' + tmp.join(',');
+
+                return res;
+            }
+            return "";
+        }
+
+        function GetPCPerformanceTags() {
+            var appid = 'Computer';
+            var app = appInfo['Computer'];
+            if (appPerformance['Computer']) {
+                var tmp = []
+                for (var k in appPerformance[appid]) {
+                    if (appPerformance[appid][k] == true) tmp.push(k);
+                }
+                if (tmp.length > 0)
+                    res = app.name + ';' + app.desc + ';' + tmp.join(',');
+                return res;
+            }
+            return "";
+        }
+
+        /*function GetNewPCIssuesTag() {
+            appInfo['Computer']
+            return app.name + ';' + app.desc + ';' + tmp.join(',');
+            return document.getElementById("pcissues").value + ""; //TODO does it work in this way?
+        }*/
+    
+        // called from EsmWizard.cpp
         // returns a comma-separated list of tags or empty string 
         // of the user activity tags for the given app
         function GetActivityTags(appid) {
@@ -629,8 +764,9 @@
 
             if (appCats[appid] && app) {
                 var tmp = []
-                for (var k in appCats[appid])
+                for (var k in appCats[appid]) {
                     if (appCats[appid][k] == true) tmp.push(k);
+                }
                 if (tmp.length > 0)
                     res = app.name + ';' + app.desc + ';' + tmp.join(',');
             }
@@ -648,7 +784,7 @@
                 appid = 'Computer';
             } else {
                 app = appInfo[appid];
-                appid = 'i_' + appid;
+                appid = 'c_' + appid;
             }
 
             var res = "";
@@ -683,18 +819,33 @@
 			
 		// called from EsmWizard.cpp
 		function GetNewCategories() {
-			return GetNewLabels('categoriesone') + ", " + GetNewLabels('categoriestwo') + ", " + GetNewLabels('categoriesthree') + ", " + GetNewLabels('categoriesfour');
+		    return GetNewLabels('appusefor') + "," + GetNewLabels('appuseforuser');     // + ", " +  GetNewLabels('categoriesone') + ", " + GetNewLabels('categoriestwo') + ", " + GetNewLabels('categoriesthree') + ", " + GetNewLabels('categoriesfour');
 		}
 
 		// called from EsmWizard.cpp
 		function GetNewIssues() {
-			return GetNewLabels('issues');
+		    return GetNewLabels('issues') + "," + GetNewLabels('issues_user');
 		}
 
 		// called from EsmWizard.cpp
 		function GetNewPCIssues() {
-			return GetNewLabels('pcissues');
+		    return GetNewLabels('pcissues') + "," + GetNewLabels('pcissues_user');
 		}
+
+		// called from EsmWizard.cpp
+		function GetPCPerformance() {
+		    return GetNewLabels('pcperformance');
+		}
+
+		function GetAppImportance() {
+		    return GetNewLabels("appimportance");
+		}
+
+		function GetAppPerformance() {
+		    return GetNewLabels("appperformance");
+		}
+
+		
 			
         // called from EsmWizard.cpp
 		function AppendLabel(type, label) {
@@ -733,6 +884,8 @@
 			appInfo = { 'Computer': { name: 'computer', desc: 'computer' } };
 			appCats = {};
 			appIssues = { 'Computer': {} };
+			appPerformance = {};
+			appImportance = {};
 		}
 			
 		function processName(app) {
@@ -752,14 +905,17 @@
 
 		function RemoveApplication(appId) {
 			RemoveElement("c_" + appId);
-			RemoveElement("i_" + appId);
+			RemoveElement("c_" + appId);
 				
 			SelectCategoriesTab(document.getElementById('Categories').getElementsByTagName('li')[0]);
 			SelectIssuesTab(document.getElementById('Issues').getElementsByTagName('li')[0]);
 
 			appInfo[appId] = undefined;
 			appCats["c_" + appId] = undefined;
-			appIssues["i_" + appId] = undefined;
+			appIssues["c_" + appId] = undefined;
+			appPerformance["c_"+appId] = undefined;
+			appImportance["c_" + appId] = undefined;
+
         }
 
         // Called from EsmWizard.cpp
@@ -784,9 +940,9 @@
 		}
 
 		function AppendAppIssues(appId, appName, appDesc, appExtra) {
-		    appIssues['i_' + appId] = {};
+		    appIssues['c_' + appId] = {};
 
-		    var content = "<li id=\"i_" + appId + "\" onclick=\"SelectIssuesTab(this);\">";
+		    var content = "<li id=\"c_" + appId + "\" onclick=\"SelectIssuesTab(this);\">";
 			content += "<img class=\"app-icon\" src=\"out\\" + appName + ".ico\" />";
 			content += "<div class=\"app-info\"><p><strong>" + processName(appDesc != null && appDesc.length > 0 ? appDesc : appName) + "</strong></p></div>";
 			content += "<span style=\"display:none;\">" + appExtra + "</span>";
@@ -825,49 +981,132 @@
 			
 		function OpenModal() {
 			document.getElementById("open-modal").click();
-		}			
+		}
 
-		function RestoreIssueTags() {
+
+		function SetUserAppIssuesLabels(labelsAsString) {
+		    $('#issues_user').importTags(labelsAsString);
+		}
+		
+		function SetUserPcIssuesLabels(labelsAsString) {
+		    $('#pcissues_user').importTags(labelsAsString);
+		}
+
+		function SetUserActivityLabels(labelsAsString) {
+		    $('#appuseforuser').importTags(labelsAsString);
+		}
+
+		function RestoreAppIssueTags() {
 		    $(".tag").each(function () {
-		        var text = $(this).children().first().text().trim();
-		        $(this).attr('class', appIssues[currIssueTab.id][text] == true ? 'tag active' : 'tag');
+		        if (String($(this).parent().attr('id')).indexOf("issues") >-1 &&
+                    String($(this).parent().attr('id')).indexOf("pcissues") < 0) {
+
+		            var text = $(this).children().first().text().trim();
+		            $(this).attr('class', appIssues[currCatTab.id][text] == true ? 'tag active' : 'tag');
+		        }
 		    });
 		}
 
+        //todo this doesn't restore the categories anymore, we should change its name
 		function RestoreCatTags() {
 		    $(".tag").each(function () {
-		        var text = $(this).children().first().text().trim();
-		        $(this).attr('class', appCats[currCatTab.id][text] == true ? 'tag active' : 'tag');
+		        if (String($(this).parent().attr('id')).indexOf("pcissues") < 0 &&
+                    String($(this).parent().attr('id')).indexOf("pcperformance") < 0) {
+		            var text = $(this).children().first().text().trim();
+		            var isPerformanceSet, isCategorySet, isImportanceSet, isIssuesSet = 0;
+
+		            if (appPerformance[currCatTab.id])
+		                isPerformanceSet = appPerformance[currCatTab.id][text] == true;
+
+		            if (appCats[currCatTab.id])
+		                isCategorySet = appCats[currCatTab.id][text] == true;
+
+		            if (appImportance[currCatTab.id])
+		                isImportanceSet = appImportance[currCatTab.id][text] == true;
+
+		            if (appIssues[currCatTab.id]) {
+		                isIssuesSet = appIssues[currCatTab.id][escape(text)] == true;
+		            }
+		            $(this).attr('class', isPerformanceSet | isCategorySet | isImportanceSet | isIssuesSet ? 'tag active' : 'tag');
+                }		       
 		    });
 		}
+
+		
 
         // handle predefined tag selection
         function OnClickSpan(span)
-        {
+		{
 	        if (span.parent().attr('id').indexOf("selections") > -1)
 		        // ignore selections element
 		        return;
 		
             // tag text
 	        var text = span.children().first().text().trim();
-		
+	        var selectedObj = span.parent().attr('id');
 	        if (span.attr('class').indexOf("active") > -1) {
-                // tag deactivated
+	            // tag deactivated
 	            span.attr('class', 'tag');
-	            if (span.parent().attr('id').indexOf("issues") > -1) {
-		            appIssues[currIssueTab.id][escape(text)] = undefined;
-		        } else {
-		            $('#selections').removeTag(text);
-		        }
+	            if (span.parent().attr('id').indexOf("pcissues") > -1 /*|| span.parent().attr('id').indexOf("pcissues") > -1*/) {
+	                appIssues['Computer'][escape(text)] = undefined;
+	            } else if (span.parent().attr('id').indexOf("issues") > -1) {
+	                appIssues[currCatTab.id][escape(text)] = undefined;
+	            } else if (span.parent().attr('id').indexOf("appusefor") > -1 || span.parent().attr('id').indexOf("appuseforuser") > -1) {
+	                appCats[currCatTab.id][text] = undefined;
+	            } else if (span.parent().attr('id').indexOf("appperformance") > -1) {
+	                appPerformance[currCatTab.id][text] = undefined;
+	            } else if (span.parent().attr('id').indexOf("pcperformance") > -1) {
+	                appPerformance['Computer'][text] = undefined;
+	            } else if (span.parent().attr('id').indexOf("appimportance") > -1) {
+	                appImportance[currCatTab.id][text] = undefined;
+	            } else {
+	                $('#selections').removeTag(text);
+	            }
 	        } else {
-                // activated
+	            // activated
 	            span.attr('class', 'tag active');
-	            if (span.parent().attr('id').indexOf("issues") > -1) {
-		            appIssues[currIssueTab.id][escape(text)] = true;
-		        } else {
-		            $('#selections').addTag(text);
-		        }
+	            if (span.parent().attr('id').indexOf("pcissues") > -1 /*|| span.parent().attr('id').indexOf("pcissues") > -1*/) {
+	                appIssues['Computer'][escape(text)] = true;
+	            } else if (span.parent().attr('id').indexOf("issues") > -1 /*|| span.parent().attr('id').indexOf("pcissues") > -1*/) {
+	                appIssues[currCatTab.id][escape(text)] = true;
+	            } else if (span.parent().attr('id').indexOf("appperformance") > -1) {
+	                if (!appPerformance[currCatTab.id])
+	                    appPerformance[currCatTab.id] = {}
+	                appPerformance[currCatTab.id][text] = true;
+	            } else if (span.parent().attr('id').indexOf("pcperformance") > -1) {
+	                if (!appPerformance[currCatTab.id])
+	                    appPerformance[currCatTab.id] = {}
+	                appPerformance['Computer'][text] = true;
+	            } else if (span.parent().attr('id').indexOf("appimportance") > -1) {
+	                if (!appImportance[currCatTab.id])
+	                    appImportance[currCatTab.id] = {}
+	                appImportance[currCatTab.id][text] = true;
+	            } else if (span.parent().attr('id').indexOf("appusefor") > -1 || span.parent().attr('id').indexOf("appuseforuser") > -1) {
+	                if (!appCats[currCatTab.id])
+	                    appCats[currCatTab.id] = {}
+	                appCats[currCatTab.id][text] = true;
+
+	            } else {
+	                $('#selections').addTag(text);
+	            }
+	            result = text;
 	        }
+	        if (String(selectedObj).indexOf("issue") < 0) {
+	                RestoreClass(selectedObj);
+	        }
+	       // RestoreCatTags();
+        }
+
+        function RestoreClass(id) {
+
+            $(".tag").each(function () {
+                var text = $(this).children().first().text().trim();
+                var objIndex = $(this).parent().attr('id');
+
+                if (objIndex == id ||
+                    (String(objIndex).indexOf("usefor") > -1 && String(id).indexOf("usefor") > -1))  //TODO this is quite ugly. fix it!
+                    $(this).attr('class', result == text ? 'tag active' : 'tag');
+            });
         }
 	
         // handle user defined tag addition
@@ -883,7 +1122,7 @@
 		            if (!$('#' + container).tagExist(text))
     		            $('#' + container).addTag(text);
 		            appIssues[currIssueTab.id][escape(text)] = true;
-		            RestoreIssueTags();
+		            RestoreAppIssueTags();
 		        } else {
                     // add new activity
 		            if (!$('#' + container).tagExist(text))
@@ -916,8 +1155,18 @@
 		    initTagInput('categoriesthree');
 		    initTagInput('categoriesfour');
 
+		    initTagInput('appuseforuser');
+		    initTagInput('issues_user');
+		    initTagInput('pcissues_user');
+
+
 		    initTagInput('issues');
 		    initTagInput('pcissues');
+
+		    initTagInput('pcperformance');
+		    initTagInput('appperformance');
+		    initTagInput('appimportance');
+		    initTagInput('appusefor');
 		
             // This is the list of selected activities
 		    $("#selections").tagsInput({
@@ -966,6 +1215,54 @@
 		    }
 	    }
 
+	    function InsertUserAppIssuesLabel(e) {
+	        if (e != undefined) {
+	            var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+	            if (charCode != 13)
+	                return;
+	        }
+	        var value = document.getElementById('othertextapissues').value;
+
+	        if (value != null && value != undefined && value.length > 0) {
+	            $('#issues_user').addTag(value, { 'unique': true });
+	            document.getElementById('othertextapissues').value = "";
+	        }
+	    }
+
+	    function InsertUserPcIssuesLabel(e) {
+	        if (e != undefined) {
+	            var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+	            if (charCode != 13)
+	                return;
+	        }
+	        var value = document.getElementById('othertextpcissues').value;
+
+	        if (value != null && value != undefined && value.length > 0) {
+	            $('#pcissues_user').addTag(value, { 'unique': true });
+	            document.getElementById('othertextpcissues').value = "";
+	        }
+	    }
+
+	    function InsertUserActivityTypeLabel(e) {
+	        if (e != undefined) {
+	            var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+	            if (charCode != 13)
+	                return;
+	        }
+
+	        var value = document.getElementById('othertextuseractivity').value;
+
+	        if (value != null && value != undefined && value.length > 0) {
+	            $('#appuseforuser').addTag(value, { 'unique': true });
+	            document.getElementById('othertextuseractivity').value = "";
+	        }
+	    }
+
+	    function GetResult() { //GG do we need this?
+	        InsertUserActivityTypeLabel();
+	        return result;
+	    }
+
 	    $(document).ready(function() {
 	        // the "href" attribute of .modal-trigger must specify the modal ID that wants to be triggered
 	        $('.modal-trigger').leanModal();
@@ -975,6 +1272,17 @@
 		    $('#categoriestwo').importTags("Video streaming, Music, Books & Magazines, Games, Images & Photos, Hobbies");
 		    $('#categoriesthree').importTags("Email, Video & voice call, Social Media, Chat, Blogs");
 		    $('#categoriesfour').importTags("Shopping & Selling, Banking & finance, Cloud storage, Computer management, Media downloads, Utilities, Calendars, Maps, Web searches");
+
+
+		    $('#appusefor').importTags("Work, Education, Personal Task, Leisure");
+
+
+
+		    $('#pcperformance').importTags("Very Poor, Poor, Fair, Good, Very Good");
+		    $('#appperformance').importTags("Very Poor, Poor, Fair, Good, Very Good");
+
+		    $('#appimportance').importTags("Not important, Not very important, Important, Very Important, Critical");
+
 
             // Default 'Computer' issues
 		    $('#pcissues').importTags("No connection,Frequent disconnections, Slow connection, Slow computer");

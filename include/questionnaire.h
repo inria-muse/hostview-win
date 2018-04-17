@@ -74,4 +74,8 @@ void ESMAPI ClearAppList(AppListT* &appList);
 void ESMAPI SubmitQuestionnaire(const DWORD dur, const TCHAR *szResult);
 void ESMAPI SubmitQuestionnaireActivity(const TCHAR *szResult);
 void ESMAPI SubmitQuestionnaireProblem(const TCHAR *szResult);
+void ESMAPI SubmitQuestionnaireAppImportance(const TCHAR *szResult);
+void ESMAPI SubmitQuestionnaireAppPerformance(const TCHAR *szResult);
+
+
 void ESMAPI SubmitQuestionnaireDone();

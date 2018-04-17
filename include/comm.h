@@ -60,6 +60,8 @@
 #define MessageQuestActitivyTags	19
 #define MessageQuestProblemTags		20
 #define MessageQuestDone   			21
+#define MessageQuestAppImportance	22
+#define MessageQuestAppPerformance	23
 
 
 struct Message
