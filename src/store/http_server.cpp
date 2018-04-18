@@ -228,8 +228,9 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 		cliSocket = INVALID_SOCKET;
 		do
 		{
-			cliSocket = (unsigned int)accept(srvSocket, NULL, NULL);
+			cliSocket = accept(srvSocket, NULL, NULL);
 			Sleep(50); // FIXME: why this sleep, above will block until ?!?
+			//FIXME we should avoid polling. make accept blocking and handle closing the thread and all the sockets
 		} while (cliSocket == INVALID_SOCKET && isServerRunning);
 
 		if (isServerRunning && cliSocket != INVALID_SOCKET) {
@@ -273,7 +274,7 @@ DWORD WINAPI ServerProc(LPVOID lpParameter)
 						// recv error
 						if (!data.complete) {
 							//TODO: fix as this triggers all the time
-							//Debug("[SRV] recv failed with error: %d[%d]", nRecv, WSAGetLastError());
+							Debug("[SRV] recv failed with error: %d[%d] socket id", nRecv, WSAGetLastError());
 							send_http_err(cliSocket);
 						}
 					}
