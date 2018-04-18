@@ -138,7 +138,7 @@ void CHostViewService::ServiceWorkerThread(void)
 		}
 
 	} // end while
-
+	Debug("m_hStoppedEvent");
 	// signal the stopped event;
 	SetEvent(m_hStoppedEvent);
 }
@@ -273,6 +273,7 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 
 void CHostViewService::StopCollect(SessionEvent e, ULONGLONG ts)
 {
+	Debug("StopCollect");
 	if (m_startTime > 0) {
 		Trace("Hostview service session %llu stop [reason=%d].", m_startTime, e);
 
@@ -708,6 +709,8 @@ std::string CHostViewService::getHashedIPFromString(std::string &strIp) {
 
 Message CHostViewService::OnMessage(Message &message)
 {
+	Debug("OnMessage %d", message.type );
+
 	switch (message.type)
 	{
 	case MessageUpload:
@@ -761,7 +764,6 @@ Message CHostViewService::OnMessage(Message &message)
 	case MessageStopCapture:
 		if (!m_fUserStopped)
 		{
-			Trace("MessageStopCapture");
 			m_dwUserStoppedTime = GetTickCount();
 			m_fUserStopped = TRUE;
 			m_fIdle = FALSE;
@@ -855,8 +857,8 @@ Message CHostViewService::OnMessage(Message &message)
 
 	case MessageNetworkLabel:
 		{
-			Trace("New network label [%S].", message.szUser);
-
+			Trace("New network label [%S].", message.szUser); //todo it needs to be removed (probably) because it stores private info. We should check the entire log
+			
 			// FIXME: the messages should really have a more versatile format, this is ugly ...
 			TCHAR szGUID[MAX_PATH] = { 0 };
 			TCHAR szBSSID[MAX_PATH] = { 0 };
@@ -879,24 +881,49 @@ Message CHostViewService::OnMessage(Message &message)
 			}
 			//TODO check for correctness
 			// remember labeled networks
-			m_networks.OnNetworkLabel(szGUID, szBSSID, szLabel);
 
 			// store for upload
 			TCHAR hexHash[65];
+			TCHAR hexHashGUID[65];
+			char hexHash_c[65];
+			char hexHashGUID_c[65];
+
 			std::wstring toHash(szBSSID);
+			std::wstring toHashGUID(szGUID);
+
 			BYTE *hash;
 			unsigned long hashLen;
+
 			DWORD errNumber;
+
+			size_t outSize;
 
 			if ((errNumber = hashedWStrings.getHashWString(toHash, &hash, &hashLen))) {
 				Debug("Error hashing the BSSID: %x \n", errNumber);
 			}
+	
+			for (int j = 0; j < hashLen; j++)
+				sprintf(&hexHash_c[j], "%X", hash[j]);
+
+			mbstowcs_s(&outSize, hexHash, 65, hexHash_c, 64);
+			Debug("mbstowcs_s %S", hexHash);
+
+			hexHash[hashLen*2] = 0;
+
+			// Hashing GUID
+			if ((errNumber = hashedWStrings.getHashWString(toHashGUID, &hash, &hashLen))) {
+				Debug("Error hashing the BSSID: %x \n", errNumber);
+			}
 
 			for (int j = 0; j < hashLen; j++)
-				swprintf(&hexHash[2 * j], 2,  L"%02X", hash[j]);
-			hexHash[hashLen] = 0;
+				sprintf(&hexHashGUID_c[j], "%X", hash[j]);
 
-			m_store.InsertNetLabel(GetHiResTimestamp(), szGUID, hexHash, szLabel);
+			mbstowcs_s(&outSize, hexHashGUID, 65, hexHashGUID_c, 64);
+			Debug("mbstowcs_s_hexHashGUID_c %S", hexHashGUID);
+
+			m_store.InsertNetLabel(GetHiResTimestamp(), hexHashGUID, hexHash, szLabel);
+
+			m_networks.OnNetworkLabel(hexHashGUID, hexHash, szLabel);
 		}
 		break;
 
@@ -908,6 +935,24 @@ Message CHostViewService::OnMessage(Message &message)
 			}
 		}
 		break;
+
+	case MessageQuestAppImportance:
+		{
+			if (m_qStartTime > 0) {
+				Trace("MessageQuestAppImportance TODO Questionnaire app importance tags [%u]: %S", m_qCounter, message.szUser);
+				//m_store.InsertEsm(m_qStartTime, m_qOnDemand, message.dwPid, _wtoi(message.szUser));
+			}
+		}
+	break;
+
+	case MessageQuestAppPerformance:
+	{
+		if (m_qStartTime > 0) {
+			Trace("MessageQuestAppPerformance TODO Questionnaire app performace tags [%u]: %S", m_qCounter, message.szUser);
+			//m_store.InsertEsm(m_qStartTime, m_qOnDemand, message.dwPid, _wtoi(message.szUser));
+		}
+	}
+	break;
 
 	case MessageQuestActitivyTags:
 		{
