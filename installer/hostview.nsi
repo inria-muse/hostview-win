@@ -134,6 +134,9 @@ Function .onInit
   Call is64bit
   StrCmp $0 "0" instdir_nochange
   StrCpy $INSTDIR "$PROGRAMFILES64\HostView"
+  
+  CreateDirectory "$INSTDIR\submit"
+  
   instdir_nochange:
 FunctionEnd
 
@@ -335,6 +338,10 @@ npfdone:
   Crypto::HashData "SHA2" $R0
   Pop $0
   FileOpen $4 "$INSTDIR\pass" w
+  FileWrite $4 $0
+  FileClose $4
+  
+  FileOpen $4 "$INSTDIR\submit\pass" w
   FileWrite $4 $0
   FileClose $4
 
