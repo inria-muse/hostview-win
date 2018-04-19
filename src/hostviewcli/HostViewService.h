@@ -61,7 +61,7 @@ public:
 	void OnInterfaceDisconnected(const NetworkInterface& networkInterface);
 
 	// from CWifiMonitor
-	void OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
+	void OnWifiStats(std::wstring szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state);
 
 	// from CCaptureCallback
 	void OnHttpHeaders(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, char *szVerb, char *szVerbParam,

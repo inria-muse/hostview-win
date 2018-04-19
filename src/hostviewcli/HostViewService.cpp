@@ -122,6 +122,7 @@ void CHostViewService::ServiceWorkerThread(void)
 
 		// check for max session duration once per hour (and rotate at night)
 		if (dwNow - lastSessionCheck > 3600000) {
+			Debug("Session check");
 			SYSTEMTIME st;
 			GetLocalTime(&st);
 
@@ -131,6 +132,7 @@ void CHostViewService::ServiceWorkerThread(void)
 			// is here just to ensure some hard limit on the duration of a single session.
 			if (st.wHour >= 2 && st.wHour <= 3 && lastRotateDay < st.wDay) {
 				lastRotateDay = st.wDay;
+				Debug("Session check _ MessageRestartSession");
 				SendServiceMessage(Message(MessageRestartSession));
 			}
 			
@@ -355,9 +357,107 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 		}
 	}
 
-	m_store.InsertConn(ni.strGuid.c_str(), ni.strFriendlyName.c_str(), ni.strDescription.c_str(), ni.strDnsSuffix.c_str(),
-		ni.strMac.c_str(), szIps, szGateways, szDnses, ni.tSpeed, ni.rSpeed, ni.wireless, ni.strProfile.c_str(),
-		ni.strSSID.c_str(), ni.strBSSID.c_str(), ni.strBSSIDType.c_str(), ni.strPHYType.c_str(), ni.phyIndex,
+
+	//hashing  (todo: put it in a function)
+	BYTE *hash;
+	unsigned long hashLen;
+	DWORD errNumber;
+	size_t outSize;
+
+	//hashing GUID
+	char hexHash_c[65];
+	TCHAR hexHashGUID[65] = { 0 };
+	std::string toHashGUID(ni.strGuid.c_str());
+	
+	TCHAR toHashGUID_wc[65] = { 0 };
+	wsprintf(toHashGUID_wc, L"%S", ni.strGuid.c_str());
+	std::wstring toHashGUID_w(toHashGUID_wc);
+
+	if ((errNumber = hashedWStrings.getHashWString(toHashGUID_w, &hash, &hashLen))) {
+		Debug("Error hashing the GUID: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
+	//	sprintf(&hexHash_c[j], "%X", hash[j]);
+
+	hexHash_c[64] = 0;
+	wsprintf(hexHashGUID, L"%S", hexHash_c); 
+	
+	Debug(" getHashWString len %lu %lu", hashLen,  toHashGUID.length());
+	Debug("hexHashGUID from ni %S <- %s", hexHashGUID, ni.strGuid.c_str());
+
+	//Hashing Mac adddress
+	hash = NULL;
+	TCHAR hexHashMacAddress[65];
+	std::wstring toHash_W(ni.strMac);
+
+	if ((errNumber = hashedWStrings.getHashWString(toHash_W, &hash, &hashLen))) {
+		Debug("Error hashing the MAC address: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[j], "%X", hash[j]);
+
+	mbstowcs_s(&outSize, hexHashMacAddress, 65, hexHash_c, 64);
+	Debug("macAddressHash %S", hexHashMacAddress);
+
+	//hashing BSSID
+	hash = NULL;
+	TCHAR hexHashBSSID[65];
+	toHash_W = ni.strBSSID;
+
+	if ((errNumber = hashedWStrings.getHashWString(toHash_W, &hash, &hashLen))) {
+		Debug("Error hashing the BSSID address: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[j * 2], "%02X", hash[j]);
+
+	mbstowcs_s(&outSize, hexHashBSSID, 65, hexHash_c, 64);
+	Debug("BSSID %S", hexHashBSSID);
+
+	//Hashing strSSID
+	hash = NULL;
+	TCHAR hexHashSSID[65] = { 0 };
+	std::string toHashSSID(ni.strSSID.c_str());
+
+	TCHAR toHashSSID_wc[65] = { 0 };
+	wsprintf(toHashSSID_wc, L"%S", toHashSSID);
+	std::wstring toHashSSID_w(toHashSSID_wc);
+
+
+	if ((errNumber = hashedWStrings.getHashWString(toHashSSID_w, &hash, &hashLen))) {
+		Debug("Error hashing the SSID: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
+		//sprintf(&hexHash_c[j], "%X", hash[j]);
+
+	hexHash_c[64] = 0;
+	wsprintf(hexHashSSID, L"%S", hexHash_c);
+
+	Debug("strSSID %S", hexHashSSID);
+
+	//Hashing Profile
+	hash = NULL;
+	TCHAR hexHashProfile[65];
+	toHash_W = ni.strProfile;
+
+	if ((errNumber = hashedWStrings.getHashWString(toHash_W, &hash, &hashLen))) {
+		Debug("Error hashing the BSSID address: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[j * 2], "%02X", hash[j]);
+//		sprintf(&hexHash_c[j], "%X", hash[j]);
+
+	hexHash_c[64] = 0;
+	wsprintf(hexHashProfile, L"%S", hexHash_c);
+	Debug("Profile before mbstowcs_s %S", hexHashProfile);
+	mbstowcs_s(&outSize, hexHashProfile, 65, hexHash_c, 64);
+	Debug("Profile with mbstowcs_s %S", hexHashProfile);
+
+
+	m_store.InsertConn(hexHashGUID/*ni.strGuid.c_str()*/, ni.strFriendlyName.c_str(), ni.strDescription.c_str(), ni.strDnsSuffix.c_str(),
+		hexHashMacAddress/*ni.strMac.c_str()*/, szIps, szGateways, szDnses, ni.tSpeed, ni.rSpeed, ni.wireless, hexHashProfile/*ni.strProfile.c_str()*/,
+		hexHashSSID /*ni.strSSID.c_str()*/, hexHashBSSID/*ni.strBSSID.c_str()*/, ni.strBSSIDType.c_str(), ni.strPHYType.c_str(), ni.phyIndex,
 		ni.channel, connected, timestamp);
 }
 
@@ -406,14 +506,33 @@ void CHostViewService::OnInterfaceDisconnected(const NetworkInterface &networkIn
 	LogNetwork(networkInterface, timestamp, false);
 }
 
-void CHostViewService::OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state)
+void CHostViewService::OnWifiStats(std::wstring szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state)
 {
 	if (m_startTime == 0) {
 		return; // no session
 	}
 
 	ULONGLONG timestamp = GetHiResTimestamp();
-	m_store.InsertWifi(szGuid, tSpeed, rSpeed, signal, rssi, state, timestamp);
+
+	BYTE *hash;
+	unsigned long hashLen;
+	DWORD errNumber;
+	size_t outSize;
+
+	//hashing GUID
+	char hexHash_c[65];
+	TCHAR hexHashGUID[65] = { 0 };
+
+	if ((errNumber = hashedWStrings.getHashWString(szGuid, &hash, &hashLen))) {
+		Debug("Error hashing the GUID: %x \n", errNumber);
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
+	hexHash_c[64] = 0;
+	wsprintf(hexHashGUID, L"%S", hexHash_c);
+	
+	Debug("hexHashGUID from wifiStats %S", hexHashGUID);
+	m_store.InsertWifi(hexHashGUID, tSpeed, rSpeed, signal, rssi, state, timestamp);
 }
 
 void CHostViewService::OnDNSAnswer(ULONGLONG connection, int protocol, char *szSrc, u_short srcport, char *szDest, u_short destport, int type, char *szIp, char *szHost)
@@ -547,6 +666,7 @@ bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
 	if (force || (now - sdwLastSubmit >= m_settings.GetULong(AutoSubmitInterval) &&
 		!m_fFullScreen && m_fIdle))
 	{
+		Debug("[SRV] checking RunAutoSubmit");
 		if (force)Debug("[SRV] Forcing the upload of the files to submit");
 		if (m_upload == NULL) {
 			// new upload session
@@ -561,6 +681,8 @@ bool CHostViewService::RunAutoSubmit(DWORD now, BOOL force) {
 			sdwLastSubmit = now;
 			return TRUE;
 		}
+		Debug("[SRV] RunAutoSubmit check DONE");
+
 	}
 	return FALSE;
 }
@@ -851,6 +973,7 @@ Message CHostViewService::OnMessage(Message &message)
 		{
 			m_hasSeenUI = TRUE;
 			Message result(m_fUserStopped ? MessageStopCapture : MessageStartCapture);
+			Debug("OnMessage %d  DONE", message.type);
 			return result;
 		}
 		break;
@@ -887,6 +1010,7 @@ Message CHostViewService::OnMessage(Message &message)
 			TCHAR hexHashGUID[65];
 			char hexHash_c[65];
 			char hexHashGUID_c[65];
+			TCHAR test[65];
 
 			std::wstring toHash(szBSSID);
 			std::wstring toHashGUID(szGUID);
@@ -901,9 +1025,8 @@ Message CHostViewService::OnMessage(Message &message)
 			if ((errNumber = hashedWStrings.getHashWString(toHash, &hash, &hashLen))) {
 				Debug("Error hashing the BSSID: %x \n", errNumber);
 			}
-	
 			for (int j = 0; j < hashLen; j++)
-				sprintf(&hexHash_c[j], "%X", hash[j]);
+				sprintf(&hexHash_c[j * 2], "%02X", hash[j]);
 
 			mbstowcs_s(&outSize, hexHash, 65, hexHash_c, 64);
 			Debug("mbstowcs_s %S", hexHash);
@@ -914,12 +1037,17 @@ Message CHostViewService::OnMessage(Message &message)
 			if ((errNumber = hashedWStrings.getHashWString(toHashGUID, &hash, &hashLen))) {
 				Debug("Error hashing the BSSID: %x \n", errNumber);
 			}
+			//Debug(" getHashWString len %lu %lu %lu", hashLen, sizeof(wchar_t), toHashGUID.length());
 
-			for (int j = 0; j < hashLen; j++)
-				sprintf(&hexHashGUID_c[j], "%X", hash[j]);
+			for (int j = 0; j < hashLen; j++) {
+				//ssprintf(&hexHashGUID_c[j], "%X", hash[j]);
+				sprintf(&hexHashGUID_c[2*j], "%02X", hash[j]);
 
+			}
+			wsprintf(hexHashGUID, L"%S", hexHashGUID_c);
+			Debug("mbstowcs NO_s_hexHashGUID_c MAH %S", hexHashGUID);
 			mbstowcs_s(&outSize, hexHashGUID, 65, hexHashGUID_c, 64);
-			Debug("mbstowcs_s_hexHashGUID_c %S", hexHashGUID);
+			Debug("mbstowcs NO_s_hexHashGUID_c with mbstowcs_s  %S", hexHashGUID);
 
 			m_store.InsertNetLabel(GetHiResTimestamp(), hexHashGUID, hexHash, szLabel);
 
@@ -1043,6 +1171,7 @@ Message CHostViewService::OnMessage(Message &message)
 			ImpersonateRevert();
 
 			Message result(0, szFile, 0, true, true);
+			Debug("OnMessage %d  DONE", message.type);
 			return result;
 		}
 		break;
@@ -1051,9 +1180,12 @@ Message CHostViewService::OnMessage(Message &message)
 		{
 			TCHAR szFile[MAX_PATH] = {0};
 			PullInstalledApps(szFile, _countof(szFile));
+			Debug("OnMessage %d  DONE", message.type);
 			return Message(0, szFile, 0, true, true);
 		}
 		break;
 	}
+	Debug("OnMessage %d  DONE", message.type);
+
 	return message;
 }

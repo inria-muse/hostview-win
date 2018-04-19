@@ -161,7 +161,7 @@ extern "C" PCAPAPI bool StopInterfacesMonitor(CInterfacesCallback &callback);
 class CWifiMonitor
 {
 public:
-	virtual void OnWifiStats(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
+	virtual void OnWifiStats(std::wstring szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
 		ULONG signal, ULONG rssi, short state) = 0;
 };
 

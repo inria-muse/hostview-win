@@ -99,16 +99,16 @@ public:
 	void InsertIo(IoDevice device, DWORD dwPid, TCHAR *szApp, __int64 timestamp);
 
 	// insert wifi stats
-	void InsertWifi(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp);
+	void InsertWifi(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp);
 
 	// insert user network label
 	void InsertNetLabel(__int64 timestamp, TCHAR *szGUID, TCHAR *szGW, TCHAR *szLabel);
 
 	// insert network connection events
-	void InsertConn(const char *szGuid, const TCHAR *szFriendlyName, 
+	void InsertConn(const TCHAR *szGuid, const TCHAR *szFriendlyName,
 		const TCHAR *szDescription, const TCHAR * szDnsSuffix, const TCHAR *szMac,
 		const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed, 
-		bool wireless, const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, 
+		bool wireless, const TCHAR *szProfile, const TCHAR *szSSID, const TCHAR *szBSSID, const char *szBSSIDType,
 		const char *szPHYType, unsigned long phyIndex, unsigned long channel, bool connected, __int64 timestamp);
 
 	// insert location information
