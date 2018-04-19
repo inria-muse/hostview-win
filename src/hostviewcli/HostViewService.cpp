@@ -263,6 +263,26 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 		}
 
 		// log session start + once per session data
+		hash = NULL;
+
+		//hashing hdd serial number
+		char hexHash_c[MAX_PATH];
+		TCHAR toHashSerial_wc[MAX_PATH] = { 0 };
+		TCHAR hexHashSerial[MAX_PATH] = { 0 };
+
+		wsprintf(toHashSerial_wc, L"%S", m_sysInfo.hddSerial);
+		std::wstring toHashGUID_w(toHashSerial_wc);
+
+		if ((errNumber = hashedWStrings.getHashWString(toHashGUID_w, &hash, &hashLen))) {
+			Debug("Error hashing the GUID: %x \n", errNumber);
+		}
+		for (int j = 0; j < hashLen; j++)
+			sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
+
+		hexHash_c[64] = 0;
+		wsprintf(m_sysInfo.hddSerial, L"%S", hexHash_c);
+
+
 		m_store.InsertSession(m_startTime, e);
 		m_store.InsertSys(m_startTime, m_sysInfo, ProductVersionStr, m_settings.GetVersion());
 

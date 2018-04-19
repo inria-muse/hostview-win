@@ -505,9 +505,11 @@ DWORD WINAPI WifiMonitorThreadProc(LPVOID lpParameter)
 					}
 
 					StringFromGUID2(pIfInfo->InterfaceGuid, (LPOLESTR) &szGuid, sizeof(szGuid)/sizeof(*szGuid));
-					char str[40] = { 0 };
-					sprintf_s(str, "%S", szGuid);
-					pCallback->OnWifiStats(str, tSpeed, rSpeed, signal, ulRSSI, pIfInfo->isState);
+
+					szGuid[38] = 0;
+					std::wstring szGuidString(&(szGuid[1]), 36); //removing {}
+
+					pCallback->OnWifiStats(szGuidString, tSpeed, rSpeed, signal, ulRSSI, pIfInfo->isState);
 				}
 			}
 
