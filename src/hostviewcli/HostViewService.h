@@ -139,6 +139,7 @@ private:
 
 	std::string getHashedIPFromString(std::string &strIp);
 	char *getHashedIPFromCharPtr(char *strIp);
+	bool getHashedWString(std::wstring stringToHash, TCHAR* output);
 
 	// networks are added to this queue to be displayed
 	// when a user is ready

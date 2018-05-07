@@ -95,11 +95,13 @@ void CHostViewService::ServiceWorkerThread(void)
 		Sleep(500);
 		dwNow = GetTickCount();
 
-		if (m_fUpdatePending)
+		if (m_fUpdatePending) {
+			Debug("ServiceWorkerThread m_fUpdatePending");
 			continue; // will stop soon
-
+		}
 		if (m_fUserStopped)
 		{
+			Debug("ServiceWorkerThread m_fUserStopped %d", m_fUserStopped);
 			if (dwNow - m_dwUserStoppedTime >= m_settings.GetULong(AutoRestartTimeout))
 			{
 				// autorestart
@@ -266,21 +268,10 @@ void CHostViewService::StartCollect(SessionEvent e, ULONGLONG ts)
 		hash = NULL;
 
 		//hashing hdd serial number
-		char hexHash_c[MAX_PATH];
 		TCHAR toHashSerial_wc[MAX_PATH] = { 0 };
-		TCHAR hexHashSerial[MAX_PATH] = { 0 };
-
 		wsprintf(toHashSerial_wc, L"%S", m_sysInfo.hddSerial);
-		std::wstring toHashGUID_w(toHashSerial_wc);
-
-		if ((errNumber = hashedWStrings.getHashWString(toHashGUID_w, &hash, &hashLen))) {
-			Debug("Error hashing the GUID: %x \n", errNumber);
-		}
-		for (int j = 0; j < hashLen; j++)
-			sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
-
-		hexHash_c[64] = 0;
-		wsprintf(m_sysInfo.hddSerial, L"%S", hexHash_c);
+		char hexHash_c[MAX_PATH];
+		getHashedWString(toHashSerial_wc, m_sysInfo.hddSerial);
 
 
 		m_store.InsertSession(m_startTime, e);
@@ -345,34 +336,75 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 	}
 
 	//TODO clean up all the sensitive information
-
+	//TODO  use a larger MAX_PATH (and update the info in the db too)
+	size_t size = 0;
 	TCHAR szGateways[MAX_PATH] = { 0 };
 	for (size_t i = 0; i < ni.gateways.size(); i++)
 	{
+		size += ni.gateways[i].length();
+		if (size > MAX_PATH) {
+			//we can't write more info in the structure
+			Trace("Impossible to write more ip addresses in the gateway list. Not enough space in the structure");
+			break;
+		}
 		_tcscat_s(szGateways, ni.gateways[i].c_str());
 
 		if (i < ni.gateways.size() - 1)
 		{
+			size += 1;
+			if (size > MAX_PATH) {
+				//we can't write more info in the structure
+				Trace("Impossible to write more ip addresses in the gateway list. Not enough space in the structure");
+				break;
+			}
 			_tcscat_s(szGateways, _T(","));
 		}
 	}
+
+	size = 0;
 	TCHAR szDnses[MAX_PATH] = { 0 };
 	for (size_t i = 0; i < ni.dnses.size(); i++)
 	{
+		size += ni.dnses[i].length();
+		if (size > MAX_PATH) {
+			//we can't write more info in the structure
+			Trace("Impossible to write more ip addresses in the DNS list. Not enough space in the structure");
+			break;
+		}
 		_tcscat_s(szDnses, ni.dnses[i].c_str());
 
 		if (i < ni.dnses.size() - 1)
 		{
+			size += 1;
+			if (size > MAX_PATH) {
+				//we can't write more info in the structure
+				Trace("Impossible to write more ip addresses in the DNS list. Not enough space in the structure");
+				break;
+			}
 			_tcscat_s(szDnses, _T(","));
 		}
 	}
+
+	size = 0;
 	TCHAR szIps[MAX_PATH] = { 0 };
 	for (size_t i = 0; i < ni.ips.size(); i++)
 	{
+		size += ni.ips[i].length();
+		if (size > MAX_PATH) {
+			//we can't write more info in the structure
+			Trace("Impossible to write more ip addresses in the list of addresses associated with a NIC. Not enough space in the structure");
+			break;
+		}
 		_tcscat_s(szIps, ni.ips[i].c_str());
 
 		if (i < ni.ips.size() - 1)
 		{
+			size += 1;
+			if (size > MAX_PATH) {
+				//we can't write more info in the structure
+				Trace("Impossible to write more ip addresses in the list of addresses associated with a NIC. Not enough space in the structure");
+				break;
+			}
 			_tcscat_s(szIps, _T(","));
 		}
 	}
@@ -490,7 +522,6 @@ void CHostViewService::OnInterfaceConnected(const NetworkInterface &networkInter
 	ULONGLONG timestamp = GetHiResTimestamp(); // connection id
 
 	LogNetwork(networkInterface, timestamp, true);
-
 	StartCapture(*this, m_startTime, timestamp, m_settings.GetULong(PcapSizeLimit), m_settings.GetBoolean(DebugMode), networkInterface.strGuid.c_str());
 
 	// resolve network location
@@ -849,6 +880,27 @@ std::string CHostViewService::getHashedIPFromString(std::string &strIp) {
 	return std::string(getHashedIPFromCharPtr((char *)strIp.c_str()));
 }
 
+bool CHostViewService::getHashedWString(std::wstring stringToHash, TCHAR* output) {
+	BYTE *hash;
+	unsigned long hashLen;
+	DWORD errNumber;
+	size_t outSize;
+
+	char hexHash_c[MAX_PATH];
+
+	if ((errNumber = hashedWStrings.getHashWString(stringToHash, &hash, &hashLen))) {
+		Debug("Error hashing the GUID: %x \n", errNumber);
+		return false;
+	}
+	for (int j = 0; j < hashLen; j++)
+		sprintf(&hexHash_c[2 * j], "%02X", hash[j]);
+	hexHash_c[MAX_PATH-1] = 0;
+	wsprintf(output, L"%S", hexHash_c);
+
+	Debug("getHashedWString %S", output);
+	return true;
+}
+
 Message CHostViewService::OnMessage(Message &message)
 {
 	Debug("OnMessage %d", message.type );
@@ -979,7 +1031,15 @@ Message CHostViewService::OnMessage(Message &message)
 			GetProcessName(message.dwPid, szApp, _countof(szApp));
 			GetProcessDescription(message.dwPid, szDescription, _countof(szDescription));
 
-			m_store.InsertActivity(message.szUser, message.dwPid, szApp, szDescription, message.isFullScreen, message.isIdle, GetHiResTimestamp());
+			//Hashing user name
+			TCHAR toHashUser[MAX_PATH] = { 0 };
+			TCHAR hexHashUser[MAX_PATH];
+			wsprintf(toHashUser, L"%S", message.szUser);
+
+			getHashedWString(toHashUser, hexHashUser);
+			Debug("hexHashUser %S", hexHashUser);
+
+			m_store.InsertActivity(hexHashUser, message.dwPid, szApp, szDescription, message.isFullScreen, message.isIdle, GetHiResTimestamp());
 
 			// TODO: multiple users
 			m_fIdle = message.isIdle ? TRUE : FALSE;
@@ -1041,6 +1101,8 @@ Message CHostViewService::OnMessage(Message &message)
 			DWORD errNumber;
 
 			size_t outSize;
+
+
 
 			if ((errNumber = hashedWStrings.getHashWString(toHash, &hash, &hashLen))) {
 				Debug("Error hashing the BSSID: %x \n", errNumber);

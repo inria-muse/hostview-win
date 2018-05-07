@@ -299,25 +299,25 @@ void CStore::InsertSys(__int64 timestamp, SysInfo &info, char *hostview_version,
 	enqueue(szStatement);
 }
 
-void CStore::InsertConn(const char *szGuid, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
+void CStore::InsertConn(const TCHAR *szGuid, const TCHAR *szFriendlyName, const TCHAR *szDescription, const TCHAR *szDnsSuffix,
 	const TCHAR *szMac, const TCHAR *szIps, const TCHAR *szGateways, const TCHAR *szDnses, unsigned __int64 tSpeed, unsigned __int64 rSpeed,
-	bool wireless, const TCHAR *szProfile, const char *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType,
+	bool wireless, const TCHAR *szProfile, const TCHAR *szSSID, const TCHAR *szBSSID, const char *szBSSIDType, const char *szPHYType,
 	unsigned long phyIndex, unsigned long channel, bool connected, __int64 timestamp)
 {
 	char szStatement[8192] = {0};
 	sprintf_s(szStatement, "INSERT INTO %s(guid, friendlyname, description, dnssuffix, mac, ips, gateways, dnses, tspeed, rspeed, wireless, profile, \
-		 ssid, bssid, bssidtype, phytype, phyindex, channel, connected, timestamp) VALUES(\"%s\", \"%S\", \"%S\", \"%S\", \"%S\", \
-		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%s\", \"%S\", \"%s\", \"%s\", %lu, %lu, %d, %llu)", 
+		 ssid, bssid, bssidtype, phytype, phyindex, channel, connected, timestamp) VALUES(\"%S\", \"%S\", \"%S\", \"%S\", \"%S\", \
+		 \"%S\",\"%S\", \"%S\", %llu, %llu, %d, \"%S\", \"%S\", \"%S\", \"%s\", \"%s\", %lu, %lu, %d, %llu)", 
 		"connectivity", szGuid, szFriendlyName, szDescription, szDnsSuffix, szMac, szIps, szGateways, szDnses, tSpeed, rSpeed, 
 		 wireless ? 1 : 0, szProfile, szSSID, szBSSID, szBSSIDType, szPHYType, phyIndex, channel, connected ? 1 : 0, timestamp);
 
 	enqueue(szStatement);
 }
 
-void CStore::InsertWifi(const char *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp)
+void CStore::InsertWifi(const TCHAR *szGuid, unsigned __int64 tSpeed, unsigned __int64 rSpeed, ULONG signal, ULONG rssi, short state, __int64 timestamp)
 {
 	char szStatement[4096] = { 0 };
-	sprintf_s(szStatement, "INSERT INTO %s(guid, tspeed, rspeed, signal, rssi, state, timestamp) VALUES(\"%s\", %llu, %llu, %d, %d, %d, %llu)",
+	sprintf_s(szStatement, "INSERT INTO %s(guid, tspeed, rspeed, signal, rssi, state, timestamp) VALUES(\"%S\", %llu, %llu, %d, %d, %d, %llu)",
 		"wifistats", szGuid, tSpeed, rSpeed, signal, rssi, state, timestamp);
 
 	enqueue(szStatement);
