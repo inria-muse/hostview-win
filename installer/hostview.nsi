@@ -334,16 +334,7 @@ npfdone:
 
   ; Use previously given password to store for identification
   ; (hased from input)
-  Pop $R0
-  Crypto::HashData "SHA2" $R0
-  Pop $0
-  FileOpen $4 "$INSTDIR\pass" w
-  FileWrite $4 $0
-  FileClose $4
-  
-  FileOpen $4 "$INSTDIR\submit\pass" w
-  FileWrite $4 $0
-  FileClose $4
+
 
   ; create a random value and save it to a file at the destination
   ; (used as a hash salt)
@@ -353,6 +344,28 @@ npfdone:
   FileWrite $4 $0
   FileClose $4
 
+  FileOpen $4 "$INSTDIR\submit\salt" w
+  FileWrite $4 $0
+  FileClose $4
+
+
+  ;concatenating password with salt before hashing everything
+  StrCpy $R0 "$R0$0"
+
+
+
+  Crypto::HashData "SHA2" $R0
+  Pop $0
+  FileOpen $4 "$INSTDIR\pass" w
+  FileWrite $4 $0
+  FileClose $4
+
+  
+  FileOpen $4 "$INSTDIR\submit\pass" w
+  FileWrite $4 $0
+  FileClose $4
+
+ 
   ; TODO move this to a final page that starts the app once the installation looks complete
   ; TODO re-activate the explorer extension
 	SetOutPath $INSTDIR
