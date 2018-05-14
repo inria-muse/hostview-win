@@ -335,7 +335,6 @@ void CHostViewService::LogNetwork(const NetworkInterface &ni, ULONGLONG timestam
 		}
 	}
 
-	//TODO clean up all the sensitive information
 	//TODO  use a larger MAX_PATH (and update the info in the db too)
 	size_t size = 0;
 	TCHAR szGateways[MAX_PATH] = { 0 };
@@ -1149,8 +1148,28 @@ Message CHostViewService::OnMessage(Message &message)
 	case MessageQuestAppImportance:
 		{
 			if (m_qStartTime > 0) {
-				Trace("MessageQuestAppImportance TODO Questionnaire app importance tags [%u]: %S", m_qCounter, message.szUser);
-				//m_store.InsertEsm(m_qStartTime, m_qOnDemand, message.dwPid, _wtoi(message.szUser));
+				Trace("MessageQuestAppImportance Questionnaire app importance tags [%u]: %S", m_qCounter, message.szUser);
+
+				TCHAR szName[MAX_PATH] = { 0 };
+				TCHAR szDesc[MAX_PATH] = { 0 };
+				TCHAR szTags[MAX_PATH] = { 0 };
+				TCHAR *szCtx = NULL;
+				TCHAR *szToken = _tcstok_s(message.szUser, _T(";"), &szCtx);
+				if (szToken)
+				{
+					_tcscpy_s(szName, szToken);
+					szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+					if (szToken)
+					{
+						_tcscpy_s(szDesc, szToken);
+						szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+						if (szToken)
+						{
+							_tcscpy_s(szTags, szToken);
+							m_store.InsertEsmActivityImportance(m_qStartTime, szName, szDesc, szTags);
+						}
+					}
+				}
 			}
 		}
 	break;
@@ -1158,8 +1177,28 @@ Message CHostViewService::OnMessage(Message &message)
 	case MessageQuestAppPerformance:
 	{
 		if (m_qStartTime > 0) {
-			Trace("MessageQuestAppPerformance TODO Questionnaire app performace tags [%u]: %S", m_qCounter, message.szUser);
-			//m_store.InsertEsm(m_qStartTime, m_qOnDemand, message.dwPid, _wtoi(message.szUser));
+			Trace("MessageQuestAppPerformance Questionnaire app performance tags [%u]: %S", m_qCounter, message.szUser);
+
+			TCHAR szName[MAX_PATH] = { 0 };
+			TCHAR szDesc[MAX_PATH] = { 0 };
+			TCHAR szTags[MAX_PATH] = { 0 };
+			TCHAR *szCtx = NULL;
+			TCHAR *szToken = _tcstok_s(message.szUser, _T(";"), &szCtx);
+			if (szToken)
+			{
+				_tcscpy_s(szName, szToken);
+				szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+				if (szToken)
+				{
+					_tcscpy_s(szDesc, szToken);
+					szToken = _tcstok_s(NULL, _T(";"), &szCtx);
+					if (szToken)
+					{
+						_tcscpy_s(szTags, szToken);
+						m_store.InsertEsmActivityQoE(m_qStartTime, szName, szDesc, szTags);
+					}
+				}
+			}
 		}
 	}
 	break;

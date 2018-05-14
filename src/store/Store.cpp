@@ -218,6 +218,11 @@ void CStore::InitTables()
 
 	exec("CREATE TABLE IF NOT EXISTS esm_problem_tags(timestamp INT8, appname VARCHAR(260), description VARCHAR(260), tags VARCHAR(1024))");
 
+	exec("CREATE TABLE IF NOT EXISTS esm_activity_qoe(timestamp INT8, appname VARCHAR(260), description VARCHAR(260), qoe VARCHAR(260))");
+
+	exec("CREATE TABLE IF NOT EXISTS esm_activity_importance(timestamp INT8, appname VARCHAR(260), description VARCHAR(260), importance VARCHAR(260))");
+
+
 	exec("PRAGMA synchronous = OFF");
 	exec("PRAGMA journal_mode = MEMORY");
 }
@@ -226,6 +231,8 @@ void CStore::InsertEsm(__int64 timestamp, bool ondemand, __int64 duration, int s
 	char szStatement[1024] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(timestamp, ondemand, duration, qoe_score) VALUES(%llu, %d, %llu, %d)",
 		"esm", timestamp, (ondemand ? 1 : 0), duration, score);
+	Debug(szStatement);
+
 	enqueue(szStatement);
 }
 
@@ -233,13 +240,35 @@ void CStore::InsertEsmActivity(__int64 timestamp, TCHAR *appname, TCHAR *desc, T
 	char szStatement[4096] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(timestamp, appname, description, tags) VALUES(%llu, \"%S\", \"%S\", \"%S\")",
 		"esm_activity_tags", timestamp, appname, desc, tags);
+	Debug(szStatement);
+
 	enqueue(szStatement);
 }
+
+void CStore::InsertEsmActivityQoE(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags) {
+	char szStatement[4096] = { 0 };
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, appname, description, qoe) VALUES(%llu, \"%S\", \"%S\", \"%S\")",
+		"esm_activity_qoe", timestamp, appname, desc, tags);
+	Debug(szStatement);
+	enqueue(szStatement);
+}
+
+void CStore::InsertEsmActivityImportance(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags) {
+	char szStatement[4096] = { 0 };
+	sprintf_s(szStatement, "INSERT INTO %s(timestamp, appname, description, importance) VALUES(%llu, \"%S\", \"%S\", \"%S\")",
+		"esm_activity_importance", timestamp, appname, desc, tags);
+	Debug(szStatement);
+
+	enqueue(szStatement);
+}
+
 
 void CStore::InsertEsmProblems(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags) {
 	char szStatement[4096] = { 0 };
 	sprintf_s(szStatement, "INSERT INTO %s(timestamp, appname, description, tags) VALUES(%llu, \"%S\", \"%S\", \"%S\")",
 		"esm_problem_tags", timestamp, appname, desc, tags);
+	Debug(szStatement);
+
 	enqueue(szStatement);
 }
 

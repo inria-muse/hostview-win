@@ -75,6 +75,8 @@ public:
 	// insert a ESM questionnaire results (basic info, activity tags + problem tags)
 	void CStore::InsertEsm(__int64 timestamp, bool ondemand, __int64 duration, int score);
 	void CStore::InsertEsmActivity(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags);
+	void CStore::InsertEsmActivityQoE(__int64 timestamp, TCHAR * appname, TCHAR * desc, TCHAR * tags);
+	void CStore::InsertEsmActivityImportance(__int64 timestamp, TCHAR * appname, TCHAR * desc, TCHAR * tags);
 	void CStore::InsertEsmProblems(__int64 timestamp, TCHAR *appname, TCHAR *desc, TCHAR *tags);
 
 	// inserts a process pid mapping
