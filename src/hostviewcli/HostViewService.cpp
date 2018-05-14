@@ -1059,8 +1059,8 @@ Message CHostViewService::OnMessage(Message &message)
 		break;
 
 	case MessageNetworkLabel:
-		{
-			Trace("New network label [%S].", message.szUser); //todo it needs to be removed (probably) because it stores private info. We should check the entire log
+		{			
+			Debug("New network label [%S].", message.szUser); 
 			
 			// FIXME: the messages should really have a more versatile format, this is ugly ...
 			TCHAR szGUID[MAX_PATH] = { 0 };
