@@ -716,13 +716,19 @@
             return "";
         }
 
+        function ClearPerformance(dict){
+            for (var k in dict) {
+                dict[k] = undefined;
+            }
+        }
+
         function GetAppPerformanceTags(appid) {
             var app = appInfo[appid];
             appid = 'c_' + appid;
             if (appPerformance[appid]) {
                 var tmp = []
                 for (var k in appPerformance[appid]) {
-                    if (appPerformance[appid][k] == true) tmp.push(k);
+                    if (appPerformance[appid][k] == true) {tmp.push(k); }
                 }
                 if (tmp.length > 0)
                     res = app.name + ';' + app.desc + ';' + tmp.join(',');
@@ -738,7 +744,7 @@
             if (appPerformance['Computer']) {
                 var tmp = []
                 for (var k in appPerformance[appid]) {
-                    if (appPerformance[appid][k] == true) tmp.push(k);
+                    if (appPerformance[appid][k] == true) { tmp.push(k); }
                 }
                 if (tmp.length > 0)
                     res = app.name + ';' + app.desc + ';' + tmp.join(',');
@@ -1072,10 +1078,12 @@
 	            } else if (span.parent().attr('id').indexOf("appperformance") > -1) {
 	                if (!appPerformance[currCatTab.id])
 	                    appPerformance[currCatTab.id] = {}
-	                appPerformance[currCatTab.id][text] = true;
+	                ClearPerformance(appPerformance[currCatTab.id]); //it can be one tag at the time only
+	                appPerformance[currCatTab.id][text] = true; 
 	            } else if (span.parent().attr('id').indexOf("pcperformance") > -1) {
-	                if (!appPerformance[currCatTab.id])
-	                    appPerformance[currCatTab.id] = {}
+	                if (!appPerformance['Computer'])
+	                    appPerformance['Computer'] = {}
+	                ClearPerformance(appPerformance['Computer']); //it can be one tag at the time only
 	                appPerformance['Computer'][text] = true;
 	            } else if (span.parent().attr('id').indexOf("appimportance") > -1) {
 	                if (!appImportance[currCatTab.id])

@@ -134,21 +134,25 @@ HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 			_stprintf_s(szId, _T("%d"), appId);
 			arrArgsA.Add(szId);
 
+			varResA.bstrVal = NULL;
 			if (CallClientScript(L"GetActivityTags", &arrArgsA, &varResA) && _tcslen(varResA.bstrVal)>1)
 			{
 				SubmitQuestionnaireActivity(varResA.bstrVal);
 			}
 
+			varResP.bstrVal = NULL;
 			if (CallClientScript(L"GetProblemTags", &arrArgsA, &varResP) && _tcslen(varResP.bstrVal)>1)
 			{
 				SubmitQuestionnaireProblem(varResP.bstrVal);
 			}
 
+			varResI.bstrVal = NULL;
 			if (CallClientScript(L"GetAppImportanceTags", &arrArgsA, &varResI) && _tcslen(varResI.bstrVal)>1)
 			{
 				SubmitQuestionnaireAppImportance(varResI.bstrVal);
 			}
 
+			varResPer.bstrVal = NULL;
 			if (CallClientScript(L"GetAppPerformanceTags", &arrArgsA, &varResPer) && _tcslen(varResPer.bstrVal)>1)
 			{
 				SubmitQuestionnaireAppPerformance(varResPer.bstrVal);
@@ -157,10 +161,13 @@ HRESULT CEsmWizard::OnClickDone(IHTMLElement *pElement)
 		}
 
 		// will return the computer wide prob tags (no appId arg)
+		varResC.bstrVal = NULL;
 		if (CallClientScript(L"GetProblemTags", NULL, &varResC) && _tcslen(varResC.bstrVal)>1)
 		{
 			SubmitQuestionnaireProblem(varResC.bstrVal);
 		}
+
+		varResPcPer.bstrVal = NULL;
 		if (CallClientScript(L"GetPCPerformanceTags", &arrArgs, &varResPcPer) && _tcslen(varResPcPer.bstrVal)>1)
 		{
 			SubmitQuestionnaireAppPerformance(varResPcPer.bstrVal);
